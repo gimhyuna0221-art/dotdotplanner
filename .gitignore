@@ -1,0 +1,32 @@
+# 의존성
+node_modules/
+
+# Playwright 브라우저·테스트 결과물
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+.playwright/
+
+# 생성된 스크린샷·영상·trace
+*.webm
+*.zip
+*.trace
+/tests/**/*-snapshots/
+/tests/screenshots/
+
+# 작업 전 백업 폴더
+/backup/
+/backups/
+*_backup_*/
+*.bak
+
+# 임시 파일과 로그
+*.log
+*.tmp
+.DS_Store
+Thumbs.db
+
+# 로컬 도구 상태
+.claude/scheduled_tasks.lock
+.claude/settings.local.json
