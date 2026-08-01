@@ -1,6 +1,45 @@
 // DotDotPlanner - app.js
 // 1단계: 상태 / localStorage / 시드 데이터 / 기본 렌더링 / 빠른 입력
 // 순수 정적 페이지(file://)에서도 동작해야 하므로 fetch, ES Module import는 사용하지 않는다.
+
+// ===========================================================================
+// 번들된 서드파티 라이브러리: korean-lunar-calendar v0.4.0
+// https://github.com/usingsky/korean_lunar_calendar_js (npm: korean-lunar-calendar)
+// 저자: Jinil Lee <usingsky@gmail.com> — KASI(한국천문연구원) 기준 음양력 변환 데이터 사용.
+// 지원 범위(라이브러리 자체 상수 KOREAN_SOLAR_MIN_VALUE~MAX_VALUE 기준): 양력
+// 1000-02-13 ~ 2050-12-31(음력 1000-01-01 ~ 2050-11-18). 이 범위 밖 날짜는 라이브러리
+// 자신이 false/무효로 판정한다 -- 별도 임의 계산식을 만들지 않고 이 라이브러리 그대로만 쓴다.
+// file://·정적 배포에서도 외부 런타임 의존성이 없도록, CDN을 참조하지 않고 배포 파일
+// 내용을 있는 그대로(수정 없이) 이 안에 옮겨 담았다. 아래는 dist/korean-lunar-calendar.min.js의
+// 검증된 원본 그대로이며, 전역 window.KoreanLunarCalendar로 노출된다.
+//
+// MIT License
+//
+// Copyright (c) 2022 Jinil Lee
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+// ===========================================================================
+(function(e,t){typeof exports==`object`&&typeof module<`u`?module.exports=t():typeof define==`function`&&define.amd?define([],t):(e=typeof globalThis<`u`?globalThis:e||self,e.KoreanLunarCalendar=t())})(this,function(){var e={KOREAN_LUNAR_MIN_VALUE:10000101,KOREAN_LUNAR_MAX_VALUE:20501118,KOREAN_SOLAR_MIN_VALUE:10000213,KOREAN_SOLAR_MAX_VALUE:20501231,KOREAN_LUNAR_BASE_YEAR:1e3,SOLAR_LUNAR_DAY_DIFF:43,LUNAR_SMALL_MONTH_DAY:29,LUNAR_BIG_MONTH_DAY:30,SOLAR_SMALL_YEAR_DAY:365,SOLAR_BIG_YEAR_DAY:366,SOLAR_DAYS:[31,28,31,30,31,30,31,31,30,31,30,31,29],KOREAN_CHEONGAN:[44049,51012,48337,51221,47924,44592,44221,49888,51076,44228].map(e=>String.fromCharCode(e)),KOREAN_GANJI:[51088,52629,51064,47896,51652,49324,50724,48120,49888,50976,49696,54644].map(e=>String.fromCharCode(e)),KOREAN_GAPJA_UNIT:[45380,50900,51068].map(e=>String.fromCharCode(e)),CHINESE_CHEONGAN:[30002,20057,19993,19969,25098,24049,24218,36763,22764,30328].map(e=>String.fromCharCode(e)),CHINESE_GANJI:[23376,19985,23493,21359,36784,24051,21320,26410,30003,37193,25100,20133].map(e=>String.fromCharCode(e)),CHINESE_GAPJA_UNIT:[24180,26376,26085].map(e=>String.fromCharCode(e)),INTERCALATION_STR:[50980,38287].map(e=>String.fromCharCode(e)),KOREAN_LUNAR_DATA:[2194016855,2197734699,2193886506,2194017621,3271595437,2193884522,2194016621,2197837021,3267626157,2193885773,2197827149,2193885990,3271600982,2194016981,2193883994,2197842298,3267758427,2193884315,2197834395,2193885771,3271674533,2193884842,2194016981,2197852893,3267625653,2194016599,2197705902,2194017431,3267626571,2197759306,2194017705,2197857974,3267757677,2193883758,2197907758,2193885486,3267628182,2197835157,2193886538,2197867881,3267627864,2194148715,2197918315,2193883741,3267627307,2197838507,2193885845,2193886026,3271696043,2193883861,2197927258,2194015419,3267625563,2197845303,2193884459,2193884821,3271571285,2193884842,2198063797,2193883765,3267626166,2197850718,2193885782,2193886502,3271581350,2194017621,2193884586,2197822826,3267758445,2197861551,2193884317,2193885773,3271589165,2193885862,2194017109,2197833173,3267625818,2194016605,2197885299,2193884251,3271596623,2193884747,2193885861,2197842793,3267757749,2193883866,2197826230,2194016567,3271476375,2194017431,2193884747,2197718698,3267759525,2193884596,2198030957,2193883822,3267628641,2197826862,2193886358,2197855565,2193886538,2194017637,2197906837,2194015581,3267625581,2197826141,2193885483,2197858967,3267627669,2193886026,2197850970,2194016981,3267757403,2197832375,2193884247,2193884459,3271564587,2193884821,2197853997,2193884586,3267758773,2197837037,2193884342,2194016855,3271504974,2193886502,2197929618,2194017621,3267626410,2197850554,2194016621,2193884334,3271576221,2193885773,2193886501,2197827365,3267627860,2198056297,2193883866,2194016605,3271648411,2193884315,2193885771,2197834571,3267626661,2197863251,2193884852,2194016950,3271657814,2194016663,2193884311,2197833367,3267626315,2197735077,2194017701,2193884588,3271797429,2193883758,2193885486,2197843118,3267628182,2193886538,2197827402,2194017621,3271603563,2194015579,2193883741,2197846333,3267627303,2193885845,2197904661,2193886026,3267758933,2197885653,2194015451,2197721694,3267758679,2193884459,2197842603,2193884821,3267626666,2197830570,2194016949,2197861559,3267626158,2194016855,2197714222,2193886502,3267759763,2197837525,2193884586,2194016693,3271566701,2193884334,2197924429,2193885773,3267628326,2197843301,2193886034,2194017642,3271567066,2194016605,2197931165,2193884315,3267627595,2197850795,2193884837,2193886036,3271576500,2194016950,2194016603,2197824823,3267626135,2197853775,2193884491,2193884837,3271653061,2193884588,2194016950,2197895278,3267627310,2197867671,2193886358,2193886538,3271593386,2194017109,2193884522,2197969627,3267625565,2193885486,2197826859,2193885845,3271597389,2193885994,2194017109,2197845365,3267626202,2194016859,2197833047,2193884459,3271674515,2193884819,2193884842,2197850842,3267758821,2193884342,2197834414,2194016855,3267626279,2197759270,2194017875,2197857995,3267626410,2194015661,2197906605,2193884334,3267627598,2197835085,2193886502,2197863763,3267627858,2194017130,2197919082,2194015575,3267626141,2197903899,2193885771,2193885861,3271564965,2193886034,2197863258,2194016950,3267758427,2197841079,2193884311,2193884747,3271571275,2193884837,2197862067,2193884588,3267758774,2197914285,2193884318,2193885773,3271581003,2193885989,2193886034,2197892690,3267758938,2197858654,2194016603,2193884315,3271584343,2193885771,2193885861,2197834661,3267626708,2197867222,2194016950,2194016567,2197849247,2193884311,2193884747,2197706442,3267759525,2193884586,2197822828,2194016878,3271604527,2193885486,2193886358,2197847381,3267628362,2194017621,2197894485,2193884522,3267758701,2197822045,2193885483,2197850715,3267627669,2193885994,2197904170,2194016981,3267626202,2197822650,2194016855,2197853487,3267626279,2193884819,2197845683,2193884842,3267758773,2197828981,2193884342,2197867111,3267627566,2193886486,2197851798,2193886538,3267759530,2197837290,2194015597,2193884334,3271632989,2193885741,2197859607,2193885861,3267627858,2197847412,2194016986,2194015581,3271570747,2193884251,2193885739,2197887531,3267627685,2197855061,2193884850,2194016982,3271644470,2194016567,2193884247,2197830231,3267626283,2197727910,2194017685,2193884586,3271654060,2194016878,2193884462,2197830830,3267627606,2197863723,2193886506,2194017621,3271595437,2193884522,2194016877,2197837149,3267626283,2193885837,2197827157,2193885994,3271600982,2194016981,2193884378,2197842554,3267758679,2193884443,2197899799,2193884755,3271673513,2193884586,2194016949,2197852861,3267625654,2194016823,2197706030,2193886486,2194017867,2197698386,2194017706,2197927348,3267757421,2193883822,2197846589,2193885741,3267628309,2197835157,2193886034,2197867369,3267758810,2194015581,2197918299,2193884251,3267627563,2197838507,2193885845,2193886034,3271564970,2194016950,2197865819,2194015415,3267626071,2197845303,2193884459,2193884821,3271640725,2193884586,2197867189,2194016878,3267626158,2197850718,2193885782,2193886506,3271585450,2194017621,2193884522,2197891418,3267758429,2197861551,2193884315,2193885773,3271589165,2193885994,2194017109,2197833173,3267625690,2194016603,2197885271,2193884315,3271596623,2193884747,2193884841,2197842666,3267757749,2193883830,2197826222,2194016567,3271537814,2193886358,2194017867,2197714610,3267759530,2194015661,2197828461,2193883758,3267627310,2197826861,2193886357,2197855565,3267627850,2194017129,2197906778,2194015579,3267625565,2197826139,2193885483,2197858967,3267626645,2193885002,2197850970,2194016950,3267757371,2197832375,2193883735,2193884459,3271564587,2193884821,2197853869,2193884586,3267758773,2197837037,2193884334,2194016855,3271504974,2193886506,2197929364,2194017109,2193884522,2197846394,2194016605,2193884334,3271576219,2193885773,2193886501,2197887658,3267758933,2197853549,2193883866,2194016603,3271578807,2193884311,2193885771,2197834571,3267626665,2197867221,2194015669,2193883830,3271592286,2194016559,2193884311,2197702294,3267628362,2197868197,2194017641,2194015597,3271664309,2193883758,2193885486,2197843117,3267628181,2193886538,2197827402,2194017113,3271607661,2194015579,2193883741,2197846331,3267627307,2193885845,2197904149,2193884874,3267758805,2197885622,2194015419,2197852767,3267625559,2193884459,2197711530,2194017941,3267626666,2197830570,2194016949,2197861559,3267626158,2194016855,2197714221,2193886502,3267759509,2197837269,2193884522,2194016621,3271566685,2193884334,2197858895,2193885773,3267628325,2197843305,2194017109,2193883994,3271568058,2194016603,2197931163,2193884311,3267627595,2197850923,2193884837,2193884884,3271772853,2193883830,2194016567,2197824815,3267626135,2197722702,2193886538,2194017957,3271648937,2194015597,2193883830,2197895262,3267627310,2197863575,2193885845,2193886538,3271593386,2194017101,2194015595,2197832411,3267625565,2193885485,2197826859,2193885845,3271596877,2193884842,2194016981,2197841269,3267757243,2193883739,2197894231,2193884459,3271539348,2194017941,2193884842,2197850842,3267758517,2193884342,2197834414,2194016847,3267495206,2197892390,2194017621,2197923241,3267626346,2194016621,2197906589,2193884318,3267627597,2197835085,2193886501,2197863763,3267627860,2194017114,2197915994,2194016603,3267626139,2197834391,2193885771,2193885861,3271564965,2193884884,2197994203,2193883830,3267758391,2197841071,2193884311,2193884747,3271440202,2194017701,2197862069,2194015597,3267625646,2197846334,2193885486,2193886358,3271646485,2193886538,2194017701,2197894485,3267626346,2197846650,2194016861,2193885485,3271584427,2193885845,2193886026,2197834666,3267758805,2193884506,2197891258,2194016859,3271587127,2193884459,2193884819,2197903125,3267626666,2194016981,2197829045,2193884342,3271592542,2193885774,2193886502,2197843622,3267628370,2194017706,2197898858,2194015597,3267626158,2197830301,2193885773,2197847339,3267627813,2193886546,2197904724,2194017114,3267757405,2197828955,2193884315,2197845591,2193885771,2193885861,2197842789,2193884882,3267758810,2197833142,2194016567,2193884311,3271571095,2193884749,2197714602,2194017701,3267626410,2197838572,2194016942,2193885486,3271572782,2193886358,2197916997,2193886538,3267759445,2197906837,2193884522,2194016877,3271574877,2193884461,2193885845,2197896341,3267627850,2197912394,2194016981,2193884506,3271645754,2194016859,2193884459,2197899799,3267626643,2197853867,2193884842,2194016949,3271582965,2193884342,2194016855,2197701934,3267628310,2194017939,2197698386,2194017706,3271652778,2194015597,2193884334,2197903901,3267627565,2193886485,2197835173,2193886034,3271597418,2194016986,2194015581,2197906075,3267626075,2193885739,2197838635,2193885845,3267627858,2197891762,2194016982,2197910870,3267757367,2193884247,2197837399,2193884459,3267626645,2197829525,2193884586,2197858998,3267758701,2193884334,2197842542,2193885782,3267628330,2197839530,2194017621,2193884586,3271572330,2194016877,2197845181,2193884331,3267627661,2197839189,2193885994,2194017109,3271574997,2193884378,2194016605,2197824855,3267626139,2197842583,2193884747,2193884841,2197834666,2194015925,2193883834,2197826230,3267758391,2197710126,2193886486,2194017867,3271448274,2194017705,2194015669,2197828461,3267625646,2193885742,2197827117,2193886357,3271585109,2193886034,2194017129,2197833178,3267757405,2193883741,2197830235,2193885739,3271654027,2193885845,2193886026,2197904170,3267758805,2194015579,2197832375,2193883735,3271595311,2193884459,2193884821,2197841621,3267626410,2194016949,2197833069,2193884334,3267758679,2197763158,2193886506,2197913226,3267759445,2193884586,2197838554,2194016605,3267626158,2197834411,2193885773,2197851435,3267627817,2194017109,2197845365,2193883866,3267758429,2197837015,2193884315,2193885771,3271637579,2193884841,2197850841,2194015925,3267625654,2197903670,2194016567,2193884311,3271444118,2193886794,2197860006,2194017705,3267757485,2197906093,2193883822,2193885486,3271580845,2193886357,2193886538,2197896522,3267758953,2197845370,2194015579,2193883741,3271579995,2193885483,2193885845,2197835157,3267627850,2194017109,2197825237,2194015579,3271582327,2193883735,2193884459,2197707434,3267759765,2193884842,2197830570,2194016949,2197849277,2193884334,2194016855,2197706061,3267628326,2194017685,2197898837,2193884522,3267758509,2197824861,2193884334,2197842523,3267627597,2193886501,2197839273,2194017109,3267626346,2197826266,2194016605,2197845179,3267626139,2193885771,2197838667,2193884841,3267627732,2197965749,2193883830,2194016603,3271566647,2193884311,2197710422,2193886794,3267759781,2197903017,2194015669,2193883830,3271637166,2193885486,2197912717,2193886357,3267628362,2197908874,2194017129,2194015597,3271639643,2193883741,2193885485,2197826859,3267627669,2197847381,2193886026,2194017109,3271644501,2194015451,2193883739,2197895255,3267626283,2197850779,2193884821,2193884842,3271584490,2194016949,2193884342,2197834414,3267758679,2193884455,2197698342,2194017685,3271587509,2193884522,2194016685,2197837021,3267626158,2193885774,2197835085,2193886501,3271593305,2193886036,2194017642,2197907802,3267758427,2193884315,2197834395,2193885771,3271600935,2193884837,2193884884,2197973877,3267625654,2194016603,2197836983,2193884311,3267626571,2197698378,2194017957,2197849817,3267757485,2193883830,2197838190,2193885486,3267628182,2197835413,2193886538,2194017701,3271567189,2193884524,2197977787,2193883741,3267627309,2197839019,2193885845,2193886026,3271637834,2194017109,2197853533,2193884346,3267758683,2197837143,2193884459,2193885845,3271576469,2193884842,2194016981,2197825205,3267626166,2197842542,2194016855,2193884455,3271448230,2194017683,2193884586,2197830506,3267758445,2197861551,2193884334,2193885773,3271650573,2193886501,2193886546,2197839316,3267758954,2194016621,2197824859,2193884315,3271588439,2193885771,2193885989,2197904165,3267626708,2194016986,2197895350]},t={YEAR_CHEONGAN:6,YEAR_GANJI:0,MONTH_CHEONGAN:3,MONTH_GANJI:1,DAY_CHEONGAN:4,DAY_GANJI:2};return class{constructor(){this.cumulativeLunarYearDays=new Map,this.cumulativeSolarYearDays=new Map,this.solarCalendar={year:0,month:0,day:0},this.lunarCalendar={year:0,month:0,day:0,intercalation:!1};let e=new Date;this.setSolarDate(e.getFullYear(),e.getMonth()+1,e.getDate())}getLunarData(t){return e.KOREAN_LUNAR_DATA[t-e.KOREAN_LUNAR_BASE_YEAR]}getLunarIntercalationMonth(e){return e>>12&15}getLunarYearDays(e){return this.getLunarData(e)>>17&511}getLunarMonthDays(t,n,r){let i=this.getLunarData(t);return(r&&this.getLunarIntercalationMonth(i)===n?(i>>16&1)>0:(i>>12-n&1)>0)?e.LUNAR_BIG_MONTH_DAY:e.LUNAR_SMALL_MONTH_DAY}getLunarDaysBeforeBaseYear(e){return this.accumulateYearDays(e,this.cumulativeLunarYearDays,e=>this.getLunarYearDays(e))}getLunarDaysBeforeBaseMonth(t,n,r){let i=0;if(t>=e.KOREAN_LUNAR_BASE_YEAR&&n>0){for(let e=1;e<n+1;e++)i+=this.getLunarMonthDays(t,e,!1);if(r){let e=this.getLunarIntercalationMonth(this.getLunarData(t));e>0&&e<n+1&&(i+=this.getLunarMonthDays(t,e,!0))}}return i}getLunarAbsDays(e,t,n,r){let i=this.getLunarDaysBeforeBaseYear(e-1)+this.getLunarDaysBeforeBaseMonth(e,t-1,!0)+n;return r&&this.getLunarIntercalationMonth(this.getLunarData(e))===t&&(i+=this.getLunarMonthDays(e,t,!1)),i}isSolarIntercalationYear(e){return(e>>30&1)>0}getSolarYearDays(t){return this.isSolarIntercalationYear(this.getLunarData(t))?e.SOLAR_BIG_YEAR_DAY:e.SOLAR_SMALL_YEAR_DAY}getSolarMonthDays(t,n){return n===2&&this.isSolarIntercalationYear(this.getLunarData(t))?e.SOLAR_DAYS[12]:e.SOLAR_DAYS[n-1]}getSolarDaysBeforeBaseYear(e){return this.accumulateYearDays(e,this.cumulativeSolarYearDays,e=>this.getSolarYearDays(e))}accumulateYearDays(t,n,r){let i=n.get(t);if(i!==void 0)return i;let a=e.KOREAN_LUNAR_BASE_YEAR,o=n.get(t-1),s=0;if(o!==void 0&&t>a)s=o+r(t);else for(let e=a;e<t+1;e++)s+=r(e);return n.set(t,s),s}getSolarDaysBeforeBaseMonth(e,t){let n=0;for(let r=1;r<t+1;r++)n+=this.getSolarMonthDays(e,r);return n}getSolarAbsDays(t,n,r){return this.getSolarDaysBeforeBaseYear(t-1)+this.getSolarDaysBeforeBaseMonth(t,n-1)+r-e.SOLAR_LUNAR_DAY_DIFF}setSolarDateByLunarDate(e,t,n,r){let i=this.getLunarAbsDays(e,t,n,r),a=i<this.getSolarAbsDays(e+1,1,1)?e:e+1,o=0,s=0;for(let e=12;e>0;e--){let t=this.getSolarAbsDays(a,e,1);if(i>=t){o=e,s=i-t+1;break}}this.solarCalendar={year:a,month:o,day:s}}setLunarDateBySolarDate(e,t,n){let r=this.getSolarAbsDays(e,t,n),i=r>=this.getLunarAbsDays(e,1,1,!1)?e:e-1,a=0,o=0,s=!1;for(let e=12;e>0;e--)if(r>=this.getLunarAbsDays(i,e,1,!1)){a=e,this.getLunarIntercalationMonth(this.getLunarData(i))===e&&(s=r>=this.getLunarAbsDays(i,e,1,!0)),o=r-this.getLunarAbsDays(i,a,1,s)+1;break}this.lunarCalendar={year:i,month:a,day:o,intercalation:s}}checkValidDate(t,n,r,i,a){let o=!1;if(!Number.isInteger(r)||!Number.isInteger(i)||!Number.isInteger(a))return!1;let s=r*1e4+i*100+a;if((t?e.KOREAN_LUNAR_MIN_VALUE:e.KOREAN_SOLAR_MIN_VALUE)<=s&&(t?e.KOREAN_LUNAR_MAX_VALUE:e.KOREAN_SOLAR_MAX_VALUE)>=s&&i>0&&i<13&&a>0){if(t&&n&&this.getLunarIntercalationMonth(this.getLunarData(r))!==i)return!1;let e=t?this.getLunarMonthDays(r,i,n):this.getSolarMonthDays(r,i);if(!t&&r===1582&&i===10&&a>4&&a<15)return!1;a<=e&&(o=!0)}return o}setLunarDate(e,t,n,r){let i=!1;return this.checkValidDate(!0,r,e,t,n)&&(this.lunarCalendar={year:e,month:t,day:n,intercalation:r&&this.getLunarIntercalationMonth(this.getLunarData(e))===t},this.setSolarDateByLunarDate(e,t,n,r),i=!0),i}setSolarDate(e,t,n){let r=!1;return this.checkValidDate(!1,!1,e,t,n)&&(this.solarCalendar={year:e,month:t,day:n},this.setLunarDateBySolarDate(e,t,n),r=!0),r}computeGapJa(){let n=this.lunarCalendar,r=this.getLunarAbsDays(n.year,n.month,n.day,!!n.intercalation);if(r<=0)return{cheongan:{year:0,month:0,day:0},ganji:{year:0,month:0,day:0}};let i=e.KOREAN_LUNAR_BASE_YEAR,a=e.KOREAN_CHEONGAN.length,o=e.KOREAN_GANJI.length,s=n.month+12*(n.year-i);return{cheongan:{year:(n.year+t.YEAR_CHEONGAN-i)%a,month:(s+t.MONTH_CHEONGAN)%a,day:(r+t.DAY_CHEONGAN)%a},ganji:{year:(n.year+t.YEAR_GANJI-i)%o,month:(s+t.MONTH_GANJI)%o,day:(r+t.DAY_GANJI)%o}}}getGapJaIndex(){return this.computeGapJa()}getGapja(t){let n=this.getGapJaIndex(),r=t?e.CHINESE_CHEONGAN:e.KOREAN_CHEONGAN,i=t?e.CHINESE_GANJI:e.KOREAN_GANJI,a=t?e.CHINESE_GAPJA_UNIT:e.KOREAN_GAPJA_UNIT,o=t?`${e.INTERCALATION_STR[1]}${e.CHINESE_GAPJA_UNIT[1]}`:`${e.INTERCALATION_STR[0]}${e.KOREAN_GAPJA_UNIT[1]}`;return{year:`${r[n.cheongan.year]}${i[n.ganji.year]}${a[0]}`,month:`${r[n.cheongan.month]}${i[n.ganji.month]}${a[1]}`,day:`${r[n.cheongan.day]}${i[n.ganji.day]}${a[2]}`,intercalation:this.lunarCalendar.intercalation?o:``}}getKoreanGapja(){return this.getGapja()}getChineseGapja(){return this.getGapja(!0)}getLunarCalendar(){return{...this.lunarCalendar}}getSolarCalendar(){return{...this.solarCalendar}}}});
+// ===========================================================================
+// (여기까지 번들된 korean-lunar-calendar 원본 끝)
+// ===========================================================================
+
 (function () {
   'use strict';
 
@@ -11,13 +50,105 @@
   var ITEMS_KEY = STORAGE_PREFIX + 'items';
   var SELECTED_DATE_KEY = STORAGE_PREFIX + 'selectedDate';
   var CALENDAR_VIEW_DATE_KEY = STORAGE_PREFIX + 'calendarViewDate';
+  // Monthly Log(달력 전체 화면) V1 -- 미니 달력의 calendarViewDate와는 완전히 별개로,
+  // Monthly Log 자신이 마지막으로 보여준 달만 기억한다('YYYY-MM-01' 형식, 기존 관례와 동일).
+  var MONTHLY_LOG_VIEW_MONTH_KEY = STORAGE_PREFIX + 'monthlyLogViewMonth';
   var WEEK_START_DATE_KEY = STORAGE_PREFIX + 'weekStartDate';
   var LUNAR_ENABLED_KEY = STORAGE_PREFIX + 'lunarEnabled';
   var WEEKLY_PANEL_KEY = STORAGE_PREFIX + 'weeklyPanel';
+  // 휴지통 선택의 context/containerKey로 쓰는 고정 문자열 -- 휴지통은 날짜별로 나뉜
+  // 여러 컨테이너가 아니라 하나의 평평한 목록이므로 항상 이 값 하나만 쓴다.
+  var TRASH_CONTAINER_KEY = 'trash';
+  // Weekly 표시 일수(1~14) -- items 데이터와 무관한 순수 화면 설정이라 다른 선호값들과
+  // 같은 방식(savePreferences/loadState)으로 별도 키에 저장한다.
+  var VISIBLE_DAYS_KEY = STORAGE_PREFIX + 'weeklyVisibleDays';
+  var WEEKLY_VISIBLE_DAYS_MIN = 1;
+  var WEEKLY_VISIBLE_DAYS_MAX = 14;
+  var WEEKLY_VISIBLE_DAYS_DEFAULT = 7;
+  // Weekly 표시 범위의 시작 기준 -- 'rolling'(오늘부터 N일) | 'week'(기존 getWeekStartSunday
+  // 기준). 기존 원형 버튼(navigateWeekToToday)이 이미 getWeekStartSunday만 써 왔으므로
+  // 기본값은 'week'로 맞춘다(기존 동작과 가장 가까운 값).
+  var WEEKLY_RANGE_MODE_KEY = STORAGE_PREFIX + 'weeklyRangeMode';
+  var WEEKLY_RANGE_MODE_DEFAULT = 'week';
+  var WEEKLY_RANGE_MODE_VALUES = { rolling: true, week: true };
+  // 자동 추적(true, 실제 날짜가 바뀌면 선택된 기준으로 범위 자동 갱신) vs 수동 탐색(false,
+  // 이동 버튼으로 과거/미래를 보는 중이라 날짜가 바뀌어도 범위를 그대로 둔다).
+  var WEEKLY_AUTO_FOLLOW_KEY = STORAGE_PREFIX + 'weeklyAutoFollow';
+  var WEEKLY_ROW_DAYS = 7; // 한 행에 들어가는 최대 열 수 -- 달력의 7요일과는 별개 개념.
+  // 표시 일수가 8일 이상일 때 위·아래 두 행으로 나누고, 그 사이 분할선을 드래그해 높이
+  // 비율을 조절할 수 있게 한다. 비율은 items 데이터와 무관한 순수 화면 설정이라
+  // weeklyVisibleDays와 같은 방식(savePreferences/loadState)으로 별도 키에 저장한다.
+  var ROW_SPLIT_RATIO_KEY = STORAGE_PREFIX + 'weeklyRowSplitRatio';
+  var WEEKLY_ROW_SPLIT_RATIO_DEFAULT = 0.5;
+  var WEEKLY_ROW_DIVIDER_HEIGHT = 12; // .week-row-divider CSS height와 반드시 일치.
+  var WEEKLY_ROW_SPLIT_KEY_STEP = 0.05;
+  var WEEKLY_ROW_SPLIT_KEY_STEP_LARGE = 0.15;
   // 5: index.html의 <head> 인라인 스크립트가 body 렌더 전에 이미 이 정확한 키 문자열로
   // localStorage를 읽어 documentElement.dataset.theme을 선반영해 둔다(깜빡임 방지) — 여기서는
   // 그 값을 그대로 이어받아 상태/버튼 표시만 동기화한다.
   var THEME_KEY = STORAGE_PREFIX + 'theme';
+  // 8: 저장된 items 값이 있었지만(신규 사용자가 아니었지만) JSON 파싱/검증에 실패한 경우,
+  // 개발용 시드로 조용히 덮어쓰지 않고 원본 문자열을 이 키로 옮겨 보존한다(복구 가능하게).
+  var ITEMS_CORRUPTED_BACKUP_KEY = STORAGE_PREFIX + 'items_corrupted_backup';
+
+  // monthlyItems(월간 할일) -- 날짜 없이 "이 달 안에 할 일"만 담는 별도 컬렉션. state.items와
+  // 완전히 분리된 저장소라 Daily/Weekly/미니 달력 점/자동 이월/completionByDate/기간 로직/
+  // 일반 휴지통 어디에도 섞이지 않는다. items와 같은 손상 데이터 백업 패턴을 그대로 따른다.
+  var MONTHLY_ITEMS_KEY = STORAGE_PREFIX + 'monthlyItems';
+  var MONTHLY_ITEMS_CORRUPTED_BACKUP_KEY = STORAGE_PREFIX + 'monthlyItems_corrupted_backup';
+  // Ctrl/Cmd+G 그룹 메타데이터 저장 키.
+  var GROUPS_KEY = STORAGE_PREFIX + 'groups';
+  // 프로젝트(날짜를 넘어 유지되는 전역 소속) 메타데이터 저장 키. 그룹(특정 날짜/월 안의
+  // 접이식 UI)과 완전히 별개의 컬렉션이다 -- 그룹 구조는 건드리지 않는다.
+  var PROJECTS_KEY = STORAGE_PREFIX + 'projects';
+  // 저장 데이터 스키마 버전 -- 지금은 버전 1을 도입하는 시점이라 이 값 자체가 새로 생기는
+  // 키다(기존 사용자는 이 키가 아예 없으므로 아래 마이그레이션 로직이 "버전 0"으로 취급해
+  // 안전하게 1로 승격만 한다, 데이터 변환 없음). 이후 실제로 저장 형식이 바뀌는 시점부터
+  // STORAGE_MIGRATIONS에 단계를 추가하고 이 숫자를 올린다.
+  var STORAGE_SCHEMA_VERSION_KEY = STORAGE_PREFIX + 'schemaVersion';
+  var STORAGE_SCHEMA_VERSION = 1;
+  // 격리된(형식이 잘못된) 개별 항목을 매번 새 타임스탬프 키에 남긴다 -- 기존
+  // ITEMS_CORRUPTED_BACKUP_KEY 하나만 계속 덮어써 이전 손상분을 잃는 문제를 피한다.
+  var ITEMS_QUARANTINE_KEY_PREFIX = STORAGE_PREFIX + 'items_quarantine_';
+  // 라운드5 B: 두 탭 충돌 감지용 revision 메타데이터. items/monthlyItems/groups 자체의
+  // JSON 형식은 전혀 건드리지 않고(하위 호환), 별도의 작은 키 하나만 추가한다.
+  var DATA_REVISION_KEY = STORAGE_PREFIX + 'dataRevision';
+  // 달력 설정 -- 주 시작 요일(0=일요일, 1=월요일. 미니 달력/Monthly Log 주 구분선/Weekly
+  // '이번 주 기준' 전부가 이 값 하나를 공유한다. Weekly 'rolling' 모드는 영향받지 않는다).
+  var CALENDAR_WEEK_STARTS_ON_KEY = STORAGE_PREFIX + 'calendarWeekStartsOn';
+  var CALENDAR_WEEK_STARTS_ON_DEFAULT = 0;
+  // Calendar 화면의 Monthly Log(왼쪽) / 월간 할일 패널(오른쪽) 폭 분할 비율 -- 오른쪽
+  // 패널이 전체 폭에서 차지하는 비율(0~1)로 저장한다. 순수 화면 설정이라 items와 무관.
+  var CALENDAR_MONTHLY_SPLIT_RATIO_KEY = STORAGE_PREFIX + 'calendarMonthlySplitRatio';
+  // Monthly Log 본문 안의 세로 구분선(예: 왼쪽=직장, 오른쪽=일상). 달력과
+  // 이번 달 할 일 패널 사이의 폭 조절 경계선과는 별개다.
+  // Monthly Calendar v1: 세로 구분선(칸 나누기)과 사용자 크기 조절을 제거했다.
+  // STORAGE_PREFIX+'monthlyLogColumnDividerEnabled'/'...Ratio'/'...Ratios'/
+  // 'monthlyLogRowHeights'/'monthlyLogScheduleCellWidth' 키는 더 이상 읽지도 쓰지도
+  // 않는다(기존 저장값은 롤백을 위해 그대로 남겨 둔다).
+  var MONTHLY_LOG_HIDE_COMPLETED_KEY = STORAGE_PREFIX + 'monthlyLogHideCompleted';
+  // Daily/Weekly의 완료 항목 숨기기는 각 보기의 표시 상태만 바꾸며 항목 데이터는 유지한다.
+  var DAILY_HIDE_COMPLETED_KEY = STORAGE_PREFIX + 'dailyHideCompleted';
+  var WEEKLY_HIDE_COMPLETED_KEY = STORAGE_PREFIX + 'weeklyHideCompleted';
+  // Monthly Calendar v1: 24시간 보기는 제거했다. Monthly Log 달력 본체는 보기 모드가
+  // 하나뿐이므로 monthlyLogViewMode 상태와 STORAGE_PREFIX+'monthlyLogViewMode' 키는
+  // 더 이상 읽지도 쓰지도 않는다(기존 저장값은 롤백을 위해 그대로 남겨 둔다).
+  var DEFAULT_INPUT_MODE_KEY = STORAGE_PREFIX + 'defaultInputMode';
+  var AUTO_ROLLOVER_ENABLED_KEY = STORAGE_PREFIX + 'autoRolloverEnabled';
+  // 구버전에서 저장된 패널 경계선 표시값은 더 이상 사용하지 않는다. 패널 경계는 넓은
+  // 화면에서 항상 보이며 마우스로 드래그해 폭을 조절한다.
+  var MONTHLY_SPLIT_DIVIDER_VISIBLE_KEY = STORAGE_PREFIX + 'monthlySplitDividerVisible';
+  // 라운드2 8: "이번 달 할 일" 패널(Today/Calendar 공용)의 완료 항목 숨기기 -- 데이터는
+  // 지우지 않고 목록 표시에서만 제외한다(요구사항).
+  var MONTHLY_INBOX_HIDE_COMPLETED_KEY = STORAGE_PREFIX + 'monthlyInboxHideCompleted';
+  var CALENDAR_MONTHLY_SPLIT_RATIO_DEFAULT = 0.22;
+  var MONTHLY_SPLIT_MIN_LOG_WIDTH = 420; // Monthly Log가 최소한 읽을 수 있는 폭.
+  var MONTHLY_SPLIT_MIN_INBOX_WIDTH = 260; // 입력창+종류 기호가 한 줄로 보일 최소 폭.
+  // 레이아웃 확장 1단계: 화면이 넓어져도 오른쪽 월간 할일 패널만 과도하게 커지지 않게
+  // 렌더링되는 실제 픽셀 폭에만 상한을 둔다(저장되는 비율 calendarMonthlySplitRatio 자체는
+  // 건드리지 않으므로, 화면이 좁아지면 다시 그 비율대로 정상 계산된다). 남는 폭은 전부
+  // Monthly Log 쪽으로 자연스럽게 넘어간다(요구사항 "본문이 넓고 시원하게").
+  var MONTHLY_SPLIT_MAX_INBOX_WIDTH = 480;
 
   // 1: 레거시 item.subtasks를 detailBlocks 안의 todo 블록으로 옮기는 마이그레이션의 버전.
   // item.detailBlocksMigrationVersion이 이 값 이상이면 두 번 다시 스캔하지 않는다 —
@@ -56,9 +187,42 @@
     todayDate: null,
     selectedDate: DEFAULT_SELECTED_DATE,
     calendarViewDate: DEFAULT_CALENDAR_VIEW_DATE,
+    // Monthly Log가 표시 중인 달('YYYY-MM-01'). init()에서 항상 selectedDate가 속한
+    // 달로 재계산되고(새로고침 후 첫 진입 정책), 이후 세션 중에는 이 값 하나로 마지막
+    // 열람 달을 자연스럽게 유지한다(한 세션 안에서 다시 열기 정책) -- calendarViewDate
+    // (미니 달력)와는 완전히 독립적이다.
+    monthlyLogViewMonth: DEFAULT_CALENDAR_VIEW_DATE,
     selectedDateRange: null,
     inputMode: 'task',
     items: [],
+    // 월간 할일(monthlyItems) -- 날짜가 없는 "이 달 안에 할 일" 전용 별도 컬렉션.
+    // { id, type, text, monthKey('YYYY-MM'), completed, order, createdAt, updatedAt, deletedAt }.
+    monthlyItems: [],
+    // Ctrl/Cmd+G 그룹핑 메타데이터 -- 각 항목은 groupId 필드(makeItem 기본값 null)로만
+    // 그룹을 참조하고, 그룹 자체(이름/접힘 상태 등)는 여기 별도 배열로 둔다(flat item
+    // 배열을 그대로 유지하기 위함). { id, name, date, order, collapsed, createdAt }.
+    groups: [],
+    // 프로젝트(전역 소속, 날짜/월을 넘어 유지) -- 그룹과 달리 특정 날짜/월에 묶이지
+    // 않는다. { id, name, color(hex 또는 null), order, createdAt }. item/monthlyItem은
+    // 이름·색을 복제하지 않고 projectId로만 참조한다.
+    projects: [],
+    // Today 우측 월간 패널의 열림 여부(세션 한정, localStorage 저장 안 함 -- 새로고침하면
+    // 항상 닫힌 상태로 시작한다). Calendar 화면에는 이 토글 자체가 없다.
+    monthlyPanelOpen: false,
+    // 라운드2 8: Today/Calendar가 공유하는 "이번 달 할 일" 완료 항목 숨기기.
+    monthlyInboxHideCompleted: false,
+    dailyHideCompleted: false,
+    weeklyHideCompleted: false,
+    // 주 시작 요일(0=일요일, 1=월요일) -- 미니 달력/Monthly Log 주 구분선/Weekly '이번 주
+    // 기준' 전부가 공유한다.
+    calendarWeekStartsOn: CALENDAR_WEEK_STARTS_ON_DEFAULT,
+    calendarMonthlySplitRatio: CALENDAR_MONTHLY_SPLIT_RATIO_DEFAULT,
+    // 달력↔이번 달 할 일 패널의 경계는 넓은 화면에서 항상 표시한다.
+    monthlySplitDividerVisible: true,
+    monthlyLogHideCompleted: false,
+    // 빠른 입력 기본 유형과 자동 이월 사용 여부. 기존 사용자는 각각 task/true로 유지된다.
+    defaultInputMode: 'task',
+    autoRolloverEnabled: true,
     // 선택 상태는 페이지가 열려 있는 동안만 유지한다(localStorage 저장 안 함,
     // 새로고침하면 초기화, item 데이터 자체에는 selected 필드를 두지 않는다).
     selectedItemIds: new Set(),
@@ -67,8 +231,26 @@
     // containerKey는 daily일 때 selectedDate, weekly일 때 해당 열의 날짜다. 선택과 마찬가지로
     // localStorage에 저장하지 않는다.
     selectionAnchor: null,
+    // Weekly 구분선 추가(2단계)의 대상 날짜 결정에 쓰는 "마지막으로 조작한 Weekly 열의
+    // 날짜"(YYYY-MM-DD). 선택과 마찬가지로 세션 한정이며 localStorage에 저장하지 않는다.
+    // Weekly 표시 범위가 바뀌어 이 날짜가 더 이상 화면에 없어도 안전하다 -- 이후 조회
+    // 함수들이 항상 날짜 문자열로 state.items를 필터링할 뿐, 화면에 그 열이 있다고
+    // 가정하지 않는다.
+    lastActiveWeeklyDate: null,
+    // 공통 복사/잘라내기/붙여넣기 대상 날짜 추적(세션 한정, 저장 안 함) -- Daily/Weekly/
+    // Monthly Log 중 마지막으로 상호작용한 날짜. markLastActiveListDate/resolvePasteTargetDate 참고.
+    lastActiveListDate: null,
     weekStartDate: DEFAULT_WEEK_START_DATE,
     lunarEnabled: false,
+    // weekStartDate가 곧 "weeklyRangeStart" 역할을 겸한다(별도 필드로 중복시키지 않음).
+    // 'rolling'|'week' -- 어느 기준을 골랐는지. weeklyAutoFollow가 true일 때만 자동
+    // 이월/자정/visibility/focus 트리거가 이 기준으로 weekStartDate를 다시 계산한다.
+    weeklyRangeMode: WEEKLY_RANGE_MODE_DEFAULT,
+    weeklyAutoFollow: true,
+    weeklyVisibleDays: WEEKLY_VISIBLE_DAYS_DEFAULT,
+    // 표시 일수가 8일 이상일 때 위 행이 차지하는 비율(0~1, 아래 행은 1-비율). 7일
+    // 이하일 때는 값만 보존하고 화면에는 적용하지 않는다.
+    weeklyRowSplitRatio: WEEKLY_ROW_SPLIT_RATIO_DEFAULT,
     // { startDate, endDate } 형태의 일회성 날짜 초안 — 달력 범위 드래그나 날짜 휠 편집으로
     // 채워지고, 항목 생성에 소비되면 다시 null로 돌아간다. localStorage에 저장하지 않는다.
     dateTimeDraft: null,
@@ -95,15 +277,19 @@ endDateDraftActive: false,
     selectedOccurrenceById: new Map(),
     // 4: 이월 목록 펼침 여부(세션 한정, localStorage 저장 안 함 — 매번 닫힌 상태로 시작).
     rolloverExpanded: false,
+    // 이달의 할 일 "지난달 미완료" 접이식 영역 펼침 여부 -- rolloverExpanded와 같은 이유로
+    // 세션 한정, localStorage에 별도 키를 추가하지 않는다(요구사항).
+    monthlyOverdueExpanded: false,
     // 8: 'today'(기존 달력+Daily+Weekly 화면) | 'trash'(휴지통 보기).
     currentView: 'today',
     // 5: 휴지통 상단 타입 필터. 데이터에는 영향 없이 화면 표시만 바꾼다.
     trashFilter: 'all',
-    // 8: 휴지통 선택은 Daily/Weekly의 selectedItemIds와 완전히 분리한다(다른 화면 전환 시
-    // 서로 간섭하지 않게). trashSelectionAnchor는 Shift 범위 선택의 기준 itemId 하나만 저장—
-    // 휴지통은 컨테이너 구분이 없는 단일 목록이라 context/containerKey가 필요 없다.
-    trashSelectedItemIds: new Set(),
-    trashSelectionAnchor: null,
+    // 휴지통 선택 진단: 별도의 trashSelectedItemIds/trashSelectionAnchor를 두는 대신
+    // Daily/Weekly와 같은 selectedItemIds/selectionAnchor/selectedOccurrenceById를
+    // 공유한다(요구사항: "휴지통에서도 일반 화면과 같은 선택 모델을 사용"). context는
+    // TRASH_CONTAINER_KEY 하나로 고정해 휴지통을 "컨테이너 구분 없는 단일 목록"으로
+    // 다룬다 -- setView가 화면 전환마다 항상 선택을 초기화하므로 서로 다른 화면의
+    // 선택이 섞일 일은 없다.
     // 5: 'light' | 'dark'. 실제 화면 반영은 documentElement의 data-theme 속성(CSS 선택자
     // :root[data-theme="dark"])이 담당하고, 이 값은 그 상태를 앱 쪽에서도 참조하기 위한 것.
     theme: 'light',
@@ -111,9 +297,24 @@ endDateDraftActive: false,
     // 두며, 새로고침하면 사라진다(localStorage 미저장). items는 붙여넣기에 필요한 필드만
     // 담은 가벼운 스냅샷 + 배치 계산용 원본 id 하나로 구성된다.
     itemClipboard: { items: [], copiedAt: null },
+    // 이달의 할 일 전용 클립보드 -- 위 itemClipboard와 별개 슬롯(날짜가 없는 monthlyItem
+    // 스냅샷이라 모양이 달라 같은 슬롯을 공유하면 붙여넣기 쪽에서 매번 어느 컬렉션인지
+    // 분기해야 해 오히려 더 위험하다). 세션 한정, localStorage 미저장은 동일하다.
+    monthlyItemClipboard: { items: [], copiedAt: null },
+    // 인스턴스 복제(Ctrl/Cmd+Alt+C·V) 전용 클립보드 -- 위 itemClipboard와 완전히 별개
+    // 슬롯이라 일반 복사/붙여넣기(Ctrl/Cmd+C·V·X)는 전혀 건드리지 않는다. 스냅샷 모양은
+    // itemClipboard와 같지만(공유 필드), 붙여넣기 시 instanceGroupId를 부여/재사용한다는
+    // 점만 다르다.
+    instanceClipboard: { items: [], copiedAt: null },
     // task 상세 drawer에 표시 중인 item.id. 선택 상태처럼 세션 한정이라 localStorage에
     // 저장하지 않는다 — 새로고침하면 항상 닫힌 상태로 시작한다.
     activeDetailItemId: null,
+    // 최종 감사(2026-07-27): 상세 drawer가 지금 state.items의 일반 항목(배치 포함)을
+    // 보여주는지, 아니면 이달의 할 일 원본(state.monthlyItems)을 직접 보여주는지 구분한다.
+    // 'item' | 'monthly-master'. findActiveDetailEntity()가 이 값을 보고 올바른 컬렉션에서
+    // 찾는다 -- findItemById 자체는 건드리지 않는다(일반 조회가 실수로 월간 원본을
+    // 반환하면 안 되므로).
+    activeDetailEntityType: 'item',
     // 6차: 다일 일정처럼 같은 item.id가 여러 날짜 칸에 걸쳐 표시될 때, 상세 모달을 "어느
     // 날짜 칸에서 열었는지" 기억한다. 완료 버튼이 이 날짜의 occurrence를 기준으로 동작한다.
     // task/memo는 occurrence 개념이 없어 item.date와 사실상 같은 값이 된다. 세션 한정.
@@ -201,7 +402,12 @@ endDateDraftActive: false,
   // item.date~item.endDate 사이의 모든 발생 날짜를 반환한다(다일 schedule의
   // 날짜별 완료 상태 계산에 쓰는 공통 헬퍼). 날짜가 역전되거나 손상돼도 앱이
   // 멈추지 않도록 단일 날짜로 안전하게 처리하고, 비정상적으로 긴 범위는 잘라낸다.
-  var MAX_OCCURRENCE_SPAN = 366;
+  // 라운드5 E: 생성/이동/범위 변경/완료 추적/렌더링이 전부 이 상수 하나만 본다(다른
+  // 곳에 366/365 같은 별도 숫자가 없음, 재확인됨). 값의 의미는 "date와 endDate의
+  // 차이(span, 일수)"이지 "포함 일수"가 아니다 -- span=366이면 시작일 포함 총 367일
+  // (start + 366일 뒤)까지 허용한다는 뜻이며, 이 구분이 명확하도록 아래
+  // applyDateFieldChange의 안내 문구도 "+1"을 명시한다.
+  var MAX_OCCURRENCE_SPAN_DAYS = 366;
   function getOccurrenceDates(item) {
     var start = item && item.date;
     if (!start) return [];
@@ -209,7 +415,7 @@ endDateDraftActive: false,
     if (!end || end === start) return [start];
     var span = differenceInCalendarDays(start, end);
     if (!isFinite(span) || span <= 0) return [start];
-    if (span > MAX_OCCURRENCE_SPAN) span = MAX_OCCURRENCE_SPAN;
+    if (span > MAX_OCCURRENCE_SPAN_DAYS) span = MAX_OCCURRENCE_SPAN_DAYS;
     var dates = [];
     for (var i = 0; i <= span; i++) {
       dates.push(addCalendarDays(start, i));
@@ -225,19 +431,235 @@ endDateDraftActive: false,
   }
 
   // ---------------------------------------------------------------------
+  // 데이터 안전성 패치: 공용 시스템 배너 -- 저장 실패(A)/두 탭 충돌(B)/손상 데이터
+  // 격리 안내(D)가 전부 이 하나의 최소 배너만 재사용한다(새 UI 컴포넌트를 만들지
+  // 않는다). kind별로 최대 하나만 떠 있고, 같은 kind가 다시 발생하면 새로 쌓지 않고
+  // 기존 배너의 내용만 갱신한다(무한 중복 방지 요구사항).
+  // ---------------------------------------------------------------------
+  var activeSystemBanners = {}; // kind -> element
+
+  function getSystemBannerRoot() {
+    var root = document.getElementById('system-banner-root');
+    if (!root) {
+      root = document.createElement('div');
+      root.id = 'system-banner-root';
+      document.body.appendChild(root);
+    }
+    return root;
+  }
+
+  function showSystemBanner(kind, message, actions, tone) {
+    var el = activeSystemBanners[kind];
+    if (!el) {
+      el = document.createElement('div');
+      el.className = 'system-banner';
+      el.setAttribute('role', 'alert');
+      getSystemBannerRoot().appendChild(el);
+      activeSystemBanners[kind] = el;
+    }
+    el.classList.toggle('system-banner-danger', tone === 'danger');
+    el.classList.toggle('system-banner-info', tone !== 'danger');
+    el.textContent = '';
+    var text = document.createElement('span');
+    text.className = 'system-banner-text';
+    text.textContent = message;
+    el.appendChild(text);
+    (actions || []).forEach(function (action) {
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'system-banner-btn';
+      btn.textContent = action.label;
+      btn.addEventListener('click', action.onClick);
+      el.appendChild(btn);
+    });
+    return el;
+  }
+
+  function hideSystemBanner(kind) {
+    var el = activeSystemBanners[kind];
+    if (el) { el.remove(); delete activeSystemBanners[kind]; }
+  }
+
+  // 라운드5 A: 저장 실패를 console.warn에서 끝내지 않고 화면에 지속 배너로 표시한다.
+  // QuotaExceededError는 별도 문구로 구분한다(브라우저별로 name이 QuotaExceededError가
+  // 아니라 code===22/1014인 구형 경로도 함께 확인).
+  // 이번 라운드 버그 수정: 예전에는 모든 저장 대상(items/monthlyItems/groups/projects/
+  // preferences/weeklyPanelPrefs/indexeddb)이 kind 하나(STORAGE_FAILURE_BANNER_KIND)를
+  // 공유해서, 예를 들어 projects 저장이 실패한 직후 items 저장이 성공하면 그 성공이
+  // "저장이 이제 정상"이라고 오인해 projects 실패 배너까지 함께 지워버렸다(재현 확인됨).
+  // source별로 독립된 kind('storage-failure:' + source)를 써서, 그 source가 실제로
+  // 다시 성공했을 때만 그 source의 배너가 지워지게 한다. showSystemBanner 자체가 이미
+  // kind별로 최대 하나만 유지하므로(중복 방지), 이 변경만으로 "동일 오류 배너 중복 생성
+  // 금지" 요구사항도 그대로 유지된다.
+  function storageFailureBannerKind(source) {
+    return 'storage-failure:' + source;
+  }
+
+  function isQuotaExceededError(error) {
+    return !!error && (
+      error.name === 'QuotaExceededError' ||
+      error.code === 22 ||
+      error.code === 1014
+    );
+  }
+
+  function reportStorageFailure(source, error) {
+    var kind = storageFailureBannerKind(source);
+    var message = isQuotaExceededError(error)
+      ? '저장 공간이 가득 차서 방금 변경한 내용이 저장되지 않았습니다. 항목을 정리하거나 아래에서 데이터를 내보내 백업하세요.'
+      : '변경 내용을 저장하지 못했습니다(' + source + '). 지금 화면에 보이는 내용이 저장되지 않았을 수 있습니다 — 데이터를 내보내는 것을 권장합니다.';
+    showSystemBanner(kind, message, [
+      { label: 'JSON으로 내보내기', onClick: exportAllDataAsJson },
+      { label: '닫기', onClick: function () { hideSystemBanner(kind); } }
+    ], 'danger');
+    console.warn('[dotdotplanner] storage failure:', source, error);
+  }
+
+  // 실패 배너가 떠 있는 상태에서 "같은 저장 대상"이 다시 성공하면 그 배너만 정리한다
+  // (요구사항: 다른 컬렉션의 성공이 기존 실패를 지우면 안 됨). source를 넘기지 않는
+  // 기존 호출은 없게 모든 호출부를 함께 갱신했다.
+  function reportStorageSuccessIfRecovering(source) {
+    var kind = storageFailureBannerKind(source);
+    if (activeSystemBanners[kind]) {
+      hideSystemBanner(kind);
+    }
+  }
+
+  // 현재 메모리 상의 데이터를 JSON 파일로 내려받는다 -- 저장이 실패했을 때의 안전
+  // 대피 경로(요구사항). file:// 페이지에서도 Blob URL + 임시 <a download>는 그대로
+  // 동작한다(서버 필요 없음).
+  function exportAllDataAsJson() {
+    try {
+      var payload = {
+        exportedAt: new Date().toISOString(),
+        schemaVersion: STORAGE_SCHEMA_VERSION,
+        items: state.items,
+        monthlyItems: state.monthlyItems,
+        groups: state.groups,
+        projects: state.projects
+      };
+      var blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url;
+      a.download = 'dotdotplanner-backup-' + formatLocalDate(new Date()) + '.json';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+    } catch (e) {
+      console.warn('[dotdotplanner] export failed:', e);
+    }
+  }
+
+  // ---------------------------------------------------------------------
   // localStorage
   // ---------------------------------------------------------------------
+  // 라운드5 D: 날짜/시간 등 실제 형식까지 검사한다(이전에는 typeof === 'string'만 봐서
+  // "2월 30일"이나 "07-27" 같은 잘못된 문자열도 그냥 통과했다).
+  var ITEM_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+  var ITEM_MONTHKEY_RE = /^\d{4}-\d{2}$/;
+  var ITEM_TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+  function isValidDateStr(v) { return typeof v === 'string' && ITEM_DATE_RE.test(v); }
+  function isValidOptionalDateStr(v) { return v === null || v === undefined || v === '' || isValidDateStr(v); }
+  function isValidOptionalTimeStr(v) { return v === null || v === undefined || v === '' || (typeof v === 'string' && ITEM_TIME_RE.test(v)); }
+  function isValidOptionalIdRefField(v) { return v === undefined || v === null || typeof v === 'string'; }
+  function isValidCompletionByDateMap(v) {
+    if (v === null || v === undefined) return true;
+    if (typeof v !== 'object' || Array.isArray(v)) return false;
+    return Object.keys(v).every(isValidDateStr);
+  }
+
+  function isValidStoredItem(it) {
+    if (!it || typeof it !== 'object') return false;
+    if (typeof it.id !== 'string' || !it.id) return false;
+    var validTypes = { task: true, schedule: true, memo: true, divider: true };
+    if (!validTypes[it.type]) return false;
+    if (typeof it.text !== 'string') return false;
+    if (!isValidDateStr(it.date)) return false;
+    if (!isValidOptionalDateStr(it.endDate)) return false;
+    if (!isValidOptionalTimeStr(it.startTime)) return false;
+    if (!isValidOptionalTimeStr(it.endTime)) return false;
+    if (!isValidCompletionByDateMap(it.completionByDate)) return false;
+    if (!isValidOptionalIdRefField(it.groupId)) return false;
+    if (!isValidOptionalIdRefField(it.instanceGroupId)) return false;
+    if (!isValidOptionalIdRefField(it.sourceMonthlyItemId)) return false;
+    return true;
+  }
+
+  // divider: Weekly "..." 메뉴로만 만들어지는 정리용 구분선 item(2단계). task/schedule/memo와
+  // 명확히 구분되는 별도 type이며, 여기 추가하지 않으면 새로고침마다 "손상된 데이터"로
+  // 오인돼 조용히 지워진다.
+  // 이전에는 every()로 하나라도 형식이 어긋나면 배열 전체를 버렸다(정상 항목까지 함께
+  // 조용히 사라지는 "유령 항목" 문제의 실제 원인). 이제 항목 단위로 valid/invalid를
+  // 나눠 정상 항목은 계속 로딩하고, 잘못된 항목만 loadState()가 격리한다. raw 자체가
+  // 배열이 아니면(전체 손상) 여전히 null을 돌려줘 기존 ITEMS_CORRUPTED_BACKUP_KEY 경로를
+  // 그대로 탄다.
   function validateStoredItems(raw) {
     if (!Array.isArray(raw)) return null;
-    var validTypes = { task: true, schedule: true, memo: true };
-    var ok = raw.every(function (it) {
-      return it && typeof it === 'object' &&
+    var valid = [];
+    var invalid = [];
+    raw.forEach(function (it) {
+      if (isValidStoredItem(it)) valid.push(it); else invalid.push(it);
+    });
+    return { valid: valid, invalid: invalid };
+  }
+
+  function isValidStoredMonthlyItem(it) {
+    var validTypes = {
+  task: true,
+  schedule: true,
+  memo: true,
+  divider: true
+};
+    return it && typeof it === 'object' &&
         typeof it.id === 'string' &&
         validTypes[it.type] &&
         typeof it.text === 'string' &&
-        typeof it.date === 'string';
+        typeof it.monthKey === 'string' &&
+        ITEM_MONTHKEY_RE.test(it.monthKey);
+  }
+
+  function validateStoredMonthlyItems(raw) {
+    if (!Array.isArray(raw)) return null;
+    var valid = [];
+    var invalid = [];
+    raw.forEach(function (it) {
+      if (isValidStoredMonthlyItem(it)) valid.push(it); else invalid.push(it);
+    });
+    return { valid: valid, invalid: invalid };
+  }
+
+  function validateStoredGroups(raw) {
+    if (!Array.isArray(raw)) return null;
+    var ok = raw.every(function (g) {
+      if (!g || typeof g !== 'object' || typeof g.id !== 'string' || typeof g.name !== 'string') return false;
+      if (g.scope === 'monthly' || typeof g.monthKey === 'string') {
+        return typeof g.monthKey === 'string' && /^\d{4}-\d{2}$/.test(g.monthKey);
+      }
+      return typeof g.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(g.date);
     });
     return ok ? raw : null;
+  }
+
+  // 프로젝트는 items/monthlyItems와 같은 개별 격리(quarantine) 방식을 쓴다(요구사항:
+  // 기존 데이터 검증 경로 재사용) -- 하나가 손상돼도 나머지 프로젝트는 계속 로딩된다.
+  function isValidStoredProject(p) {
+    return !!p && typeof p === 'object' &&
+      typeof p.id === 'string' &&
+      typeof p.name === 'string' &&
+      (p.color === null || p.color === undefined || (typeof p.color === 'string' && /^#[0-9a-fA-F]{6}$/.test(p.color))) &&
+      typeof p.order === 'number' &&
+      typeof p.createdAt === 'number';
+  }
+
+  function validateStoredProjects(raw) {
+    if (!Array.isArray(raw)) return null;
+    var valid = [];
+    var invalid = [];
+    raw.forEach(function (p) { (isValidStoredProject(p) ? valid : invalid).push(p); });
+    return { valid: valid, invalid: invalid };
   }
 
   function safeGet(key) {
@@ -249,39 +671,375 @@ endDateDraftActive: false,
     }
   }
 
+  // ---------------------------------------------------------------------
+  // 저장 스키마 버전 + 순차 마이그레이션. loadState()가 실제 데이터를 읽기 전에
+  // init()에서 한 번 실행한다(runStorageMigrations는 raw localStorage 문자열만
+  // 직접 다루고, state에는 손대지 않는다 -- 아직 state가 만들어지기 전 시점이라).
+  // 지금은 버전 1을 막 도입하는 시점이라 실행할 변환 단계가 없다(기존 데이터 구조를
+  // 불필요하게 바꾸지 않는다는 요구사항) -- STORAGE_MIGRATIONS는 다음 스키마 변경부터
+  // { from: N, run: function(){...} } 형태로 채운다.
+  // ---------------------------------------------------------------------
+  var STORAGE_MIGRATIONS = [];
+
+  function backupBeforeMigration(fromVersion) {
+    try {
+      var snapshot = {
+        fromVersion: fromVersion,
+        toVersion: STORAGE_SCHEMA_VERSION,
+        backedUpAt: new Date().toISOString(),
+        items: safeGet(ITEMS_KEY),
+        monthlyItems: safeGet(MONTHLY_ITEMS_KEY),
+        groups: safeGet(GROUPS_KEY),
+        projects: safeGet(PROJECTS_KEY)
+      };
+      localStorage.setItem(STORAGE_PREFIX + 'migration_backup_' + Date.now(), JSON.stringify(snapshot));
+    } catch (e) {
+      console.warn('[dotdotplanner] migration backup failed:', e);
+    }
+  }
+
+  // 라운드5 D: 형식이 잘못된 개별 레코드를 조용히 버리지 않고, 매번 새 타임스탬프 키에
+  // 남긴다(기존 ITEMS_CORRUPTED_BACKUP_KEY 하나만 계속 덮어쓰면 이전 손상분을 잃는다).
+  // 반환값(격리된 키 이름)은 loadState()가 "복구 가능한 데이터가 있다"는 안내에 쓴다.
+  function quarantineInvalidRecords(kind, invalidRecords) {
+    if (!invalidRecords || !invalidRecords.length) return null;
+    try {
+      var key = ITEMS_QUARANTINE_KEY_PREFIX + kind + '_' + Date.now();
+      localStorage.setItem(key, JSON.stringify({
+        kind: kind,
+        quarantinedAt: new Date().toISOString(),
+        records: invalidRecords
+      }));
+      console.warn('[dotdotplanner] ' + invalidRecords.length + '개의 형식이 잘못된 ' + kind + ' 레코드를 "' + key + '" 키로 격리했습니다.');
+      return key;
+    } catch (e) {
+      console.warn('[dotdotplanner] failed to quarantine invalid records:', e);
+      return null;
+    }
+  }
+
+  function runStorageMigrations() {
+    var raw = safeGet(STORAGE_SCHEMA_VERSION_KEY);
+    // 버전 키가 아예 없으면(이 기능이 생기기 전부터 있던 기존 사용자) 버전 0으로 본다 --
+    // 데이터 자체는 그대로 유효하게 읽되, 앞으로는 버전이 매겨진다.
+    var fromVersion = raw === null ? 0 : (parseInt(raw, 10) || 0);
+    if (fromVersion < STORAGE_SCHEMA_VERSION) {
+      var applicable = STORAGE_MIGRATIONS
+        .filter(function (m) { return m.from >= fromVersion; })
+        .sort(function (a, b) { return a.from - b.from; });
+      if (applicable.length) {
+        backupBeforeMigration(fromVersion);
+        applicable.forEach(function (m) {
+          try { m.run(); } catch (e) { console.warn('[dotdotplanner] migration step failed:', m.from, e); }
+        });
+      }
+      try { localStorage.setItem(STORAGE_SCHEMA_VERSION_KEY, String(STORAGE_SCHEMA_VERSION)); } catch (e) {}
+    }
+  }
+
+  // ---------------------------------------------------------------------
+  // 라운드5 B: 두 탭 충돌 감지. sessionTabId는 이 탭 자신을 식별하는 값(같은 탭에서
+  // 발생한 storage 이벤트는 애초에 브라우저가 이 탭으로 보내지 않지만, 방어적으로도
+  // 한 번 더 확인한다). knownDataRevision은 이 탭이 "알고 있는" 최신 revision -- 이
+  // 탭이 저장할 때마다 앞으로 밀고, 다른 탭이 그보다 더 큰 값을 쓰면 충돌로 본다.
+  // ---------------------------------------------------------------------
+  var sessionTabId = 'tab_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8);
+  var knownDataRevision = 0;
+
+  function readCurrentDataRevision() {
+    try {
+      var raw = safeGet(DATA_REVISION_KEY);
+      if (!raw) return 0;
+      var parsed = JSON.parse(raw);
+      return (parsed && typeof parsed.revision === 'number') ? parsed.revision : 0;
+    } catch (e) {
+      return 0;
+    }
+  }
+
+  // items/monthlyItems/groups처럼 실제 사용자 데이터가 바뀌는 저장에서만 호출한다
+  // (preferences 같은 순수 화면 설정 저장까지 포함하면 다른 탭의 사소한 UI 조작에도
+  // "변경되었습니다" 배너가 뜨는 잡음이 생긴다).
+  function bumpDataRevision() {
+    knownDataRevision += 1;
+    try {
+      localStorage.setItem(DATA_REVISION_KEY, JSON.stringify({
+        revision: knownDataRevision,
+        updatedAt: new Date().toISOString(),
+        tabId: sessionTabId
+      }));
+    } catch (e) {
+      // 이 저장 자체의 실패는 호출한 saveItems 등이 이미 reportStorageFailure로 알린다.
+    }
+  }
+
+  var CROSS_TAB_CONFLICT_BANNER_KIND = 'cross-tab-conflict';
+
+  // 라운드5 D: 형식이 잘못돼 격리된 레코드가 있으면 사용자에게 알린다(요구사항 --
+  // 복구 가능한 데이터가 있다는 안내). 격리된 원본은 이미 quarantineInvalidRecords가
+  // 타임스탬프 키에 남겨 뒀으므로 여기서는 몇 개인지만 안내한다.
+  var QUARANTINE_NOTICE_BANNER_KIND = 'quarantine-notice';
+
+  function showQuarantineNotice(count) {
+    showSystemBanner(QUARANTINE_NOTICE_BANNER_KIND, '형식이 잘못된 항목 ' + count + '개를 화면에서 제외하고 별도로 보존했습니다(개발자 도구 > 애플리케이션 > localStorage에서 "' + ITEMS_QUARANTINE_KEY_PREFIX + '"로 시작하는 키를 확인할 수 있습니다).', [
+      { label: '확인', onClick: function () { hideSystemBanner(QUARANTINE_NOTICE_BANNER_KIND); } }
+    ], 'info');
+  }
+
+  function showCrossTabConflictBanner() {
+    showSystemBanner(CROSS_TAB_CONFLICT_BANNER_KIND, '다른 탭에서 데이터가 변경되었습니다. 지금 화면은 최신 상태가 아닐 수 있습니다.', [
+      { label: '새로 불러오기', onClick: function () { window.location.reload(); } },
+      { label: '현재 탭 유지', onClick: function () { hideSystemBanner(CROSS_TAB_CONFLICT_BANNER_KIND); } }
+    ], 'info');
+  }
+
+  function wireCrossTabConflictDetection() {
+    window.addEventListener('storage', function (e) {
+      if (e.key !== DATA_REVISION_KEY || !e.newValue) return;
+      try {
+        var parsed = JSON.parse(e.newValue);
+        if (!parsed || typeof parsed.revision !== 'number') return;
+        if (parsed.tabId === sessionTabId) return;
+        if (parsed.revision > knownDataRevision) {
+          showCrossTabConflictBanner();
+        }
+      } catch (err) {}
+    });
+  }
+
   function loadState() {
     var items = null;
+    var rawValue = safeGet(ITEMS_KEY);
+    var hadStoredValue = rawValue !== null; // 완전한 신규 사용자(키 자체가 없음) 여부 판정.
     try {
-      var rawItems = JSON.parse(safeGet(ITEMS_KEY));
+      var rawItems = JSON.parse(rawValue);
       items = validateStoredItems(rawItems);
     } catch (e) {
       items = null;
     }
-    var isFirstRun = !items;
-    if (!items) {
-      items = createSeedItems();
+    // 8: 개발용 예시 데이터는 더 이상 신규 초기화에 쓰지 않는다. 완전한 신규 사용자는
+    // 빈 배열로 시작한다(정상적인 빈 플래너 상태 — createSeedItems 호출 금지).
+    // 저장값은 있었지만 손상된 경우(파싱 실패/형식 불일치)에는 시드로 대체하지 않고
+    // 원본 문자열을 별도 백업 키로 옮겨 보존한 뒤에만 빈 배열로 안전하게 시작한다 —
+    // 이 경우는 "첫 실행"이 아니므로 isFirstRun을 true로 만들지 않는다(아래에서 구분).
+    if (!items && hadStoredValue) {
+      try {
+        localStorage.setItem(ITEMS_CORRUPTED_BACKUP_KEY, rawValue);
+        // 원본을 안전하게 백업해 둔 뒤에만, 다음 로드부터도 같은 손상된 문자열을 반복해서
+        // 재검사·재백업하지 않도록 실제 저장값도 빈 배열로 정리한다(원본은 위 백업 키에
+        // 그대로 남아 있어 복구 가능).
+        localStorage.setItem(ITEMS_KEY, '[]');
+        console.warn('[dotdotplanner] 저장된 항목 데이터가 손상돼 있어 시드로 대체하지 않고 원본을 "' + ITEMS_CORRUPTED_BACKUP_KEY + '" 키로 보존한 뒤 빈 목록으로 시작합니다.');
+      } catch (e) {
+        console.warn('[dotdotplanner] 손상된 항목 데이터 백업 실패:', e);
+      }
+    }
+    var isFirstRun = !hadStoredValue;
+    // 라운드5 D: validateStoredItems가 이제 {valid, invalid}를 돌려준다(배열 자체가
+    // 아니면 여전히 null -- 위의 전체 손상 경로가 이미 처리). 형식이 잘못된 개별
+    // 항목만 격리하고, 정상 항목은 계속 로딩한다("유령 항목" 문제 수정).
+    var itemsQuarantinedCount = 0;
+    if (items) {
+      if (items.invalid.length) {
+        quarantineInvalidRecords('items', items.invalid);
+        itemsQuarantinedCount = items.invalid.length;
+      }
+      items = items.valid;
+    } else {
+      items = [];
     }
 
     var selectedDate = safeGet(SELECTED_DATE_KEY) || DEFAULT_SELECTED_DATE;
     var calendarViewDate = safeGet(CALENDAR_VIEW_DATE_KEY) || DEFAULT_CALENDAR_VIEW_DATE;
     var weekStartDate = safeGet(WEEK_START_DATE_KEY) || DEFAULT_WEEK_START_DATE;
     var lunarEnabled = safeGet(LUNAR_ENABLED_KEY) === 'true';
+    // 저장값이 없으면 기본 7, 잘못된(숫자가 아니거나 범위 밖) 값은 1~14로 안전하게 보정한다.
+    var rawVisibleDays = parseInt(safeGet(VISIBLE_DAYS_KEY), 10);
+    var weeklyVisibleDays = isFinite(rawVisibleDays)
+      ? Math.max(WEEKLY_VISIBLE_DAYS_MIN, Math.min(WEEKLY_VISIBLE_DAYS_MAX, rawVisibleDays))
+      : WEEKLY_VISIBLE_DAYS_DEFAULT;
+    // 저장값이 없거나 0~1 범위를 벗어나면 기본 0.5로 안전하게 보정한다.
+    var rawSplitRatio = parseFloat(safeGet(ROW_SPLIT_RATIO_KEY));
+    var weeklyRowSplitRatio = (isFinite(rawSplitRatio) && rawSplitRatio >= 0 && rawSplitRatio <= 1)
+      ? rawSplitRatio
+      : WEEKLY_ROW_SPLIT_RATIO_DEFAULT;
+    // 저장값이 없거나 잘못된 값('rolling'/'week' 외)이면 기존 동작과 가장 가까운 기본값으로.
+    var rawRangeMode = safeGet(WEEKLY_RANGE_MODE_KEY);
+    var weeklyRangeMode = WEEKLY_RANGE_MODE_VALUES[rawRangeMode] ? rawRangeMode : WEEKLY_RANGE_MODE_DEFAULT;
+    // 저장값이 없으면(신규 사용자) 기본 true. 'false' 문자열일 때만 false로 해석한다.
+    var rawAutoFollow = safeGet(WEEKLY_AUTO_FOLLOW_KEY);
+    var weeklyAutoFollow = rawAutoFollow === null ? true : rawAutoFollow === 'true';
+    // 형식이 'YYYY-MM-01'이 아니면(손상/구버전) null -- init()이 selectedDate가 속한
+    // 달로 대신 계산한다(새로고침 후 첫 진입 정책, 아래 init() 참고).
+    var rawMonthlyLogViewMonth = safeGet(MONTHLY_LOG_VIEW_MONTH_KEY);
+    var monthlyLogViewMonth = (rawMonthlyLogViewMonth && /^\d{4}-\d{2}-01$/.test(rawMonthlyLogViewMonth))
+      ? rawMonthlyLogViewMonth
+      : null;
+
+    // monthlyItems -- items와 완전히 같은 손상 데이터 백업 패턴(별도 백업 키로 원본 보존
+    // 후 빈 배열로 시작). items가 손상됐어도 monthlyItems는 영향받지 않고(반대도 마찬가지),
+    // 서로 다른 스토리지 키라 한쪽 손상이 다른 쪽 로드를 막지 않는다.
+    var monthlyItems = null;
+    var rawMonthlyItemsValue = safeGet(MONTHLY_ITEMS_KEY);
+    var hadStoredMonthlyItemsValue = rawMonthlyItemsValue !== null;
+    try {
+      monthlyItems = validateStoredMonthlyItems(JSON.parse(rawMonthlyItemsValue));
+    } catch (e) {
+      monthlyItems = null;
+    }
+    if (!monthlyItems && hadStoredMonthlyItemsValue) {
+      try {
+        localStorage.setItem(MONTHLY_ITEMS_CORRUPTED_BACKUP_KEY, rawMonthlyItemsValue);
+        localStorage.setItem(MONTHLY_ITEMS_KEY, '[]');
+        console.warn('[dotdotplanner] 저장된 월간 할일 데이터가 손상돼 있어 원본을 "' + MONTHLY_ITEMS_CORRUPTED_BACKUP_KEY + '" 키로 보존한 뒤 빈 목록으로 시작합니다.');
+      } catch (e) {
+        console.warn('[dotdotplanner] 손상된 월간 할일 데이터 백업 실패:', e);
+      }
+    }
+    var monthlyItemsQuarantinedCount = 0;
+    if (monthlyItems) {
+      if (monthlyItems.invalid.length) {
+        quarantineInvalidRecords('monthlyItems', monthlyItems.invalid);
+        monthlyItemsQuarantinedCount = monthlyItems.invalid.length;
+      }
+      monthlyItems = monthlyItems.valid;
+    } else {
+      monthlyItems = [];
+    }
+
+    // groups -- 손상돼도 백업 없이 그냥 빈 배열로 시작한다(그룹 메타데이터만 잃을 뿐
+    // items.groupId는 남아있어 데이터 손실은 아니고, 다음 렌더에서 groupId가 가리키는
+    // 그룹을 찾지 못하는 항목은 일반 항목처럼 평범하게 표시되므로 안전하다).
+    var groups = null;
+    try {
+      groups = validateStoredGroups(JSON.parse(safeGet(GROUPS_KEY)));
+    } catch (e) {
+      groups = null;
+    }
+    if (!groups) groups = [];
+
+    // projects -- items/monthlyItems와 같은 손상 격리(quarantine) 패턴을 그대로 쓴다.
+    var projects = null;
+    try {
+      projects = validateStoredProjects(JSON.parse(safeGet(PROJECTS_KEY)));
+    } catch (e) {
+      projects = null;
+    }
+    var projectsQuarantinedCount = 0;
+    if (projects) {
+      if (projects.invalid.length) {
+        quarantineInvalidRecords('projects', projects.invalid);
+        projectsQuarantinedCount = projects.invalid.length;
+      }
+      projects = projects.valid;
+    } else {
+      projects = [];
+    }
+
+    // 저장값이 없거나 '0'/'1' 외의 값이면 기본값(일요일 시작)으로 안전하게 보정한다.
+    var rawWeekStartsOn = safeGet(CALENDAR_WEEK_STARTS_ON_KEY);
+    var calendarWeekStartsOn = (rawWeekStartsOn === '0' || rawWeekStartsOn === '1')
+      ? Number(rawWeekStartsOn)
+      : CALENDAR_WEEK_STARTS_ON_DEFAULT;
+
+    // 저장값이 없거나 0~1 범위를 벗어나면 기본값으로 안전하게 보정한다(weeklyRowSplitRatio와 같은 패턴).
+    var rawMonthlySplitRatio = parseFloat(safeGet(CALENDAR_MONTHLY_SPLIT_RATIO_KEY));
+    var calendarMonthlySplitRatio = (isFinite(rawMonthlySplitRatio) && rawMonthlySplitRatio >= 0 && rawMonthlySplitRatio <= 1)
+      ? rawMonthlySplitRatio
+      : CALENDAR_MONTHLY_SPLIT_RATIO_DEFAULT;
+
+    // 패널 경계선은 항상 표시하므로 구버전 저장값과 무관하게 true로 정규화한다.
+    var monthlySplitDividerVisible = true;
+    var monthlyInboxHideCompleted = safeGet(MONTHLY_INBOX_HIDE_COMPLETED_KEY) === 'true';
+    var dailyHideCompleted = safeGet(DAILY_HIDE_COMPLETED_KEY) === 'true';
+    var weeklyHideCompleted = safeGet(WEEKLY_HIDE_COMPLETED_KEY) === 'true';
+    var monthlyLogHideCompleted = safeGet(MONTHLY_LOG_HIDE_COMPLETED_KEY) === 'true';
+    var rawDefaultInputMode = safeGet(DEFAULT_INPUT_MODE_KEY);
+    var defaultInputMode = (rawDefaultInputMode === 'schedule' || rawDefaultInputMode === 'memo')
+      ? rawDefaultInputMode
+      : 'task';
+    var rawAutoRolloverEnabled = safeGet(AUTO_ROLLOVER_ENABLED_KEY);
+    var autoRolloverEnabled = rawAutoRolloverEnabled === null ? true : rawAutoRolloverEnabled !== 'false';
 
     return {
       items: items,
+      projects: projects,
+      projectsQuarantinedCount: projectsQuarantinedCount,
       selectedDate: selectedDate,
       calendarViewDate: calendarViewDate,
       weekStartDate: weekStartDate,
       lunarEnabled: lunarEnabled,
-      isFirstRun: isFirstRun
+      monthlyInboxHideCompleted: monthlyInboxHideCompleted,
+      dailyHideCompleted: dailyHideCompleted,
+      weeklyHideCompleted: weeklyHideCompleted,
+      weeklyVisibleDays: weeklyVisibleDays,
+      weeklyRowSplitRatio: weeklyRowSplitRatio,
+      weeklyRangeMode: weeklyRangeMode,
+      weeklyAutoFollow: weeklyAutoFollow,
+      monthlyLogViewMonth: monthlyLogViewMonth,
+      monthlyItems: monthlyItems,
+      groups: groups,
+      monthlySplitDividerVisible: monthlySplitDividerVisible,
+      monthlyLogHideCompleted: monthlyLogHideCompleted,
+      defaultInputMode: defaultInputMode,
+      autoRolloverEnabled: autoRolloverEnabled,
+      calendarWeekStartsOn: calendarWeekStartsOn,
+      calendarMonthlySplitRatio: calendarMonthlySplitRatio,
+      isFirstRun: isFirstRun,
+      itemsQuarantinedCount: itemsQuarantinedCount,
+      monthlyItemsQuarantinedCount: monthlyItemsQuarantinedCount
     };
   }
 
   function saveItems() {
     try {
       localStorage.setItem(ITEMS_KEY, JSON.stringify(state.items));
+      // 상세 Drawer가 이달의 할 일 원본을 편집 중이면 기존 상세 편집 함수들이
+      // saveItems()만 호출해도 월간 원본 변경이 유실되지 않게 함께 저장한다.
+      if (
+        state.activeDetailEntityType === 'monthly-master' &&
+        state.activeDetailItemId
+      ) {
+        localStorage.setItem(MONTHLY_ITEMS_KEY, JSON.stringify(state.monthlyItems));
+      }
+      bumpDataRevision();
+      reportStorageSuccessIfRecovering('items');
     } catch (e) {
       console.warn('[dotdotplanner] failed to save items:', e);
+      reportStorageFailure('items', e);
+    }
+  }
+
+  function saveMonthlyItems() {
+    try {
+      localStorage.setItem(MONTHLY_ITEMS_KEY, JSON.stringify(state.monthlyItems));
+      bumpDataRevision();
+      reportStorageSuccessIfRecovering('monthlyItems');
+    } catch (e) {
+      console.warn('[dotdotplanner] failed to save monthly items:', e);
+      reportStorageFailure('monthlyItems', e);
+    }
+  }
+
+  function saveGroups() {
+    try {
+      localStorage.setItem(GROUPS_KEY, JSON.stringify(state.groups));
+      bumpDataRevision();
+      reportStorageSuccessIfRecovering('groups');
+    } catch (e) {
+      console.warn('[dotdotplanner] failed to save groups:', e);
+      reportStorageFailure('groups', e);
+    }
+  }
+
+  function saveProjects() {
+    try {
+      localStorage.setItem(PROJECTS_KEY, JSON.stringify(state.projects));
+      bumpDataRevision();
+      reportStorageSuccessIfRecovering('projects');
+    } catch (e) {
+      console.warn('[dotdotplanner] failed to save projects:', e);
+      reportStorageFailure('projects', e);
     }
   }
 
@@ -291,8 +1049,24 @@ endDateDraftActive: false,
       localStorage.setItem(CALENDAR_VIEW_DATE_KEY, state.calendarViewDate);
       localStorage.setItem(WEEK_START_DATE_KEY, state.weekStartDate);
       localStorage.setItem(LUNAR_ENABLED_KEY, String(state.lunarEnabled));
+      localStorage.setItem(MONTHLY_INBOX_HIDE_COMPLETED_KEY, String(state.monthlyInboxHideCompleted));
+      localStorage.setItem(DAILY_HIDE_COMPLETED_KEY, String(state.dailyHideCompleted));
+      localStorage.setItem(WEEKLY_HIDE_COMPLETED_KEY, String(state.weeklyHideCompleted));
+      localStorage.setItem(VISIBLE_DAYS_KEY, String(state.weeklyVisibleDays));
+      localStorage.setItem(ROW_SPLIT_RATIO_KEY, String(state.weeklyRowSplitRatio));
+      localStorage.setItem(WEEKLY_RANGE_MODE_KEY, state.weeklyRangeMode);
+      localStorage.setItem(WEEKLY_AUTO_FOLLOW_KEY, String(state.weeklyAutoFollow));
+      localStorage.setItem(MONTHLY_LOG_VIEW_MONTH_KEY, state.monthlyLogViewMonth);
+      localStorage.setItem(CALENDAR_WEEK_STARTS_ON_KEY, String(state.calendarWeekStartsOn));
+      localStorage.setItem(CALENDAR_MONTHLY_SPLIT_RATIO_KEY, String(state.calendarMonthlySplitRatio));
+      localStorage.setItem(MONTHLY_SPLIT_DIVIDER_VISIBLE_KEY, 'true');
+      localStorage.setItem(MONTHLY_LOG_HIDE_COMPLETED_KEY, String(state.monthlyLogHideCompleted));
+      localStorage.setItem(DEFAULT_INPUT_MODE_KEY, state.defaultInputMode || 'task');
+      localStorage.setItem(AUTO_ROLLOVER_ENABLED_KEY, String(state.autoRolloverEnabled !== false));
+      reportStorageSuccessIfRecovering('preferences');
     } catch (e) {
       console.warn('[dotdotplanner] failed to save preferences:', e);
+      reportStorageFailure('preferences', e);
     }
   }
 
@@ -304,8 +1078,10 @@ endDateDraftActive: false,
         lastExpandedTop: state.weeklyPanel.lastExpandedTop,
         isLowered: state.weeklyPanel.isLowered
       }));
+      reportStorageSuccessIfRecovering('weeklyPanelPrefs');
     } catch (e) {
       console.warn('[dotdotplanner] failed to save weekly panel prefs:', e);
+      reportStorageFailure('weeklyPanelPrefs', e);
     }
   }
 
@@ -343,8 +1119,32 @@ endDateDraftActive: false,
       order: 0,
       originalDate: null,
       migratedFrom: null,
+      // 자동 이월 대기(정착 안 됨) 여부 -- isRolloverItem이 유일하게 보는 필드. 기존
+      // 항목은 이 필드가 없어 undefined인데, 이는 false와 동일하게 취급된다(하위 호환).
+      rolloverPending: false,
       completionByDate: null,
       deletedAt: null,
+      // 이달의 할 일(monthlyItem)에서 이 항목을 Daily/Weekly/Monthly Log로 "배치"해
+      // 만든 것이면 그 원본 monthlyItem.id를 담는다(기존 항목은 없던 필드라 항상
+      // undefined/null -> "배치 아님"으로 취급, 하위 호환). 제목/타입/설명/하위 할일은
+      // 원본과 모든 배치가 공유하고(syncSharedMonthlyFields), date/order/completed 등은
+      // 배치마다 독립이다.
+      sourceMonthlyItemId: null,
+      // 단일 날짜 항목의 그룹 id. 다일 항목은 아래 groupIdByDate로 날짜별 소속을 가진다.
+      groupId: null,
+      // 다일 항목을 특정 날짜 occurrence에서만 자유롭게 그룹화하기 위한 맵.
+      // { 'YYYY-MM-DD': groupId } 형태이며 기존 데이터에는 없어도 된다.
+      groupIdByDate: null,
+      // 인스턴스 복제(Ctrl/Cmd+Alt+C·V)로 만들어진 서로 다른 항목들을 묶는 id. sourceMonthlyItemId
+      // (원본 하나 + 배치 다수 구조)와 달리 "원본" 개념이 없는 완전 대등한 N개 항목
+      // 그룹이다 -- 별도 레지스트리(state.groups류) 없이 이 문자열 필드만으로 연결을
+      // 표현한다(하위 호환: 기존 항목은 항상 null -> "연결 없음"). 공유 필드는
+      // syncSharedInstanceGroupFields가 담당, 날짜/완료/순서 등은 각 항목이 독립적으로
+      // 갖는다(실제로 서로 다른 state.items 엔트리이므로 애초에 자동으로 독립적이다).
+      instanceGroupId: null,
+      // 프로젝트(전역 소속) 참조. 그룹과 달리 날짜/월 경계를 넘어 유지된다. 이름/색은
+      // 복제하지 않고 이 id로 projects 컬렉션을 참조한다(하위 호환: 기존 항목은 null).
+      projectId: null,
       // task 상세 drawer 전용 필드. 기존(이 필드가 생기기 전) 항목은 없을 수 있으므로
       // 읽는 쪽에서는 항상 `item.description || ''`, `ensureSubtasks(item)`로 접근한다.
       description: '',
@@ -394,16 +1194,110 @@ endDateDraftActive: false,
     return null;
   }
 
+  // 상세 drawer 전용 조회 -- state.activeDetailEntityType에 따라 state.items(배치 포함
+  // 일반 항목) 또는 state.monthlyItems(이달의 할 일 원본)에서 찾는다. 상세 drawer 내부의
+  // 모든 findItemById(state.activeDetailItemId) 호출을 이걸로 바꿔, 원본을 직접 열었을
+  // 때도 같은 편집 UI(제목/설명/상세블록/체크리스트)가 그대로 동작하게 한다.
+  function findActiveDetailEntity() {
+    if (!state.activeDetailItemId) return null;
+    if (state.activeDetailEntityType === 'monthly-master') return findMonthlyItemById(state.activeDetailItemId);
+    return findItemById(state.activeDetailItemId);
+  }
+
+
+  // 상세 Drawer 안에서 itemId로 다시 조회할 때는 일반 항목뿐 아니라
+  // 이달의 할 일 원본(state.monthlyItems)도 현재 열린 entityType에 맞춰 찾는다.
+  function findDetailEditableEntityById(itemId) {
+    if (
+      state.activeDetailEntityType === 'monthly-master' &&
+      state.activeDetailItemId === itemId
+    ) {
+      return findMonthlyItemById(itemId);
+    }
+    return findItemById(itemId);
+  }
+
   // ---------------------------------------------------------------------
-  // 9: Undo/Redo 트랜잭션 — fn 안에서 일어나는 state.items 변경을 통째로 하나의
-  // history 항목으로 묶는다. fn이 다른 트랜잭션 함수를 내부에서 호출해도(중첩)
-  // historyTransactionDepth로 가장 바깥쪽 호출만 실제로 기록한다. 실제로 아무 것도
-  // 바뀌지 않았으면(JSON 비교) history에 쌓지 않는다.
+  // 9/monthlyItems: Undo/Redo 트랜잭션 — fn 안에서 일어나는 state.items **그리고**
+  // state.monthlyItems 변경을 함께 하나의 history 항목으로 묶는다(두 컬렉션을 같은
+  // 스냅샷 객체로 직렬화 — 별도의 두 번째 undo 스택을 만들지 않는다). fn이 다른 트랜잭션
+  // 함수를 내부에서 호출해도(중첩) historyTransactionDepth로 가장 바깥쪽 호출만 실제로
+  // 기록한다. 실제로 아무 것도 바뀌지 않았으면(JSON 비교) history에 쌓지 않는다.
   // ---------------------------------------------------------------------
+  function snapshotHistoryState() {
+    return JSON.stringify({ items: state.items, monthlyItems: state.monthlyItems, groups: state.groups, projects: state.projects });
+  }
+
+  // 최종 감사(2026-07-27) 9: 어떤 그룹이든 참조하는 item이(활성이든 휴지통이든) 하나도
+  // 남지 않으면 그 그룹 메타데이터를 정리한다. 휴지통에 있는 동안에는 item.groupId가
+  // 그대로 남아있으므로(소프트 삭제는 groupId를 건드리지 않는다) 자연히 그룹이 유지되고,
+  // 영구 삭제되거나(permanentDeleteItems) groupId가 명시적으로 해제되면(ungroupGroup,
+  // moveSingleItemToDate의 날짜 변경, syncGroupMembershipAfterReorder의 이탈 판정 등)
+  // 그 즉시 이 함수가 정리한다 -- 개별 삭제/이동 함수마다 따로 손대지 않고, 모든 변경이
+  // 결국 거치는 withHistoryTransaction 한 곳에서만 검사하면 모든 경로를 커버한다.
+  function pruneEmptyGroups() {
+    if (!state.groups.length) return;
+    var referencedGroupIds = {};
+    state.items.forEach(function (it) {
+      if (it.groupId) referencedGroupIds[it.groupId] = true;
+      if (it.groupIdByDate && typeof it.groupIdByDate === 'object') {
+        Object.keys(it.groupIdByDate).forEach(function (date) { if (it.groupIdByDate[date]) referencedGroupIds[it.groupIdByDate[date]] = true; });
+      }
+    });
+    state.monthlyItems.forEach(function (it) { if (it.groupId) referencedGroupIds[it.groupId] = true; });
+    var before = state.groups.length;
+    state.groups = state.groups.filter(function (g) { return !!referencedGroupIds[g.id]; });
+    if (state.groups.length !== before) saveGroups();
+  }
+
+  // 최종 감사(2026-07-27) 9-5: loadState 직후(=새로고침 직후) 한 번, 손상됐을 수 있는
+  // groupId/그룹 무결성을 안전하게 정리한다(값을 지우지 파괴적으로 마이그레이션하지
+  // 않는다 -- 요구사항). 존재하지 않는 그룹을 가리키는 groupId는 참조만 끊고(item 자체는
+  // 그대로 살아있는 일반 항목이 된다), 구성원이 아예 없는 그룹은 제거하고, 그룹의 date가
+  // 실제 구성원들의 date와 어긋나 있으면(예: 과거 버전 데이터) 구성원 기준으로 안전하게
+  // 맞춘다.
+  function pruneInvalidGroupsOnLoad() {
+    var groupIds = {};
+    state.groups.forEach(function (g) {
+      if (g.scope !== 'monthly' && !g.scope) g.scope = 'date';
+      if (g.scope === 'monthly' && !g.date && g.monthKey) g.date = g.monthKey + '-01';
+      groupIds[g.id] = true;
+    });
+    state.items.forEach(function (it) {
+      if (it.groupId && !groupIds[it.groupId]) it.groupId = null;
+      if (it.groupIdByDate && typeof it.groupIdByDate === 'object') {
+        Object.keys(it.groupIdByDate).forEach(function (date) {
+          if (!groupIds[it.groupIdByDate[date]] || !itemCoversDate(it, date)) delete it.groupIdByDate[date];
+        });
+        if (!Object.keys(it.groupIdByDate).length) it.groupIdByDate = null;
+      }
+    });
+    state.monthlyItems.forEach(function (it) { if (it.groupId && !groupIds[it.groupId]) it.groupId = null; });
+    var before = state.groups.length;
+    state.groups = state.groups.filter(function (g) { return getGroupMembers(g.id).length > 0; });
+    if (state.groups.length !== before) saveGroups();
+  }
+
+  // 요구사항: 유효하지 않은 projectId는 로딩 시 null로 정리한다. 그룹과 달리 프로젝트는
+  // 구성원이 0개여도 삭제하지 않는다(사용자가 명시적으로 만들고 지우는 이름 있는
+  // 컬렉션이지, 그룹처럼 참조가 끊기면 자동 소멸하는 임시 묶음이 아니다).
+  function pruneInvalidProjectIdsOnLoad() {
+    var projectIds = {};
+    state.projects.forEach(function (p) { projectIds[p.id] = true; });
+    var changed = false;
+    state.items.forEach(function (it) {
+      if (it.projectId && !projectIds[it.projectId]) { it.projectId = null; changed = true; }
+    });
+    state.monthlyItems.forEach(function (it) {
+      if (it.projectId && !projectIds[it.projectId]) { it.projectId = null; changed = true; }
+    });
+    if (changed) { saveItems(); saveMonthlyItems(); }
+  }
+
   function withHistoryTransaction(fn) {
     var isOutermost = historyTransactionDepth === 0;
     if (isOutermost) {
-      historyBeforeSnapshot = JSON.stringify(state.items);
+      historyBeforeSnapshot = snapshotHistoryState();
     }
     historyTransactionDepth++;
     try {
@@ -411,7 +1305,8 @@ endDateDraftActive: false,
     } finally {
       historyTransactionDepth--;
       if (isOutermost) {
-        var afterSnapshot = JSON.stringify(state.items);
+        pruneEmptyGroups(); // 9: 그룹이 완전히 비면 "이후" 스냅샷에 이미 반영되어 Undo/Redo로 함께 되돌아간다.
+        var afterSnapshot = snapshotHistoryState();
         if (afterSnapshot !== historyBeforeSnapshot) {
           history.undoStack.push({ before: historyBeforeSnapshot, after: afterSnapshot });
           if (history.undoStack.length > history.limit) history.undoStack.shift();
@@ -424,6 +1319,9 @@ endDateDraftActive: false,
 
   function finishHistoryOp() {
     saveItems();
+    saveMonthlyItems();
+    saveGroups();
+    saveProjects();
     state.selectedItemIds.clear();
     state.selectedOccurrenceById.clear();
     state.lastSelectedItemId = null;
@@ -442,7 +1340,11 @@ endDateDraftActive: false,
     if (!history.undoStack.length) return;
     var entry = history.undoStack.pop();
     history.redoStack.push(entry);
-    state.items = JSON.parse(entry.before);
+    var snap = JSON.parse(entry.before);
+    state.items = snap.items;
+    state.monthlyItems = snap.monthlyItems;
+    state.groups = snap.groups || [];
+    state.projects = snap.projects || [];
     finishHistoryOp();
   }
 
@@ -450,7 +1352,11 @@ endDateDraftActive: false,
     if (!history.redoStack.length) return;
     var entry = history.redoStack.pop();
     history.undoStack.push(entry);
-    state.items = JSON.parse(entry.after);
+    var snap = JSON.parse(entry.after);
+    state.items = snap.items;
+    state.monthlyItems = snap.monthlyItems;
+    state.groups = snap.groups || [];
+    state.projects = snap.projects || [];
     finishHistoryOp();
   }
 
@@ -489,6 +1395,27 @@ endDateDraftActive: false,
     var dates = getOccurrenceDates(item);
     var map = ensureScheduleCompletionMap(item);
     item.completed = dates.length > 0 && dates.every(function (d) { return !!map[d]; });
+  }
+
+  // 기간(다일) schedule은 어느 occurrence에서 체크해도 전체 기간이 "하나의 일정"으로
+  // 함께 완료·완료 취소된다 — 클릭한 occurrence의 클릭 전 상태를 반전한 값을 현재 범위의
+  // 모든 발생 날짜에 통일한다. 단일 날짜 schedule은 getOccurrenceDates가 1개짜리
+  // 배열을 돌려주므로 이 함수가 곧 기존 단일 토글과 동일하게 동작한다(별도 분기 불필요).
+  // normalizeCompletionMapForRange를 먼저 호출해 기간 밖에 남아있을 수 있는 오래된 키를
+  // 정리한 뒤 덮어쓴다. 기존 일부 완료 데이터는 이 함수가 실제로 호출되는 순간(=사용자가
+  // 그 일정의 체크박스를 처음 누르는 순간)에만 통일되고, 앱 로드만으로는 손대지 않는다.
+  function applyScheduleRangeCompletion(item, targetCompleted) {
+    normalizeCompletionMapForRange(item);
+    var map = item.completionByDate;
+    getOccurrenceDates(item).forEach(function (d) { map[d] = targetCompleted; });
+    syncScheduleOverallCompleted(item);
+    // 라운드5 G: schedule은 애초에 자동 이월 대상이 아니다(getAutoRolloverCandidateIds가
+    // type==='task'만 본다). 그런데도 rolloverPending이 남을 수 있는 유일한 경로는 "이월
+    // 대기 중이던 task를 schedule로 타입 전환"한 경우뿐이다 -- 새로운 이월 동작을 만들지
+    // 않고, 완료 시점에 그 불가능한 잔여 상태만 안전하게 정리한다(실제로 값이 있을 때만).
+    if (targetCompleted && item.rolloverPending) {
+      item.rolloverPending = false;
+    }
   }
 
   // date/endDate가 바뀐 뒤(타입 전환 등) completionByDate를 현재 범위에 맞춘다.
@@ -555,13 +1482,26 @@ endDateDraftActive: false,
     return state.items.filter(function (it) { return !!it.deletedAt; });
   }
 
-  function getItemsForWeek(weekStartDate) {
+  // 이월 오표시 버그 수정: getItemsForDate는 item.date/endDate만 보는데,
+  // runAutoRollover()(자동 이월)가 기한이 지난 미완료 task의 item.date 자체를
+  // 오늘로 직접 옮겨 버린다(originalDate/migratedFrom은 이력으로만 남기고 date는
+  // 실제로 바꿈) -- 그 결과 사용자가 손대지 않은 항목이 Weekly의 "오늘" 칸에 마치
+  // 원래부터 있던 것처럼 나타난다. Daily는 이 항목을 isRolloverItem()으로 걸러
+  // 별도의 "이월" 섹션에만 보여주는데(메인 목록에 안 섞임) Weekly에는 그 구분이
+  // 아예 없었다 -- 이제 Weekly도 Daily의 메인 목록과 같은 기준으로,
+  // "아직 정착(명시적 이동/이월 확정)되지 않은" 항목은 걸러낸다. 사용자가 명시적으로
+  // 옮기거나(드래그/이동 메뉴) "오늘" 버튼으로 정착시키면 그 순간 originalDate/
+  // migratedFrom이 date와 같아지므로 isRolloverItem이 false가 되어 정상적으로 보인다.
+  function getItemsForWeek(weekStartDate, days) {
     var start = parseLocalDate(weekStartDate);
+    var count = days || WEEKLY_VISIBLE_DAYS_DEFAULT;
     var map = {};
-    for (var i = 0; i < 7; i++) {
+    for (var i = 0; i < count; i++) {
       var d = new Date(start.getFullYear(), start.getMonth(), start.getDate() + i);
       var key = formatLocalDate(d);
-      map[key] = getItemsForDate(key).sort(function (a, b) { return a.order - b.order; });
+      map[key] = getItemsForDate(key)
+        .filter(function (it) { return !isRolloverItem(it); })
+        .sort(function (a, b) { return a.order - b.order; });
     }
     return map;
   }
@@ -597,11 +1537,1359 @@ endDateDraftActive: false,
         endTime: opts.endTime || null,
         order: opts.insertAtStart ? minOrderForDate(d) : nextOrder(d)
       });
+      if (opts.monthlyLogScheduleColumn !== undefined && opts.monthlyLogScheduleColumn !== null) {
+        item.monthlyLogScheduleColumn = Math.max(0, Math.min(MONTHLY_LOG_SCHEDULE_GRID_COLUMNS - 1, Number(opts.monthlyLogScheduleColumn) || 0));
+      }
       state.items.push(item);
     });
     saveItems();
     renderApp();
     return item;
+  }
+
+  // ---------------------------------------------------------------------
+  // Ctrl/Cmd+G 폴더형 그룹핑. 각 item은 groupId 필드로만 그룹을 참조하고(flat 구조
+  // 유지), 그룹 자체(이름/접힘/순서)는 state.groups에 별도로 둔다.
+  // ---------------------------------------------------------------------
+  function findGroupById(groupId) {
+    for (var i = 0; i < state.groups.length; i++) {
+      if (state.groups[i].id === groupId) return state.groups[i];
+    }
+    return null;
+  }
+
+  function groupScope(group) {
+    return group && (group.scope === 'monthly' || group.monthKey) ? 'monthly' : 'date';
+  }
+
+  function normalizeOccurrenceDateKey(key) {
+    if (typeof key !== 'string') return key;
+    return key.indexOf('monthly:') === 0 ? key.slice(8) : key;
+  }
+
+  function itemCoversDate(item, date) {
+    if (!item || !date || !item.date) return false;
+    var end = item.endDate || item.date;
+    return item.date <= date && date <= end;
+  }
+
+  function nextGroupOrder(scope, key) {
+    var existing = state.groups.filter(function (g) {
+      if (scope === 'monthly') return groupScope(g) === 'monthly' && g.monthKey === key;
+      return groupScope(g) === 'date' && g.date === key;
+    });
+    if (!existing.length) return 0;
+    return Math.max.apply(null, existing.map(function (g) { return g.order || 0; })) + 1;
+  }
+
+  // 화면 문맥의 특정 occurrence가 어느 그룹에 속하는지 읽는다.
+  function getItemGroupIdAt(item, context, sourceKey) {
+    if (!item) return null;
+    if (context === 'monthly-inbox' || item.monthKey !== undefined) return item.groupId || null;
+    var date = normalizeOccurrenceDateKey(sourceKey || item.date);
+    if (item.groupIdByDate && date && item.groupIdByDate[date]) return item.groupIdByDate[date];
+    if (!item.groupId) return null;
+    var legacyGroup = findGroupById(item.groupId);
+    if (!legacyGroup || groupScope(legacyGroup) !== 'date') return null;
+    return !date || !legacyGroup.date || legacyGroup.date === date ? item.groupId : null;
+  }
+
+  function setItemGroupIdAt(item, context, sourceKey, groupId) {
+    if (!item) return;
+    if (context === 'monthly-inbox' || item.monthKey !== undefined) {
+      item.groupId = groupId || null;
+      item.updatedAt = Date.now();
+      return;
+    }
+    var date = normalizeOccurrenceDateKey(sourceKey || item.date);
+    var isMultiDate = !!(item.endDate && item.endDate !== item.date);
+    if (!isMultiDate && date === item.date) {
+      item.groupId = groupId || null;
+      if (item.groupIdByDate && item.groupIdByDate[date]) {
+        delete item.groupIdByDate[date];
+        if (!Object.keys(item.groupIdByDate).length) item.groupIdByDate = null;
+      }
+    } else if (date) {
+      if (!item.groupIdByDate || typeof item.groupIdByDate !== 'object') item.groupIdByDate = {};
+      if (groupId) item.groupIdByDate[date] = groupId;
+      else delete item.groupIdByDate[date];
+      if (!Object.keys(item.groupIdByDate).length) item.groupIdByDate = null;
+      // 과거 버전의 단일 groupId가 같은 날짜 그룹을 가리키면 중복 참조를 제거한다.
+      if (item.groupId) {
+        var oldGroup = findGroupById(item.groupId);
+        if (oldGroup && oldGroup.date === date) item.groupId = null;
+      }
+    }
+    item.updatedAt = Date.now();
+  }
+
+  function clearAllGroupMembershipForItem(item) {
+    if (!item) return;
+    item.groupId = null;
+    item.groupIdByDate = null;
+    item.updatedAt = Date.now();
+  }
+
+  // 그룹 구성원을 그룹 범위(하루 또는 한 달)에 맞춰 반환한다.
+  function getGroupMembers(groupId) {
+    var group = findGroupById(groupId);
+    if (!group) return [];
+    if (groupScope(group) === 'monthly') {
+      return state.monthlyItems
+        .filter(function (it) { return !it.deletedAt && it.monthKey === group.monthKey && it.groupId === groupId; })
+        .sort(function (a, b) { return a.order - b.order; });
+    }
+    return state.items
+      .filter(function (it) {
+        return !it.deletedAt && itemCoversDate(it, group.date) && getItemGroupIdAt(it, 'weekly', group.date) === groupId;
+      })
+      .sort(function (a, b) { return a.order - b.order; });
+  }
+
+  function selectedRegularOccurrenceEntries() {
+    var entries = [];
+    var seen = {};
+    Array.from(state.selectedItemIds).forEach(function (id) {
+      var item = findItemById(id);
+      if (!item || item.deletedAt) return;
+      var dates = [];
+      var occSet = state.selectedOccurrenceById.get(id);
+      if (occSet) {
+        occSet.forEach(function (key) {
+          var date = normalizeOccurrenceDateKey(key);
+          if (/^\d{4}-\d{2}-\d{2}$/.test(date) && itemCoversDate(item, date)) dates.push(date);
+        });
+      }
+      if (!dates.length && state.selectionAnchor && state.selectionAnchor.containerKey) {
+        var anchorDate = normalizeOccurrenceDateKey(state.selectionAnchor.containerKey);
+        if (/^\d{4}-\d{2}-\d{2}$/.test(anchorDate) && itemCoversDate(item, anchorDate)) dates.push(anchorDate);
+      }
+      if (!dates.length) dates.push(item.date);
+      dates.forEach(function (date) {
+        var key = id + '@' + date;
+        if (seen[key]) return;
+        seen[key] = true;
+        entries.push({ item: item, date: date, context: 'date' });
+      });
+    });
+    return entries;
+  }
+
+  function createGroupFromSelection() {
+    var ids = Array.from(state.selectedItemIds);
+    if (ids.length < 2) return null;
+    var monthlyMode = !!(state.selectionAnchor && state.selectionAnchor.context === 'monthly-inbox');
+    var group;
+
+    if (monthlyMode) {
+      var monthlyItems = ids.map(findMonthlyItemById).filter(Boolean);
+      if (monthlyItems.length !== ids.length || monthlyItems.length < 2) return null;
+      var monthKey = monthlyItems[0].monthKey;
+      if (monthlyItems.some(function (it) { return it.deletedAt || it.monthKey !== monthKey || !!it.groupId; })) return null;
+      withHistoryTransaction(function () {
+        group = { id: uid(), name: '새 그룹', scope: 'monthly', monthKey: monthKey, date: monthKey + '-01', order: nextGroupOrder('monthly', monthKey), collapsed: false, createdAt: Date.now() };
+        state.groups.push(group);
+        monthlyItems.slice().sort(function (a, b) { return a.order - b.order; }).forEach(function (it) {
+          setItemGroupIdAt(it, 'monthly-inbox', monthKey, group.id);
+        });
+      });
+      saveGroups();
+      saveMonthlyItems();
+      clearItemSelection();
+      renderApp();
+      return group;
+    }
+
+    var entries = selectedRegularOccurrenceEntries();
+    if (entries.length < 2) return null;
+    var firstDate = entries[0].date;
+    if (entries.some(function (entry) { return entry.date !== firstDate; })) return null;
+    if (entries.some(function (entry) { return !!getItemGroupIdAt(entry.item, 'weekly', firstDate); })) return null;
+
+    withHistoryTransaction(function () {
+      group = { id: uid(), name: '새 그룹', scope: 'date', date: firstDate, order: nextGroupOrder('date', firstDate), collapsed: false, createdAt: Date.now() };
+      state.groups.push(group);
+      entries.slice().sort(function (a, b) { return a.item.order - b.item.order; }).forEach(function (entry) {
+        setItemGroupIdAt(entry.item, 'weekly', firstDate, group.id);
+      });
+    });
+    saveGroups();
+    saveItems();
+    clearItemSelection();
+    renderApp();
+    return group;
+  }
+
+  function ungroupGroup(groupId) {
+    var group = findGroupById(groupId);
+    if (!group) return;
+    withHistoryTransaction(function () {
+      if (groupScope(group) === 'monthly') {
+        state.monthlyItems.forEach(function (it) {
+          if (it.groupId === groupId) setItemGroupIdAt(it, 'monthly-inbox', group.monthKey, null);
+        });
+      } else {
+        state.items.forEach(function (it) {
+          if (getItemGroupIdAt(it, 'weekly', group.date) === groupId) setItemGroupIdAt(it, 'weekly', group.date, null);
+        });
+      }
+      state.groups = state.groups.filter(function (g) { return g.id !== groupId; });
+    });
+    saveGroups();
+    saveItems();
+    saveMonthlyItems();
+    renderApp();
+  }
+
+  function getSelectedGroupIds() {
+    var ids = {};
+    if (state.selectionAnchor && state.selectionAnchor.context === 'monthly-inbox') {
+      Array.from(state.selectedItemIds).forEach(function (id) {
+        var item = findMonthlyItemById(id);
+        if (item && item.groupId) ids[item.groupId] = true;
+      });
+    } else {
+      selectedRegularOccurrenceEntries().forEach(function (entry) {
+        var gid = getItemGroupIdAt(entry.item, 'weekly', entry.date);
+        if (gid) ids[gid] = true;
+      });
+    }
+    return Object.keys(ids);
+  }
+
+  // 접기/펼치기는 되돌리기 대상이 아닌 순수 UI 상태이므로 history를 거치지 않고 바로
+  // 반영한다(그래도 새로고침 후 유지되도록 saveGroups는 호출한다).
+  function toggleGroupCollapsed(groupId) {
+    var group = findGroupById(groupId);
+    if (!group) return;
+    group.collapsed = !group.collapsed;
+    saveGroups();
+    renderApp();
+  }
+
+  function renameGroup(groupId, newName) {
+    var group = findGroupById(groupId);
+    var trimmed = (newName || '').trim();
+    if (!group || !trimmed || trimmed === group.name) return;
+    withHistoryTransaction(function () {
+      group.name = trimmed;
+    });
+    saveGroups();
+    renderApp();
+  }
+
+  // 라운드2 9: 그룹별 색상 -- 프리셋 스와치 중 하나를 고르는 방식(자유 색상 입력 UI는
+  // 새로 만들지 않는다). null이면 기존과 동일하게 기본 라벤더색(--lav)을 그대로 쓴다.
+  var GROUP_COLOR_PRESETS = ['#8b7ff0', '#f0708b', '#f0a94e', '#4ecf9a', '#4eb6f0', '#c17ff0'];
+
+  function setGroupColor(groupId, color) {
+    var group = findGroupById(groupId);
+    if (!group) return;
+    var next = color || null;
+    if (group.color === next) return;
+    withHistoryTransaction(function () {
+      group.color = next;
+    });
+    saveGroups();
+    renderApp();
+  }
+
+  // ---------------------------------------------------------------------
+  // 프로젝트(전역 소속) -- 그룹(state.groups)과 완전히 별개의 컬렉션(state.projects).
+  // 특정 날짜/월에 묶이지 않고 날짜를 넘어 유지된다. 색상은 위 GROUP_COLOR_PRESETS를
+  // 그대로 재사용해 새 팔레트/자유 색상 입력 UI를 따로 만들지 않는다.
+  // ---------------------------------------------------------------------
+  function findProjectById(projectId) {
+    for (var i = 0; i < state.projects.length; i++) {
+      if (state.projects[i].id === projectId) return state.projects[i];
+    }
+    return null;
+  }
+
+  function nextProjectOrder() {
+    if (!state.projects.length) return 0;
+    return Math.max.apply(null, state.projects.map(function (p) { return p.order; })) + 1;
+  }
+
+  function createProject(name) {
+    var project;
+    withHistoryTransaction(function () {
+      project = {
+        id: uid(),
+        name: (name || '').trim() || '새 프로젝트',
+        color: null,
+        order: nextProjectOrder(),
+        createdAt: Date.now()
+      };
+      state.projects.push(project);
+    });
+    saveProjects();
+    renderApp();
+    return project;
+  }
+
+  function renameProject(projectId, newName) {
+    var project = findProjectById(projectId);
+    if (!project) return;
+    var trimmed = (newName || '').trim();
+    if (!trimmed || trimmed === project.name) return;
+    withHistoryTransaction(function () { project.name = trimmed; });
+    saveProjects();
+    renderApp();
+  }
+
+  function setProjectColor(projectId, color) {
+    var project = findProjectById(projectId);
+    if (!project) return;
+    var next = color || null;
+    if (project.color === next) return;
+    withHistoryTransaction(function () { project.color = next; });
+    saveProjects();
+    renderApp();
+  }
+
+  // 요구사항: 프로젝트 삭제 시 소속 항목을 삭제하지 말고 projectId만 해제한다. 프로젝트
+  // 자체는 소프트 삭제(휴지통) 개념을 두지 않는다 -- 되돌리기는 기존 방침대로 Undo만
+  // 지원한다(deleteMonthlyItem류의 소프트 삭제와 달리, 프로젝트는 이름 있는 메타데이터라
+  // "휴지통에서 복원"이 아니라 "Undo로 되돌리기"가 곧 취소 경로다).
+  function deleteProject(projectId) {
+    var project = findProjectById(projectId);
+    if (!project) return;
+    withHistoryTransaction(function () {
+      state.projects = state.projects.filter(function (p) { return p.id !== projectId; });
+      state.items.forEach(function (it) {
+        if (it.projectId === projectId) { it.projectId = null; it.updatedAt = Date.now(); }
+      });
+      state.monthlyItems.forEach(function (it) {
+        if (it.projectId === projectId) { it.projectId = null; it.updatedAt = Date.now(); }
+      });
+    });
+    saveItems();
+    saveMonthlyItems();
+    saveProjects();
+    renderApp();
+  }
+
+  // 상세 패널의 프로젝트 지정/해제 -- commitTitleEdit과 같은 동기화 패턴을 그대로
+  // 재사용해 연결 인스턴스/Monthly 마스터-배치본에 즉시 전파한다.
+  function setEntityProject(entity, projectId) {
+    if (!entity) return;
+    var next = projectId || null;
+    if (entity.projectId === next) return;
+    withHistoryTransaction(function () {
+      entity.projectId = next;
+      entity.updatedAt = Date.now();
+      if (entity.monthKey !== undefined) syncSharedMonthlyFields(entity.id);
+      else if (entity.sourceMonthlyItemId) syncSharedMonthlyFields(entity.sourceMonthlyItemId, entity);
+      if (entity.instanceGroupId) syncSharedInstanceGroupFields(entity.instanceGroupId, entity);
+    });
+    saveItems();
+    if (entity.monthKey !== undefined || entity.sourceMonthlyItemId || entity.instanceGroupId) saveMonthlyItems();
+    renderApp();
+  }
+
+  // 카드/행에 프로젝트 표시를 최소한으로 적용한다(요구사항 -- 작은 색 점 또는 얇은 왼쪽
+  // 테두리). 그룹 멤버 행(.group-member-row)의 왼쪽 테두리 기법을 그대로 재사용하되,
+  // 프로젝트 전용 변수(--project-accent)를 따로 둬 그룹 강조와 섞이지 않게 한다. 이름은
+  // 본문에 항상 쓰지 않고 title 속성(네이티브 tooltip)으로만 확인할 수 있게 한다.
+  function applyProjectAccent(rowEl, entity) {
+    if (!rowEl) return;
+    var project = entity && entity.projectId ? findProjectById(entity.projectId) : null;
+    if (project) {
+      rowEl.dataset.hasProject = 'true';
+      rowEl.style.setProperty('--project-accent', project.color || 'var(--lav)');
+      rowEl.title = project.name;
+    } else {
+      delete rowEl.dataset.hasProject;
+      rowEl.style.removeProperty('--project-accent');
+      rowEl.removeAttribute('title');
+    }
+  }
+
+  // 최종 감사(2026-07-27) 7: 드래그 커밋(reorderItemsWithinDate) 직후, 같은
+  // withHistoryTransaction 안에서 호출한다(그래야 편입/이탈이 드래그 자체와 한 Undo
+  // 단계로 묶인다). 각 이동 항목의 "커밋 후 최종 이웃"을 보고: 이미 그룹이 있는데 더 이상
+  // 그 그룹의 이웃이 아니면 이탈시키고, 그룹이 없는데 펼쳐진 그룹의 이웃이 되면 편입시킨다
+  // (divider/접힌 그룹/중첩 그룹은 제외 -- 요구사항 3/4/7).
+  function syncGroupMembershipAfterReorder(itemIds, date) {
+    if (!date) return false;
+    var changed = false;
+    var siblings = getItemsForDate(date).slice().sort(function (a, b) { return a.order - b.order; });
+    var movingSet = {};
+    itemIds.forEach(function (id) { movingSet[id] = true; });
+    itemIds.forEach(function (id) {
+      var idx = siblings.findIndex(function (it) { return it.id === id; });
+      if (idx === -1) return;
+      var item = siblings[idx];
+      var currentGroupId = getItemGroupIdAt(item, 'weekly', date);
+      var rawPrev = idx > 0 ? siblings[idx - 1] : null;
+      var rawNext = idx < siblings.length - 1 ? siblings[idx + 1] : null;
+      var prevGroupId = rawPrev ? getItemGroupIdAt(rawPrev, 'weekly', date) : null;
+      var nextGroupId = rawNext ? getItemGroupIdAt(rawNext, 'weekly', date) : null;
+
+      if (currentGroupId) {
+        var stillAdjacent = prevGroupId === currentGroupId || nextGroupId === currentGroupId;
+        if (!stillAdjacent) {
+          setItemGroupIdAt(item, 'weekly', date, null);
+          changed = true;
+        }
+        return;
+      }
+      var prev = rawPrev && !movingSet[rawPrev.id] ? rawPrev : null;
+      var next = rawNext && !movingSet[rawNext.id] ? rawNext : null;
+      var candidateGroupId = (next && getItemGroupIdAt(next, 'weekly', date)) || (prev && getItemGroupIdAt(prev, 'weekly', date)) || null;
+      if (!candidateGroupId) return;
+      var group = findGroupById(candidateGroupId);
+      if (group && groupScope(group) === 'date' && !group.collapsed && group.date === date) {
+        setItemGroupIdAt(item, 'weekly', date, candidateGroupId);
+        changed = true;
+      }
+    });
+    return changed;
+  }
+
+  // 그룹과 하위 항목을 함께 휴지통으로 보낸다("하위 항목까지 삭제"는 그룹 헤더의 기본
+  // Delete 동작이 아니라 이 별도 메뉴 명령에서만 실행된다 -- 요구사항).
+  function deleteGroupAndMembers(groupId) {
+    var group = findGroupById(groupId);
+    if (!group) return;
+    if (!window.confirm('"' + group.name + '" 그룹과 하위 항목을 모두 휴지통으로 이동할까요?')) return;
+    withHistoryTransaction(function () {
+      if (groupScope(group) === 'monthly') {
+        state.monthlyItems.forEach(function (it) {
+          if (it.groupId === groupId && !it.deletedAt) {
+            it.deletedAt = new Date().toISOString();
+            it.updatedAt = Date.now();
+          }
+        });
+      } else {
+        getGroupMembers(groupId).forEach(function (it) {
+          if (!it.deletedAt) {
+            it.deletedAt = new Date().toISOString();
+            it.updatedAt = Date.now();
+          }
+        });
+      }
+      state.groups = state.groups.filter(function (g) { return g.id !== groupId; });
+    });
+    saveItems();
+    saveMonthlyItems();
+    saveGroups();
+    renderApp();
+  }
+
+  // ---------------------------------------------------------------------
+  // 그룹 헤더 UI -- Daily/Weekly/Monthly Log가 공유하는 단일 빌더. buildRowFn(item)만
+  // 화면마다 다르게 넘기면(createDailyItemRow/createWeeklyItemRow/buildMonthlyLogItemEl)
+  // 나머지 그룹 렌더 로직(순서·접힘·중첩 없음)은 한 곳에만 구현된다.
+  // ---------------------------------------------------------------------
+  // 최종 감사(2026-07-27) 8: context/sourceDate는 헤더의 드래그 핸들이 onDragHandlePointerDown을
+  // 호출할 때 필요하다(어느 화면/날짜에서 집어들었는지). 헤더 자신에 data-item-id로 첫
+  // 구성원의 실제 id를 그대로 심어 두는데(멤버 행과 값은 같지만 클래스가 달라 기존
+  // querySelector들은 전부 class로 범위를 좁혀 있어 서로 헷갈리지 않는다 -- 실제 확인),
+  // 이렇게 해야 onDragHandlePointerDown의 e.currentTarget.closest('[data-item-id]')가
+  // 이 헤더 자신을 앵커 행으로 찾아 기존 다중 선택 드래그 파이프라인을 그대로 재사용할
+  // 수 있다(권장 방향).
+  // 그룹 헤더를 클릭하면 그 그룹의 살아있는 하위 항목 전체를 하나의 선택으로 취급한다.
+  // Ctrl/Cmd를 누른 클릭은 기존 선택에 그룹 전체를 추가하거나, 이미 전부 선택돼 있으면
+  // 그룹 전체만 선택 해제한다. 접힌 그룹도 같은 방식으로 선택할 수 있다.
+  function selectGroupMembersFromHeader(e, group, memberItems, context, sourceDate) {
+    if (!group || !memberItems || !memberItems.length) return;
+    var memberIds = memberItems.map(function (it) { return it.id; });
+    var occurrenceKey = context === 'monthly-log' ? monthlyLogContainerKey(sourceDate) : sourceDate;
+    var addMode = !!(e.ctrlKey || e.metaKey);
+    var allSelected = memberItems.every(function (it) {
+      if (!state.selectedItemIds.has(it.id)) return false;
+      var occSet = state.selectedOccurrenceById.get(it.id);
+      return !!occSet && occSet.has(occurrenceKey);
+    });
+
+    if (!addMode) {
+      state.selectedItemIds = new Set(memberIds);
+      state.selectedOccurrenceById.clear();
+    } else if (allSelected) {
+      memberItems.forEach(function (it) {
+        var set = state.selectedOccurrenceById.get(it.id);
+        if (set) set.delete(occurrenceKey);
+        if (!set || !set.size) {
+          state.selectedItemIds.delete(it.id);
+          state.selectedOccurrenceById.delete(it.id);
+        }
+      });
+    } else {
+      memberIds.forEach(function (id) { state.selectedItemIds.add(id); });
+    }
+
+    if (!(addMode && allSelected)) {
+      memberIds.forEach(function (id) { if (occurrenceKey) addSelectedOccurrence(id, occurrenceKey); });
+      state.selectionAnchor = { itemId: memberIds[0], context: context || 'daily', containerKey: occurrenceKey || sourceDate || group.date || group.monthKey };
+      state.lastSelectedItemId = memberIds[memberIds.length - 1];
+    } else if (!state.selectedItemIds.size) {
+      state.selectionAnchor = null;
+      state.lastSelectedItemId = null;
+    }
+
+    if (context === 'weekly' && sourceDate) markLastActiveWeeklyDate(sourceDate);
+    else if (context !== 'monthly-inbox' && sourceDate) markLastActiveListDate(sourceDate);
+    renderSelectionState();
+  }
+
+  function buildGroupHeaderEl(group, memberItems, context, sourceDate) {
+    var header = document.createElement('div');
+    header.className = 'group-header' + (group.collapsed ? ' is-collapsed' : '');
+    header.dataset.groupId = group.id;
+    if (memberItems.length) header.dataset.itemId = memberItems[0].id;
+    header.setAttribute('role', 'group');
+    var countableMemberCount = memberItems.filter(function (item) { return item.type !== 'divider'; }).length;
+    header.setAttribute('aria-label', group.name + ' (' + countableMemberCount + '개)');
+    // 라운드2 9: 그룹 색상 -- CSS 변수로만 넘기고 실제 표현(좌측 포인트/폴더 아이콘)은
+    // 스타일시트가 담당한다. 지정 안 했으면 변수 자체를 생략해 기존 기본색(--lav)을 쓴다.
+    if (group.color) header.style.setProperty('--group-accent', group.color);
+
+    // 헤더의 빈 영역/이름을 한 번 클릭하면 그룹 전체가 선택된다. 화살표·색상·메뉴·
+    // 드래그 손잡이 같은 실제 컨트롤은 각자 동작하고 그룹 선택을 바꾸지 않는다.
+    header.addEventListener('click', function (e) {
+      if (e.target.closest('button, input, .group-drag')) return;
+      e.stopPropagation();
+      selectGroupMembersFromHeader(e, group, memberItems, context, sourceDate);
+    });
+
+    if (context && sourceDate && memberItems.length) {
+      var groupDragHandle = buildDotHandle('group-drag');
+      groupDragHandle.setAttribute('aria-label', '그룹 전체 드래그하여 이동: ' + group.name);
+      groupDragHandle.addEventListener('pointerdown', function (e) {
+        if (e.pointerType === 'mouse' && e.button !== 0) return;
+        var memberIds = memberItems.map(function (it) { return it.id; });
+        if (!memberIds.length) return;
+        // 그룹 구성원 전체를 먼저 다중 선택해 두면, onDragHandlePointerDown 내부의
+        // isPartOfExistingMultiSelection 판정이 자연히 "이미 2개 이상 선택됨"으로
+        // 걸려 getSelectedItemsForAction이 이 목록 전체를 반환한다 -- 기존 다중 선택
+        // 드래그 파이프라인을 그대로 재사용(권장 사항).
+        var occContainerKey = context === 'monthly-log' ? monthlyLogContainerKey(sourceDate) : sourceDate;
+        state.selectedItemIds = new Set(memberIds);
+        state.selectedOccurrenceById.clear();
+        memberIds.forEach(function (id) { addSelectedOccurrence(id, occContainerKey); });
+        state.selectionAnchor = { itemId: memberIds[0], context: context, containerKey: occContainerKey };
+        renderSelectionState();
+        onDragHandlePointerDown(e, memberIds[0], context, sourceDate);
+      });
+      header.appendChild(groupDragHandle);
+    }
+
+    var chevron = document.createElement('button');
+    chevron.type = 'button';
+    chevron.className = 'group-chevron';
+    chevron.setAttribute('aria-label', (group.collapsed ? '펼치기' : '접기') + ': ' + group.name);
+    chevron.setAttribute('aria-expanded', String(!group.collapsed));
+    chevron.addEventListener('click', function (e) {
+      e.stopPropagation();
+      toggleGroupCollapsed(group.id);
+    });
+    header.appendChild(chevron);
+
+    var folderIcon = document.createElement('button');
+    folderIcon.type = 'button';
+    folderIcon.className = 'group-folder-icon';
+    folderIcon.setAttribute('aria-label', '그룹 색상 변경: ' + group.name);
+    folderIcon.setAttribute('aria-haspopup', 'menu');
+    folderIcon.setAttribute('aria-expanded', 'false');
+    folderIcon.addEventListener('click', function (e) {
+      e.stopPropagation();
+      openGroupMenu(group.id, folderIcon);
+    });
+    header.appendChild(folderIcon);
+
+    var nameEl = document.createElement('span');
+    nameEl.className = 'group-name';
+    nameEl.textContent = group.name;
+    nameEl.title = group.name;
+    nameEl.addEventListener('dblclick', function (e) {
+      e.stopPropagation();
+      startGroupRename(group.id, nameEl);
+    });
+    header.appendChild(nameEl);
+
+    var countEl = document.createElement('span');
+    countEl.className = 'group-count';
+    countEl.textContent = String(countableMemberCount);
+    header.appendChild(countEl);
+
+    var menuBtn = document.createElement('button');
+    menuBtn.type = 'button';
+    menuBtn.className = 'group-menu-btn';
+    menuBtn.setAttribute('aria-haspopup', 'menu');
+    menuBtn.setAttribute('aria-expanded', 'false');
+    menuBtn.setAttribute('aria-label', '그룹 메뉴: ' + group.name);
+    menuBtn.textContent = '···';
+    menuBtn.addEventListener('click', function (e) {
+      e.stopPropagation();
+      openGroupMenu(group.id, menuBtn);
+    });
+    header.appendChild(menuBtn);
+
+    return header;
+  }
+
+  var activeGroupRename = null; // { groupId, inputEl }
+
+  function startGroupRename(groupId, nameEl) {
+    var group = findGroupById(groupId);
+    if (!group || !nameEl) return;
+    if (activeGroupRename) commitGroupRename();
+    var input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'group-name-input';
+    input.value = group.name;
+    input.setAttribute('aria-label', '그룹 이름 편집');
+    nameEl.replaceWith(input);
+    input.focus();
+    input.select();
+    activeGroupRename = { groupId: groupId, inputEl: input };
+    input.addEventListener('keydown', onGroupRenameKeydown);
+    input.addEventListener('blur', onGroupRenameBlur);
+  }
+
+  function commitGroupRename() {
+    if (!activeGroupRename) return;
+    var edit = activeGroupRename;
+    activeGroupRename = null;
+    renameGroup(edit.groupId, edit.inputEl.value);
+    renderApp();
+  }
+
+  function cancelGroupRename() {
+    if (!activeGroupRename) return;
+    activeGroupRename = null;
+    renderApp();
+  }
+
+  function onGroupRenameKeydown(e) {
+    if (e.key === 'Enter' && !e.isComposing) {
+      e.preventDefault();
+      e.stopPropagation();
+      commitGroupRename();
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      e.stopPropagation();
+      cancelGroupRename();
+    }
+  }
+
+  function onGroupRenameBlur() {
+    if (!activeGroupRename) return;
+    setTimeout(commitGroupRename, 0);
+  }
+
+  // 그룹 "..." 메뉴 -- 기존 type-menu와 같은 팝업 관례(positionPopup, 지연 등록된
+  // outside-pointerdown/Escape, 포커스 복원)를 그대로 따르는 별도 인스턴스.
+  var activeGroupMenu = null; // { el, groupId, anchorEl }
+
+  function closeGroupMenu(restoreFocus) {
+    if (!activeGroupMenu) return;
+    var groupId = activeGroupMenu.groupId;
+    var anchorEl = activeGroupMenu.anchorEl;
+    activeGroupMenu.el.remove();
+    document.removeEventListener('pointerdown', onOutsideGroupMenuPointerDown, true);
+    document.removeEventListener('keydown', onGroupMenuKeydown, true);
+    activeGroupMenu = null;
+    var anchors = document.querySelectorAll('.group-header[data-group-id="' + groupId + '"] .group-menu-btn, .group-header[data-group-id="' + groupId + '"] .group-folder-icon');
+    anchors.forEach(function (a) { a.setAttribute('aria-expanded', 'false'); });
+    if (restoreFocus !== false && anchorEl && document.contains(anchorEl)) anchorEl.focus();
+  }
+
+  function onOutsideGroupMenuPointerDown(e) {
+    if (!activeGroupMenu) return;
+    if (activeGroupMenu.el.contains(e.target)) return;
+    closeGroupMenu(false);
+  }
+
+  function onGroupMenuKeydown(e) {
+    if (!activeGroupMenu) return;
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      e.stopPropagation();
+      closeGroupMenu();
+    }
+  }
+
+  function openGroupMenu(groupId, anchorEl) {
+    if (activeGroupMenu && activeGroupMenu.groupId === groupId) { closeGroupMenu(); return; }
+    if (activeGroupMenu) closeGroupMenu(false);
+
+    var menu = document.createElement('div');
+    menu.className = 'type-menu';
+    menu.setAttribute('role', 'menu');
+
+    var ungroupItem = document.createElement('div');
+    ungroupItem.className = 'type-menu-item';
+    ungroupItem.setAttribute('role', 'menuitem');
+    ungroupItem.tabIndex = 0;
+    ungroupItem.textContent = '그룹 해제';
+    ungroupItem.addEventListener('click', function () {
+      ungroupGroup(groupId);
+      closeGroupMenu(false);
+    });
+    menu.appendChild(ungroupItem);
+
+    var colorLabel = document.createElement('div');
+    colorLabel.className = 'type-menu-label';
+    colorLabel.textContent = '색상';
+    menu.appendChild(colorLabel);
+
+    var swatchRow = document.createElement('div');
+    swatchRow.className = 'group-color-swatch-row';
+    swatchRow.setAttribute('role', 'group');
+    swatchRow.setAttribute('aria-label', '그룹 색상 선택');
+    var group0 = findGroupById(groupId);
+    GROUP_COLOR_PRESETS.forEach(function (color) {
+  var sw = document.createElement('button');
+
+  sw.type = 'button';
+  sw.className = 'group-color-swatch';
+  sw.style.setProperty('--swatch-color', color);
+  sw.setAttribute('aria-label', '색상 적용');
+  sw.setAttribute(
+    'aria-pressed',
+    String(!!group0 && group0.color === color)
+  );
+
+  sw.addEventListener('click', function (e) {
+    e.stopPropagation();
+    setGroupColor(groupId, color);
+    closeGroupMenu(false);
+  });
+
+  swatchRow.appendChild(sw);
+});
+
+// 가장 오른쪽 사용자 지정 색상 선택기
+var customColorInput = document.createElement('input');
+
+customColorInput.type = 'color';
+customColorInput.className = 'group-color-custom-input';
+customColorInput.setAttribute(
+  'aria-label',
+  '사용자 지정 그룹 색상'
+);
+
+// 현재 색상이 프리셋에 없는 사용자 지정 색이면 그 색을 표시한다.
+// 아직 사용자 지정 색이 없으면 기존 회색으로 표시한다.
+customColorInput.value =
+  group0 &&
+  /^#[0-9a-fA-F]{6}$/.test(group0.color)
+    ? group0.color
+    : '#8a8f99';
+
+customColorInput.addEventListener('click', function (e) {
+  e.stopPropagation();
+});
+
+customColorInput.addEventListener('change', function (e) {
+  e.stopPropagation();
+
+  setGroupColor(
+    groupId,
+    customColorInput.value
+  );
+
+  closeGroupMenu(false);
+});
+
+var customColorWrap = document.createElement('label');
+
+customColorWrap.className =
+  'group-color-custom-wrap';
+customColorWrap.style.background =
+  'conic-gradient(#ff3b30,#ffcc00,#34c759,#00c7be,#007aff,#5856d6,#af52de,#ff2d55,#ff3b30)';
+customColorWrap.setAttribute(
+  'aria-label',
+  '사용자 지정 그룹 색상'
+);
+
+customColorWrap.appendChild(customColorInput);
+swatchRow.appendChild(customColorWrap);
+menu.appendChild(swatchRow);
+
+    var deleteItem = document.createElement('div');
+    deleteItem.className = 'type-menu-item';
+    deleteItem.setAttribute('role', 'menuitem');
+    deleteItem.tabIndex = -1;
+    deleteItem.textContent = '하위 항목까지 삭제';
+    deleteItem.addEventListener('click', function () {
+      deleteGroupAndMembers(groupId);
+      closeGroupMenu(false);
+    });
+    menu.appendChild(deleteItem);
+
+    document.body.appendChild(menu);
+    positionPopup(menu, anchorEl);
+    anchorEl.setAttribute('aria-expanded', 'true');
+    activeGroupMenu = { el: menu, groupId: groupId, anchorEl: anchorEl };
+    ungroupItem.focus();
+
+    setTimeout(function () {
+      document.addEventListener('pointerdown', onOutsideGroupMenuPointerDown, true);
+      document.addEventListener('keydown', onGroupMenuKeydown, true);
+    }, 0);
+  }
+
+  // ---------------------------------------------------------------------
+  // 상세 패널의 프로젝트 선택기 -- openGroupMenu와 같은 팝업 패턴(.type-menu,
+  // positionPopup, 바깥 클릭/Escape로 닫기)과 색상 스와치(GROUP_COLOR_PRESETS,
+  // .group-color-swatch-row류)를 그대로 재사용한다. 별도의 프로젝트 페이지/보드는
+  // 만들지 않고 이 팝업 하나에서 지정/무소속/생성/이름변경/색상변경/삭제를 전부 처리한다.
+  // ---------------------------------------------------------------------
+  var activeProjectMenu = null; // { el, entity, anchorEl, listEl, unassignedEl }
+  var pendingProjectNameClickTimer = null;
+  var activeProjectRename = null; // { projectId, inputEl }
+  var activeProjectColorPicker = null; // { el, projectId }
+
+  function closeProjectColorPicker() {
+    if (!activeProjectColorPicker) return;
+    activeProjectColorPicker.el.remove();
+    activeProjectColorPicker = null;
+  }
+
+  function closeProjectMenu(restoreFocus) {
+    if (!activeProjectMenu) return;
+    if (pendingProjectNameClickTimer) { clearTimeout(pendingProjectNameClickTimer); pendingProjectNameClickTimer = null; }
+    if (activeProjectRename) cancelProjectRename();
+    closeProjectColorPicker();
+    var anchorEl = activeProjectMenu.anchorEl;
+    activeProjectMenu.el.remove();
+    document.removeEventListener('pointerdown', onOutsideProjectMenuPointerDown, true);
+    document.removeEventListener('keydown', onProjectMenuKeydown, true);
+    activeProjectMenu = null;
+    if (anchorEl) anchorEl.setAttribute('aria-expanded', 'false');
+    if (restoreFocus !== false && anchorEl && document.contains(anchorEl)) anchorEl.focus();
+  }
+
+  function onOutsideProjectMenuPointerDown(e) {
+    if (!activeProjectMenu) return;
+    if (activeProjectMenu.el.contains(e.target)) return;
+    if (activeProjectColorPicker && activeProjectColorPicker.el.contains(e.target)) return;
+    closeProjectMenu(false);
+  }
+
+  function onProjectMenuKeydown(e) {
+    if (!activeProjectMenu) return;
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      e.stopPropagation();
+      closeProjectMenu();
+    }
+  }
+
+  function openProjectColorPicker(projectId, anchorEl) {
+    if (activeProjectColorPicker && activeProjectColorPicker.projectId === projectId) { closeProjectColorPicker(); return; }
+    closeProjectColorPicker();
+    var project = findProjectById(projectId);
+    if (!project) return;
+
+    var popup = document.createElement('div');
+    popup.className = 'type-menu';
+    popup.setAttribute('role', 'menu');
+
+    var swatchRow = document.createElement('div');
+    swatchRow.className = 'group-color-swatch-row';
+    swatchRow.setAttribute('role', 'group');
+    swatchRow.setAttribute('aria-label', '프로젝트 색상 선택');
+    GROUP_COLOR_PRESETS.forEach(function (color) {
+      var sw = document.createElement('button');
+      sw.type = 'button';
+      sw.className = 'group-color-swatch';
+      sw.style.setProperty('--swatch-color', color);
+      sw.setAttribute('aria-label', '색상 적용');
+      sw.setAttribute('aria-pressed', String(project.color === color));
+      sw.addEventListener('click', function (e) {
+        e.stopPropagation();
+        setProjectColor(projectId, color);
+        renderProjectMenuRows();
+        closeProjectColorPicker();
+      });
+      swatchRow.appendChild(sw);
+    });
+
+    var customColorInput = document.createElement('input');
+    customColorInput.type = 'color';
+    customColorInput.className = 'group-color-custom-input';
+    customColorInput.setAttribute('aria-label', '사용자 지정 프로젝트 색상');
+    customColorInput.value = /^#[0-9a-fA-F]{6}$/.test(project.color) ? project.color : '#8a8f99';
+    customColorInput.addEventListener('click', function (e) { e.stopPropagation(); });
+    customColorInput.addEventListener('change', function (e) {
+      e.stopPropagation();
+      setProjectColor(projectId, customColorInput.value);
+      renderProjectMenuRows();
+      closeProjectColorPicker();
+    });
+    var customColorWrap = document.createElement('label');
+    customColorWrap.className = 'group-color-custom-wrap';
+    customColorWrap.style.background = 'conic-gradient(#ff3b30,#ffcc00,#34c759,#00c7be,#007aff,#5856d6,#af52de,#ff2d55,#ff3b30)';
+    customColorWrap.setAttribute('aria-label', '사용자 지정 프로젝트 색상');
+    customColorWrap.appendChild(customColorInput);
+    swatchRow.appendChild(customColorWrap);
+    popup.appendChild(swatchRow);
+
+    document.body.appendChild(popup);
+    positionPopup(popup, anchorEl);
+    activeProjectColorPicker = { el: popup, projectId: projectId };
+  }
+
+  function assignProjectAndClose(entity, projectId) {
+    setEntityProject(entity, projectId);
+    // 재현 확인된 실제 버그: restoreFocus=false로 닫으면 포커스가 갈 곳을 잃고 상세
+    // drawer의 포커스 트랩이 제목(title-edit-input이 아니라 role=button 제목 span)으로
+    // 되돌리는데, 그 과정에서 제목 편집 모드가 의도치 않게 열려버린다(Escape 한 번으로
+    // 상세 패널이 안 닫히는 원인이었다). anchorEl(프로젝트 버튼)로 명시적으로 포커스를
+    // 돌려주면 이 트랩이 발동하지 않는다.
+    closeProjectMenu();
+  }
+
+  function onProjectRenameKeydown(e) {
+    if (e.key === 'Enter') { e.preventDefault(); commitProjectRename(); }
+    else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); cancelProjectRename(); }
+  }
+
+  function onProjectRenameBlur() {
+    commitProjectRename();
+  }
+
+  function startProjectRename(projectId, nameEl) {
+    var project = findProjectById(projectId);
+    if (!project || !nameEl) return;
+    if (activeProjectRename) commitProjectRename();
+    var input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'group-name-input';
+    input.value = project.name;
+    input.setAttribute('aria-label', '프로젝트 이름 편집');
+    nameEl.replaceWith(input);
+    input.focus();
+    input.select();
+    activeProjectRename = { projectId: projectId, inputEl: input };
+    input.addEventListener('click', function (e) { e.stopPropagation(); });
+    input.addEventListener('keydown', onProjectRenameKeydown);
+    input.addEventListener('blur', onProjectRenameBlur);
+  }
+
+  function commitProjectRename() {
+    if (!activeProjectRename) return;
+    var edit = activeProjectRename;
+    activeProjectRename = null;
+    renameProject(edit.projectId, edit.inputEl.value);
+    renderProjectMenuRows();
+  }
+
+  function cancelProjectRename() {
+    if (!activeProjectRename) return;
+    activeProjectRename = null;
+    renderProjectMenuRows();
+  }
+
+  function buildProjectMenuRow(project, entity) {
+    var row = document.createElement('div');
+    row.className = 'type-menu-item project-menu-row';
+    row.setAttribute('role', 'menuitemradio');
+    row.setAttribute('aria-checked', String(entity.projectId === project.id));
+
+    var swatch = document.createElement('button');
+    swatch.type = 'button';
+    swatch.className = 'group-color-swatch project-menu-swatch';
+    swatch.style.setProperty('--swatch-color', project.color || 'var(--lav)');
+    swatch.setAttribute('aria-label', '색상 변경: ' + project.name);
+    swatch.addEventListener('click', function (e) {
+      e.stopPropagation();
+      openProjectColorPicker(project.id, swatch);
+    });
+    row.appendChild(swatch);
+
+    var nameEl = document.createElement('span');
+    nameEl.className = 'project-menu-name';
+    nameEl.textContent = project.name;
+    nameEl.title = project.name;
+    // group-header의 이름(단일 클릭=선택, 더블클릭=이름변경)과 같은 문제: 단일 클릭을
+    // 즉시 실행하면 더블클릭의 첫 클릭에서 이미 메뉴가 닫혀버려 이름변경이 열리지 않는다.
+    // pendingDailyTitleClickTimer와 같은 e.detail 기반 지연 판정을 그대로 재사용한다.
+    nameEl.addEventListener('click', function (e) {
+      e.stopPropagation();
+      if (e.detail > 1) {
+        if (pendingProjectNameClickTimer) { clearTimeout(pendingProjectNameClickTimer); pendingProjectNameClickTimer = null; }
+        return;
+      }
+      if (pendingProjectNameClickTimer) clearTimeout(pendingProjectNameClickTimer);
+      pendingProjectNameClickTimer = setTimeout(function () {
+        pendingProjectNameClickTimer = null;
+        assignProjectAndClose(entity, project.id);
+      }, 230);
+    });
+    nameEl.addEventListener('dblclick', function (e) {
+      e.stopPropagation();
+      if (pendingProjectNameClickTimer) { clearTimeout(pendingProjectNameClickTimer); pendingProjectNameClickTimer = null; }
+      startProjectRename(project.id, nameEl);
+    });
+    row.appendChild(nameEl);
+
+    var deleteBtn = document.createElement('button');
+    deleteBtn.type = 'button';
+    deleteBtn.className = 'monthly-item-delete project-menu-delete';
+    deleteBtn.setAttribute('aria-label', '프로젝트 삭제: ' + project.name);
+    deleteBtn.textContent = '×';
+    deleteBtn.addEventListener('click', function (e) {
+      e.stopPropagation();
+      deleteProject(project.id);
+      renderProjectMenuRows();
+    });
+    row.appendChild(deleteBtn);
+
+    return row;
+  }
+
+  function renderProjectMenuRows() {
+    if (!activeProjectMenu) return;
+    var entity = activeProjectMenu.entity;
+    var listEl = activeProjectMenu.listEl;
+    listEl.replaceChildren.apply(listEl, state.projects.slice()
+      .sort(function (a, b) { return a.order - b.order; })
+      .map(function (project) { return buildProjectMenuRow(project, entity); }));
+    if (activeProjectMenu.unassignedEl) {
+      activeProjectMenu.unassignedEl.setAttribute('aria-checked', String(!entity.projectId));
+    }
+  }
+
+  function openProjectMenu(entity, anchorEl) {
+    if (activeProjectMenu && activeProjectMenu.entity === entity) { closeProjectMenu(); return; }
+    if (activeProjectMenu) closeProjectMenu(false);
+    if (activeTypeMenu) closeTypeMenu(false);
+    if (activeGroupMenu) closeGroupMenu(false);
+
+    var menu = document.createElement('div');
+    menu.className = 'type-menu project-menu';
+    menu.setAttribute('role', 'menu');
+
+    var unassignedItem = document.createElement('div');
+    unassignedItem.className = 'type-menu-item';
+    unassignedItem.setAttribute('role', 'menuitemradio');
+    unassignedItem.setAttribute('aria-checked', String(!entity.projectId));
+    unassignedItem.tabIndex = 0;
+    unassignedItem.textContent = '무소속';
+    unassignedItem.addEventListener('click', function () {
+      assignProjectAndClose(entity, null);
+    });
+    menu.appendChild(unassignedItem);
+
+    var label = document.createElement('div');
+    label.className = 'type-menu-label';
+    label.textContent = '프로젝트';
+    menu.appendChild(label);
+
+    var listEl = document.createElement('div');
+    listEl.className = 'project-menu-list';
+    menu.appendChild(listEl);
+
+    var createInput = document.createElement('input');
+    createInput.type = 'text';
+    createInput.className = 'monthly-quick-input project-menu-create-input';
+    createInput.placeholder = '새 프로젝트';
+    createInput.setAttribute('aria-label', '새 프로젝트 이름');
+    createInput.addEventListener('click', function (e) { e.stopPropagation(); });
+    createInput.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' && !e.isComposing) {
+        e.preventDefault();
+        e.stopPropagation();
+        var name = createInput.value.trim();
+        if (!name) return;
+        var project = createProject(name);
+        assignProjectAndClose(entity, project.id);
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        createInput.value = '';
+      }
+    });
+    menu.appendChild(createInput);
+
+    document.body.appendChild(menu);
+    positionPopup(menu, anchorEl);
+    anchorEl.setAttribute('aria-expanded', 'true');
+    activeProjectMenu = { el: menu, entity: entity, anchorEl: anchorEl, listEl: listEl, unassignedEl: unassignedItem };
+    renderProjectMenuRows();
+    unassignedItem.focus();
+
+    setTimeout(function () {
+      document.addEventListener('pointerdown', onOutsideProjectMenuPointerDown, true);
+      document.addEventListener('keydown', onProjectMenuKeydown, true);
+    }, 0);
+  }
+
+  // 날짜별로 정렬된 항목 배열을 받아, 그룹에 속한 연속 구간을 [헤더, ...멤버] 행으로,
+  // 나머지는 그대로 [항목] 행으로 바꿔 하나의 평평한 DOM 노드 배열을 만든다. 컨테이너
+  // 구조(#daily-list/.week-card ul/.monthly-log-row-items)는 전부 "자식 노드 나열"만
+  // 받으므로, 실제 그룹 들여쓰기는 .group-header 다음에 오는 멤버 행에 CSS로만 표현한다.
+  function arrangeRowsWithGroups(items, buildRowFn, context, sourceDate) {
+    var rows = [];
+    var renderedGroupIds = {};
+    items.forEach(function (it) {
+      var groupId = getItemGroupIdAt(it, context, sourceDate);
+      if (groupId) {
+        if (renderedGroupIds[groupId]) return;
+        var group = findGroupById(groupId);
+        if (group) {
+          renderedGroupIds[groupId] = true;
+          var memberItems = items.filter(function (x) { return getItemGroupIdAt(x, context, sourceDate) === group.id; });
+          rows.push(buildGroupHeaderEl(group, memberItems, context, sourceDate));
+          if (!group.collapsed) {
+            memberItems.forEach(function (m) {
+              var row = buildRowFn(m);
+              if (row) {
+                row.classList.add('group-member-row');
+                row.dataset.groupId = group.id;
+                if (group.color) row.style.setProperty('--group-accent', group.color);
+              }
+              if (row) rows.push(row);
+            });
+          }
+          return;
+        }
+      }
+      var plainRow = buildRowFn(it);
+      if (plainRow) rows.push(plainRow);
+    });
+    return rows;
+  }
+
+  // ---------------------------------------------------------------------
+  // 2단계: Weekly "..." 메뉴의 "구분선 추가" -- Daily/Weekly 목록 정리용 항목형
+  // 구분선(item.type==='divider')을 기존 state.items 배열에 그대로 추가한다. 별도
+  // 컬렉션·마이그레이션 없이 makeItem/withHistoryTransaction/saveItems를 그대로 재사용
+  // (주의: item.type==='divider'는 완전히 별개 개념인 설명 블록 에디터의
+  // descriptionBlocks[i].type==='divider'와 이름만 같을 뿐 서로 다른 필드다).
+  // ---------------------------------------------------------------------
+
+  // 대상 날짜 안에서 order를 계산한다 -- 기존 항목들의 order/id는 전혀 재생성하지
+  // 않고, 두 이웃 사이의 "빈 값"(정수가 아니어도 됨, order는 정렬 전용 키)만 새로 만든다.
+  function computeDividerOrder(date, afterItemId) {
+    var siblings = getItemsForDate(date).slice().sort(function (a, b) { return a.order - b.order; });
+    if (!siblings.length) return 0;
+    if (!afterItemId) return siblings[siblings.length - 1].order + 1; // 4-2: 선택 없음 -> 맨 뒤.
+    var idx = siblings.findIndex(function (it) { return it.id === afterItemId; });
+    if (idx === -1) return siblings[siblings.length - 1].order + 1;
+    var afterOrder = siblings[idx].order;
+    var nextSiblingOrder = (idx + 1 < siblings.length) ? siblings[idx + 1].order : null;
+    if (nextSiblingOrder === null) return afterOrder + 1; // 4-1: 선택 항목이 이미 맨 아래.
+    if (nextSiblingOrder - afterOrder > 0.0001) return (afterOrder + nextSiblingOrder) / 2;
+    return afterOrder + 0.5; // 인접한 정수 order 사이(빈틈 없음) -- 재정렬 없이 소수로 끼워 넣는다.
+  }
+
+  // 3: 대상 날짜 결정 -- selectionAnchor가 Weekly 문맥이면 그 열의 날짜, 아니면
+  // lastActiveWeeklyDate, 그래도 없으면 state.selectedDate. 서로 다른 날짜가 동시에
+  // 선택돼 있어도 이 우선순위 하나만 따르므로 여러 날짜에 동시 생성되지 않는다.
+  function resolveDividerTargetDate() {
+    var anchor = state.selectionAnchor;
+    if (anchor && anchor.context === 'weekly' && anchor.containerKey) return anchor.containerKey;
+    if (state.lastActiveWeeklyDate) return state.lastActiveWeeklyDate;
+    if (state.selectedDate) return state.selectedDate;
+    return null;
+  }
+
+  // 4: 삽입 위치 -- 대상 날짜에서 "화면에 보이는 순서" 기준으로 선택된 항목 중 가장
+  // 아래(order가 가장 큰) 것 바로 다음에 넣는다. 선택된 항목이 없으면 맨 뒤(afterItemId=null).
+  function resolveDividerInsertionTarget() {
+    var date = resolveDividerTargetDate();
+    if (!date) return null;
+    var visibleIds = getVisibleIdsForContainer(date); // 이미 order로 정렬된 화면 순서.
+    var selectedInDate = visibleIds.filter(function (id) { return state.selectedItemIds.has(id); });
+    var afterItemId = selectedInDate.length ? selectedInDate[selectedInDate.length - 1] : null;
+    return { date: date, afterItemId: afterItemId };
+  }
+
+  // 5: makeItem을 그대로 재사용 -- completed/completionByDate/startTime/endTime/allDay/
+  // migratedFrom/originalDate 등은 makeItem의 기본값을 그대로 두되(가짜 데이터를 새로
+  // 만들지 않음) 실제 기능(완료 토글·시간 표시·이월 등)에서는 12단계 가드들이 전부
+  // 무시하므로 어떤 값이 들어있든 동작에 영향이 없다.
+  function createDividerItem(date, afterItemId) {
+    var item;
+    withHistoryTransaction(function () {
+      item = makeItem({
+        type: 'divider',
+        text: '',
+        date: date,
+        endDate: date,
+        order: computeDividerOrder(date, afterItemId)
+      });
+      state.items.push(item);
+    });
+    saveItems();
+    renderApp();
+    return item;
+  }
+
+  // Weekly "..." 메뉴의 "구분선 추가" 실행 진입점. 대상 날짜를 정할 수 없으면(이론상
+  // Daily/Weekly 어디에도 날짜 컨텍스트가 전혀 없는 경우) 아무 것도 만들지 않는다.
+  function handleAddWeeklyDividerCommand() {
+    var target = resolveDividerInsertionTarget();
+    if (!target) return;
+    createDividerItem(target.date, target.afterItemId);
+  }
+
+  // Monthly Log "..." 메뉴의 "구분선 추가" -- Weekly와 같은 createDividerItem/공용 필터를
+  // 그대로 재사용하되, 대상 날짜 우선순위만 Monthly Log 문맥에 맞게 별도로 계산한다
+  // (resolveDividerTargetDate는 Weekly 전용 폴백 순서라 그대로 넓히면 Weekly 쪽 우선순위가
+  // 바뀌는 회귀 위험이 있어 손대지 않는다). 선택 항목 아래, 없으면 활성 날짜 행 마지막.
+  function resolveMonthlyLogDividerTargetDate() {
+    var anchor = state.selectionAnchor;
+    if (anchor && anchor.context === 'monthly-log' && anchor.containerKey) {
+      return anchor.containerKey.indexOf('monthly:') === 0 ? anchor.containerKey.slice(8) : anchor.containerKey;
+    }
+    if (state.lastActiveListDate) return state.lastActiveListDate;
+    if (state.selectedDate) return state.selectedDate;
+    return null;
+  }
+
+  function resolveMonthlyLogDividerInsertionTarget() {
+    var date = resolveMonthlyLogDividerTargetDate();
+    if (!date) return null;
+    var visibleIds = getVisibleIdsForContainer(monthlyLogContainerKey(date));
+    var selectedInDate = visibleIds.filter(function (id) { return state.selectedItemIds.has(id); });
+    var afterItemId = selectedInDate.length ? selectedInDate[selectedInDate.length - 1] : null;
+    return { date: date, afterItemId: afterItemId };
+  }
+
+  function handleAddMonthlyLogDividerCommand() {
+    var target = resolveMonthlyLogDividerInsertionTarget();
+    if (!target) return;
+    createDividerItem(target.date, target.afterItemId);
+  }
+
+  // 라운드2 8: Today "완료한 할 일 정리하기" -- schedule은 해당 날짜 occurrence 완료
+  // 여부(completionByDate 우선순위는 isOccurrenceCompleted가 이미 처리), task/memo는
+  // item.completed를 그대로 본다.
+  function isItemCompletedForCleanup(item, date) {
+    if (item.type === 'schedule') return isOccurrenceCompleted(item, date);
+    return !!item.completed;
+  }
+
+  // 완료된 항목을 "완료됨" 구분선 아래로 모은다. 반복 실행해도 이미 만든 구분선을
+  // item.isCompletedSeparator로 식별해 재사용하므로 중복 생성되지 않는다.
+  // 아래 내부 함수는 저장/렌더/history를 하지 않아 Daily 한 날짜와 Weekly 표시 범위 전체가
+  // 같은 정리 규칙을 한 번의 Undo 단계로 재사용할 수 있게 한다.
+  function cleanupCompletedItemsForDateInternal(date) {
+    if (!date) return false;
+    var dateItems = getItemsForDate(date).filter(function (it) { return !isRolloverItem(it); });
+    var normal = dateItems.filter(function (it) { return it.type !== 'divider'; });
+    var completed = normal.filter(function (it) { return isItemCompletedForCleanup(it, date); });
+    if (!completed.length) return false;
+    var incomplete = normal.filter(function (it) { return !isItemCompletedForCleanup(it, date); });
+    var divider = dateItems.find(function (it) { return it.type === 'divider' && it.isCompletedSeparator; });
+    if (!divider) {
+      divider = makeItem({ type: 'divider', text: '', date: date, endDate: date, isCompletedSeparator: true, order: 0 });
+      state.items.push(divider);
+    }
+    incomplete.sort(function (a, b) { return a.order - b.order; });
+    completed.sort(function (a, b) { return a.order - b.order; });
+    var order = 0;
+    incomplete.forEach(function (it) { it.order = order++; });
+    divider.order = order++;
+    completed.forEach(function (it) { it.order = order++; });
+    return true;
+  }
+
+  function cleanupCompletedItemsForDate(date) {
+    var changed = false;
+    withHistoryTransaction(function () {
+      changed = cleanupCompletedItemsForDateInternal(date);
+    });
+    if (!changed) return false;
+    saveItems();
+    renderApp();
+    return true;
+  }
+
+  function getVisibleWeeklyDates() {
+    var dates = [];
+    var days = state.weeklyVisibleDays || WEEKLY_VISIBLE_DAYS_DEFAULT;
+    for (var i = 0; i < days; i++) dates.push(addCalendarDays(state.weekStartDate, i));
+    return dates;
+  }
+
+  // 현재 Weekly에 실제로 보이는 모든 날짜(1~14일)를 한 번에 정리한다.
+  function cleanupCompletedItemsForVisibleWeek() {
+    var changedDates = 0;
+    withHistoryTransaction(function () {
+      getVisibleWeeklyDates().forEach(function (date) {
+        if (cleanupCompletedItemsForDateInternal(date)) changedDates++;
+      });
+    });
+    if (!changedDates) {
+      announce('현재 Weekly 범위에 정리할 완료 항목이 없습니다.');
+      return false;
+    }
+    saveItems();
+    renderApp();
+    announce(changedDates + '개 날짜의 완료 항목을 정리했습니다.');
+    return true;
+  }
+
+  // Monthly Log에 표시 중인 달의 각 날짜를 Today와 같은 규칙으로 정리한다.
+  // 완료 항목은 해당 날짜 행의 '완료됨' 구분선 아래로 내려가며 한 번의 Undo로 묶인다.
+  function cleanupCompletedItemsForMonthlyLogMonth() {
+    var monthStart = parseLocalDate(state.monthlyLogViewMonth);
+    var year = monthStart.getFullYear();
+    var month = monthStart.getMonth();
+    var total = daysInMonthFromParts(year, month);
+    var changedDates = 0;
+    withHistoryTransaction(function () {
+      for (var day = 1; day <= total; day++) {
+        var date = formatLocalDate(new Date(year, month, day));
+        if (cleanupCompletedItemsForDateInternal(date)) changedDates++;
+      }
+    });
+    if (!changedDates) {
+      announce('현재 월에 정리할 완료 항목이 없습니다.');
+      return false;
+    }
+    saveItems();
+    renderApp();
+    announce(changedDates + '개 날짜의 완료 항목을 정리했습니다.');
+    return true;
+  }
+
+  // 이번 달 할 일은 날짜가 없으므로 monthKey 안에서 미완료 → 완료 구분선 → 완료 순으로 정리한다.
+  function cleanupCompletedMonthlyItems(monthKey) {
+    if (!monthKey) return false;
+    var changed = false;
+    withHistoryTransaction(function () {
+      var monthItems = getMonthlyItemsForMonth(monthKey);
+      var normal = monthItems.filter(function (it) { return it.type !== 'divider'; });
+      var completed = normal.filter(function (it) { return !!it.completed; });
+      if (!completed.length) return;
+      var incomplete = normal.filter(function (it) { return !it.completed; });
+      var divider = monthItems.find(function (it) { return it.type === 'divider' && it.isCompletedSeparator; });
+      if (!divider) {
+        divider = makeMonthlyItem({
+          type: 'divider',
+          text: '',
+          monthKey: monthKey,
+          isCompletedSeparator: true,
+          order: 0
+        });
+        state.monthlyItems.push(divider);
+      }
+      incomplete.sort(function (a, b) { return a.order - b.order; });
+      completed.sort(function (a, b) { return a.order - b.order; });
+      var order = 0;
+      incomplete.forEach(function (it) { it.order = order++; });
+      divider.order = order++;
+      completed.forEach(function (it) { it.order = order++; });
+      changed = true;
+    });
+    if (!changed) {
+      announce('이번 달 할 일에 정리할 완료 항목이 없습니다.');
+      return false;
+    }
+    saveMonthlyItems();
+    renderApp();
+    announce('이번 달의 완료 항목을 아래쪽으로 정리했습니다.');
+    return true;
   }
 
   // ---------------------------------------------------------------------
@@ -705,16 +2993,72 @@ endDateDraftActive: false,
 
   // occurrenceDate: schedule은 같은 item.id가 여러 날짜 칸에 표시될 수 있으므로
   // "이 날짜 발생분"이 완료됐는지로 시각 상태를 결정한다(task/memo는 item.completed 그대로).
+  // 최종 감사(2026-07-27): schedule 진행률 실제 계산. task/memo 아이콘은 건드리지 않는다
+  // (요구사항 12). 우선순위: occurrence 완료(completionByDate 포함, isOccurrenceCompleted가
+  // 이미 그 규칙을 따른다) -> 완료면 무조건 100. 다일 일정은 date~endDate 전체 기간 기준
+  // (요구사항 5, occurrenceDate 하나가 아니라). 단일 날짜는 시간이 있으면 시작~종료 시간
+  // 비율, 하루 종일이거나 시간 데이터가 불완전하면 날짜 단위 0/100로 안전하게 폴백(요구사항
+  // 3/4). 이달의 할 일 원본처럼 date 자체가 없는 경우도 날짜 단위 계산을 건너뛰고 완료
+  // 여부만 반영한다(0 또는 100).
+  function clampPct(v) { return Math.max(0, Math.min(100, v)); }
+
+  function combineDateAndTime(dateStr, timeStr) {
+    if (!timeStr) return null;
+    var parts = String(timeStr).split(':').map(Number);
+    if (parts.length < 2 || isNaN(parts[0]) || isNaN(parts[1])) return null;
+    var d = parseLocalDate(dateStr);
+    d.setHours(parts[0], parts[1], 0, 0);
+    return d;
+  }
+
+  function computeSchedulePct(item, occurrenceDate, now) {
+    if (item.type !== 'schedule') return 0;
+    if (isOccurrenceCompleted(item, occurrenceDate)) return 100; // 6/7: 수동/occurrence 완료 우선.
+    if (!item.date) return 0; // 이달의 할 일 원본 등 날짜 개념이 없는 경우 -- 완료 전이면 0.
+    var startDateStr = item.date;
+    var endDateStr = item.endDate || item.date;
+    var nowMs = now.getTime();
+    if (endDateStr !== startDateStr) {
+      // 5: 다일 일정은 현재 보는 occurrence 하루가 아니라 전체 기간(date~endDate) 기준.
+      var spanStartMs = parseLocalDate(startDateStr).getTime();
+      var spanEndMs = parseLocalDate(endDateStr).getTime() + 24 * 60 * 60 * 1000;
+      if (nowMs <= spanStartMs) return 0;
+      if (nowMs >= spanEndMs) return 100;
+      return clampPct(Math.round(((nowMs - spanStartMs) / (spanEndMs - spanStartMs)) * 100));
+    }
+    var dayStartMs = parseLocalDate(startDateStr).getTime();
+    var dayEndMs = dayStartMs + 24 * 60 * 60 * 1000;
+    if (item.allDay || !item.startTime) {
+      // 4: 하루 종일 일정은 실시간 비율이 부자연스러워 날짜 단위 0/100만 쓴다.
+      return nowMs >= dayEndMs ? 100 : 0;
+    }
+    var startDT = combineDateAndTime(startDateStr, item.startTime);
+    var endDT = combineDateAndTime(startDateStr, item.endTime || item.startTime);
+    if (!startDT || !endDT || endDT.getTime() <= startDT.getTime()) {
+      // 3: 종료 시간이 없거나 시작보다 앞서는 등 불완전한 데이터는 날짜 단위로 안전하게 폴백.
+      return nowMs >= dayEndMs ? 100 : 0;
+    }
+    var s = startDT.getTime(), e = endDT.getTime();
+    if (nowMs <= s) return 0;
+    if (nowMs >= e) return 100;
+    return clampPct(Math.round(((nowMs - s) / (e - s)) * 100));
+  }
+
   function iconForType(item, occurrenceDate) {
     var span = document.createElement('span');
-    if (item.type === 'task') {
+    if (item.type === 'divider') {
+      span.className = 'ic-divider-trash';
+    } else if (item.type === 'task') {
       span.className = 'ic-dot';
     } else if (item.type === 'memo') {
       span.className = 'ic-dash';
     } else {
       span.className = 'ic-ring';
-      // 1단계: 실제 진행률 계산 미구현(5단계 예정). 완료 시에만 가득 채움.
-      span.style.setProperty('--pct', isOccurrenceCompleted(item, occurrenceDate) ? '100' : '0');
+      // 9/10/11: data-pct-*로 이 원을 표시해 refreshScheduleProgressRings()가 매 렌더가
+      // 아니라 주기적으로(또는 visible 복귀 시) --pct만 다시 계산해 갱신할 수 있게 한다.
+      span.dataset.pctItemId = item.id;
+      if (occurrenceDate) span.dataset.pctOccurrence = occurrenceDate;
+      span.style.setProperty('--pct', String(computeSchedulePct(item, occurrenceDate, new Date())));
     }
     return span;
   }
@@ -786,6 +3130,20 @@ endDateDraftActive: false,
     return drag;
   }
 
+  // Monthly Log 전용 소형 드래그 핸들. 선택 containerKey는 Weekly와 같은 날짜 문자열이
+  // 겹치지 않도록 'monthly:' 접두어를 붙인다(getVisibleIdsForContainer가 이 접두어로
+  // divider 제외 목록을 반환한다 -- Monthly Log는 divider를 표시하지 않으므로).
+  function monthlyLogContainerKey(dateStr) { return 'monthly:' + dateStr; }
+
+  function createMonthlyLogDragHandle(item, dateStr) {
+    var handle = buildDotHandle('monthly-log-drag');
+    handle.addEventListener('pointerdown', function (e) {
+      onDragHandlePointerDown(e, item.id, 'monthly-log', dateStr);
+    });
+    attachGripSelectClick(handle, item, 'monthly-log', monthlyLogContainerKey(dateStr));
+    return handle;
+  }
+
   // Weekly 전용 소형 드래그 핸들. 카드 크기를 바꾸지 않기 위해 기존 왼쪽 내부 여백
   // 안에 절대 위치로 겹쳐두고, 평소에는 숨겼다가 hover/focus 시에만 보인다(CSS 처리).
   function createWeeklyDragHandle(item, columnDate) {
@@ -815,13 +3173,49 @@ endDateDraftActive: false,
     return overlay;
   }
 
+  // 구분선(type:'divider') 전용 얇은 가로선 엘리먼트. Daily/Weekly 두 렌더러가 공용으로 쓴다 —
+  // 체크박스/상태문양/제목/화살표 등 실제 항목 UI는 전혀 만들지 않는다(6/7절 요구사항).
+  function buildDividerLine() {
+    var line = document.createElement('span');
+    line.className = 'divider-item-line';
+    return line;
+  }
+
+  // Daily 목록의 구분선 행. 드래그 핸들 + 선택 gutter만 일반 항목과 동일하게 유지해
+  // 선택/삭제/재정렬은 기존 시스템을 그대로 타고, 체크박스·문양·제목·화살표는 만들지 않는다.
+  function createDailyDividerRow(item, occurrenceDate) {
+    var row = document.createElement('div');
+    row.className = 'task divider-item-row';
+    row.dataset.itemId = item.id;
+    row.dataset.occurrenceDate = occurrenceDate;
+    row.setAttribute('aria-selected', 'false');
+    row.appendChild(createDragHandle(item, state.selectedDate));
+    row.appendChild(buildDividerLine());
+    row.appendChild(createSelectGutterOverlay(item, 'daily', state.selectedDate, 'select-gutter'));
+    return row;
+  }
+
+  // Weekly 카드의 구분선 행. 마찬가지로 드래그 핸들 + 선택 gutter만 유지.
+  function createWeeklyDividerRow(item, columnDate) {
+    var li = document.createElement('li');
+    li.className = 'divider-item-row';
+    li.dataset.itemId = item.id;
+    li.dataset.occurrenceDate = columnDate;
+    li.setAttribute('aria-selected', 'false');
+    li.appendChild(createWeeklyDragHandle(item, columnDate));
+    li.appendChild(buildDividerLine());
+    li.appendChild(createSelectGutterOverlay(item, 'weekly', columnDate, 'week-select-gutter'));
+    return li;
+  }
+
   // 상세형 렌더러 — 상단 오늘 목록 전용 (드래그 핸들 / 체크박스 / 상태 문양 /
   // 제목+보조정보 / 수동 이월 화살표 전부 표시).
-  function createDailyItemRow(item, occurrenceDate) {
+  function createDailyItemRow(item, occurrenceDate, isRolloverRow) {
+    if (item.type === 'divider') return createDailyDividerRow(item, occurrenceDate);
     var sub = buildSubInfo(item);
     var completedHere = isOccurrenceCompleted(item, occurrenceDate);
     var row = document.createElement('div');
-    row.className = 'task' + (completedHere ? ' done' : '') + (sub ? ' event' : '');
+    row.className = 'task' + (completedHere ? ' done' : '') + (sub ? ' event' : '') + (isRolloverRow ? ' rollover-row' : '');
     row.dataset.itemId = item.id;
     row.dataset.occurrenceDate = occurrenceDate;
     row.setAttribute('aria-selected', 'false');
@@ -832,8 +3226,14 @@ endDateDraftActive: false,
     // .row-title엔 원래 ellipsis가 없어(백주 검색 결과, Weekly만 truncate) 뒤에 붙는
     // 요소가 텍스트를 자르거나 카드 높이를 바꾸지 않는다.
     var titleEl = document.createElement('span');
-    titleEl.className = 'row-title';
-    titleEl.textContent = item.text; // textContent만 사용 (XSS 방지)
+titleEl.className = 'row-title';
+
+var titleTextEl = document.createElement('span');
+titleTextEl.className = 'row-title-text';
+titleTextEl.textContent = item.text;
+if (item.instanceGroupId) titleTextEl.classList.add('is-instance-linked');
+
+titleEl.appendChild(titleTextEl); // textContent만 사용 (XSS 방지)
     var detailBadge = buildCardDetailBadge(item, false);
     if (detailBadge) titleEl.appendChild(detailBadge);
 
@@ -863,9 +3263,43 @@ endDateDraftActive: false,
     row.appendChild(checkboxButton(item, occurrenceDate));
     row.appendChild(symbol);
     row.appendChild(body);
+    // 이월 카드에서만 화살표 바로 앞에 개별 '오늘'/'삭제'를 둔다(일반 오늘 카드에는
+    // 표시하지 않음 -- 요구사항). 화살표는 그대로 맨 오른쪽에 남아 기존 동작과 충돌하지 않는다.
+    if (isRolloverRow) {
+      row.appendChild(createRolloverItemActions(item));
+    }
     row.appendChild(arrow);
     row.appendChild(createSelectGutterOverlay(item, 'daily', state.selectedDate, 'select-gutter'));
+    applyProjectAccent(row, item);
     return row;
+  }
+
+  // 이월 카드 전용 개별 '오늘'/'삭제' 버튼 한 쌍. 실제 이동/삭제 로직은 handleListClick의
+  // data-action 분기(rollover-move-today/rollover-delete-one)가 기존 함수를 그대로
+  // 재사용해 처리한다 -- 여기서는 DOM만 만든다(중복 리스너 없음).
+  function createRolloverItemActions(item) {
+    var wrap = document.createElement('span');
+    wrap.className = 'rollover-item-actions';
+
+    var todayBtn = document.createElement('button');
+    todayBtn.type = 'button';
+    todayBtn.className = 'rollover-item-action-btn';
+    todayBtn.dataset.action = 'rollover-move-today';
+    todayBtn.dataset.itemId = item.id;
+    todayBtn.setAttribute('aria-label', '오늘로 이동: ' + item.text);
+    todayBtn.textContent = '오늘';
+
+    var deleteBtn = document.createElement('button');
+    deleteBtn.type = 'button';
+    deleteBtn.className = 'rollover-item-action-btn danger';
+    deleteBtn.dataset.action = 'rollover-delete-one';
+    deleteBtn.dataset.itemId = item.id;
+    deleteBtn.setAttribute('aria-label', '삭제: ' + item.text);
+    deleteBtn.textContent = '삭제';
+
+    wrap.appendChild(todayBtn);
+    wrap.appendChild(deleteBtn);
+    return wrap;
   }
 
   // 축약형 렌더러 — Weekly 카드 전용. 같은 item/id를 쓰지만 체크박스 + 상태
@@ -873,6 +3307,7 @@ endDateDraftActive: false,
   // 다일 일정이 여러 날짜 칸에 걸쳐 보일 때도 item을 복제하지 않고, 같은 item을
   // 호출 지점(getItemsForWeek)마다 그대로 다시 그린다.
   function createWeeklyItemRow(item, columnDate) {
+    if (item.type === 'divider') return createWeeklyDividerRow(item, columnDate);
     // Weekly는 항상 하나의 날짜 열 안에서 그려지므로 그 열의 날짜가 곧 occurrenceDate다.
     var completedHere = isOccurrenceCompleted(item, columnDate);
     var li = document.createElement('li');
@@ -883,6 +3318,7 @@ endDateDraftActive: false,
 
     var title = document.createElement('span');
     title.className = 'week-item-title';
+    if (item.instanceGroupId) title.classList.add('is-instance-linked');
     title.textContent = item.text; // 실제 데이터는 자르지 않음, 표시만 CSS ellipsis
     title.title = item.text; // 마우스 오버 시 전체 문장 확인 가능
 
@@ -895,6 +3331,7 @@ endDateDraftActive: false,
     // 위에 절대 위치로 겹쳐 그린다 — 제목 트랙 너비·체크박스/기호 정렬을 전혀 바꾸지 않는다.
     var detailBadge = buildCardDetailBadge(item, true);
     if (detailBadge) li.appendChild(detailBadge);
+    applyProjectAccent(li, item);
     return li;
   }
 
@@ -903,15 +3340,63 @@ endDateDraftActive: false,
   // 비교하면 "이동한 적 없는" 다일 일정도 시작일 다음날부터 전부 이월로 잘못 분류된다.
   // originalDate/migratedFrom이 item.date와 다르다는 건 실제로 다른 날짜에서 이동해 왔다는
   // 뜻이므로, 그 경우에만 이월로 본다(다일 일정 자체의 자연스러운 표시 범위는 대상이 아님).
+  // 최종 감사(2026-07-27) 수정: originalDate/migratedFrom 비교로 "이월"을 판정하던
+  // 이전 로직은 자동 이월 대기(정착 안 됨)와 명시적으로 이동해 정착된 항목을 구분하지
+  // 못해, 메뉴로 "오늘/내일로 이동"한 항목까지 이월 취급되어 Weekly에서 사라지는
+  // 버그의 근본 원인이었다. 이제는 moveSingleItemToDate가 명시적으로 남기는
+  // item.rolloverPending 플래그 하나만 본다 -- originalDate/migratedFrom은 순수 이력
+  // 메타데이터로만 남고 렌더 여부에는 전혀 관여하지 않는다(요구사항).
   function isRolloverItem(item) {
-    if (!item.originalDate && !item.migratedFrom) return false;
-    var originDiffers = item.originalDate && item.originalDate !== item.date;
-    var migratedDiffers = item.migratedFrom && item.migratedFrom !== item.date;
-    return !!(originDiffers || migratedDiffers);
+    if (item.type === 'divider') return false;
+    return !!item.rolloverPending;
   }
 
   function getRolloverItemsForDate(selectedDate) {
     return getItemsForDate(selectedDate).filter(isRolloverItem);
+  }
+
+  // 이달의 할 일: 지난달 미완료 이월 안내 -- navigateMonthlyLog와 같은 월 계산 방식을
+  // 재사용한다(YYYY-MM 문자열 하나만 받고 하나를 돌려준다).
+  function getPreviousMonthKey(monthKey) {
+    var current = parseLocalDate(monthKey + '-01');
+    var prev = new Date(current.getFullYear(), current.getMonth() - 1, 1);
+    return formatLocalDate(prev).slice(0, 7);
+  }
+
+  // 이월 대상: monthKey가 현재 보고 있는 달의 바로 전 달인 monthlyItem 마스터 중
+  // 미완료·삭제되지 않은 것만. divider는 완료 개념이 없는 순수 구분선이라 제외한다
+  // (isRolloverItem이 Daily 이월에서 divider를 제외하는 것과 같은 이유). 완료 항목/
+  // 휴지통 항목/state.items(날짜 배치본 포함)는 이 필터에 애초에 들어오지 않는다.
+  function getOverdueMonthlyItemIdsForMonth(monthKey) {
+    var prevMonthKey = getPreviousMonthKey(monthKey);
+    return state.monthlyItems
+      .filter(function (it) {
+        return it.monthKey === prevMonthKey && !it.deletedAt && !it.completed && it.type !== 'divider';
+      })
+      .sort(function (a, b) { return a.order - b.order; })
+      .map(function (it) { return it.id; });
+  }
+
+  // 자동 이월 대상 판정 -- 완료되지 않은 task이고, 전체 기간(단일 날짜는 date, 기간
+  // 항목은 endDate)이 오늘보다 이전에 끝난 경우만 대상이다. YYYY-MM-DD 문자열은
+  // 사전식 비교가 곧 날짜 비교와 같으므로 별도 Date 변환 없이 안전하게 비교한다.
+  function getAutoRolloverCandidateIds(today) {
+    var ids = [];
+    state.items.forEach(function (it) {
+      if (it.type !== 'task') return;
+      if (it.deletedAt) return;
+      if (it.completed === true) return;
+      var spanEnd = it.endDate || it.date;
+      if (spanEnd < today) ids.push(it.id);
+    });
+    return Array.from(new Set(ids));
+  }
+
+  function shouldHideCompletedInList(item, occurrenceDate, hideCompleted) {
+    if (!hideCompleted || !item) return false;
+    // 완료 정리용 구분선만 함께 숨기고 사용자가 만든 일반 구분선은 유지한다.
+    if (item.type === 'divider') return !!item.isCompletedSeparator;
+    return isItemCompletedForCleanup(item, occurrenceDate);
   }
 
   // 4: 이월 항목은 #rollover-list에, 나머지는 #daily-list에 각각 한 번씩만 그려
@@ -920,15 +3405,17 @@ endDateDraftActive: false,
     var container = document.getElementById('daily-list');
     var rolloverContainer = document.getElementById('rollover-list');
     if (!container) return;
-    var all = getItemsForDate(state.selectedDate).slice().sort(function (a, b) { return a.order - b.order; });
+    var all = getItemsForDate(state.selectedDate)
+      .filter(function (it) { return !shouldHideCompletedInList(it, state.selectedDate, state.dailyHideCompleted); })
+      .slice().sort(function (a, b) { return a.order - b.order; });
     var rollover = [];
     var normal = [];
     all.forEach(function (it) {
       (isRolloverItem(it) ? rollover : normal).push(it);
     });
-    container.replaceChildren.apply(container, normal.map(function (it) { return createDailyItemRow(it, state.selectedDate); }));
+    container.replaceChildren.apply(container, arrangeRowsWithGroups(normal, function (it) { return createDailyItemRow(it, state.selectedDate, false); }, 'daily', state.selectedDate));
     if (rolloverContainer) {
-      rolloverContainer.replaceChildren.apply(rolloverContainer, rollover.map(function (it) { return createDailyItemRow(it, state.selectedDate); }));
+      rolloverContainer.replaceChildren.apply(rolloverContainer, rollover.map(function (it) { return createDailyItemRow(it, state.selectedDate, true); }));
     }
     renderRolloverToggleState(rollover.length);
   }
@@ -939,15 +3426,23 @@ endDateDraftActive: false,
     var countEl = document.querySelector('.rollover-count');
     var tri = toggle ? toggle.querySelector('.tri') : null;
     var list = document.getElementById('rollover-list');
+    var divider = document.getElementById('rollover-divider');
+    var todayAllBtn = document.querySelector('.rollover-today-btn');
+    var deleteAllBtn = document.querySelector('.rollover .delete-btn');
     if (countEl) countEl.textContent = '이월(' + count + ')';
     if (toggle) toggle.setAttribute('aria-expanded', String(state.rolloverExpanded));
     if (tri) tri.classList.toggle('open', state.rolloverExpanded);
+    // 이월 항목이 0개면 일괄 '오늘'/'삭제'는 비활성 상태여야 한다(요구사항).
+    if (todayAllBtn) todayAllBtn.disabled = count === 0;
+    if (deleteAllBtn) deleteAllBtn.disabled = count === 0;
     if (list) {
       list.hidden = count === 0; // 이월 항목 자체가 없으면 완전히 숨김(애니메이션 불필요).
       // 접힘/펼침은 hidden이 아니라 CSS max-height 전환(.rollover-open)으로만 표현해
       // "짧은 열림·닫힘 애니메이션"이 실제로 보이게 한다.
       list.classList.toggle('rollover-open', state.rolloverExpanded && count > 0);
     }
+    // 구분선은 펼쳐져 있고 이월 항목이 실제로 있을 때만 보인다(접히거나 0개면 숨김).
+    if (divider) divider.hidden = !(state.rolloverExpanded && count > 0);
   }
 
   function toggleRolloverExpanded() {
@@ -958,11 +3453,12 @@ endDateDraftActive: false,
 
   function renderWeekly() {
     var lists = document.querySelectorAll('.week-card ul[data-date]');
-    var byDate = getItemsForWeek(state.weekStartDate);
+    var byDate = getItemsForWeek(state.weekStartDate, state.weeklyVisibleDays);
     lists.forEach(function (ul) {
       var date = ul.dataset.date;
-      var items = byDate[date] || getItemsForDate(date).sort(function (a, b) { return a.order - b.order; });
-      ul.replaceChildren.apply(ul, items.map(function (it) { return createWeeklyItemRow(it, date); }));
+      var items = byDate[date] || getItemsForDate(date).filter(function (it) { return !isRolloverItem(it); }).sort(function (a, b) { return a.order - b.order; });
+      items = items.filter(function (it) { return !shouldHideCompletedInList(it, date, state.weeklyHideCompleted); });
+      ul.replaceChildren.apply(ul, arrangeRowsWithGroups(items, function (it) { return createWeeklyItemRow(it, date); }, 'weekly', date));
     });
   }
 
@@ -996,28 +3492,66 @@ endDateDraftActive: false,
     return '원래 날짜 ' + formatDotDate(item.date);
   }
 
+  // 최종 감사(2026-07-27): item.monthKey !== undefined로 이달의 할 일 원본을 구분한다
+  // (일반 item에는 이 필드가 없다). 원본은 date가 없어 iconForType/trashOriginalDateLabel에
+  // 그대로 넘길 수 없고, 날짜 개념이 없으니 "날짜 지정 복원" 버튼도 의미가 없어 뺀다.
   function createTrashItemRow(item) {
+    var isMaster = item.monthKey !== undefined;
     var row = document.createElement('div');
-    row.className = 'task trash-row';
+    row.className = 'task trash-row' + (isMaster ? ' trash-row-monthly-master' : '');
     row.dataset.itemId = item.id;
     row.setAttribute('aria-selected', 'false');
 
+    if (!isMaster) {
+      var dragHandle = buildDotHandle('trash-drag');
+      dragHandle.setAttribute('aria-label', '드래그하여 날짜로 복원: ' + item.text);
+      dragHandle.addEventListener('pointerdown', function (e) {
+        e.stopPropagation();
+        onTrashRowDragPointerDown(e, item.id);
+      });
+      row.appendChild(dragHandle);
+      // 버튼이 아닌 카드 영역 어디서든 클릭 후 끌면 같은 드래그 복원이 시작된다.
+      row.addEventListener('pointerdown', function (e) {
+        if (e.target.closest('button, input, .trash-drag')) return;
+        onTrashRowDragPointerDown(e, item.id);
+      });
+    } else {
+      var dragPlaceholder = document.createElement('span');
+      dragPlaceholder.className = 'trash-drag-placeholder';
+      dragPlaceholder.setAttribute('aria-hidden', 'true');
+      row.appendChild(dragPlaceholder);
+    }
+
     var icon = document.createElement('span');
     icon.className = 'trash-row-icon';
-    icon.appendChild(iconForType(item, item.date));
+    icon.appendChild(iconForType(item, isMaster ? null : item.date));
 
     var body = document.createElement('span');
     body.className = 'event-body';
     var title = document.createElement('span');
     title.className = 'row-title';
-    title.textContent = item.text;
+    title.textContent = item.type === 'divider' ? '구분선' : item.text;
+
+    var placementCount = isMaster ? state.items.filter(function (it) { return it.sourceMonthlyItemId === item.id; }).length : 0;
+    var kindLabel = null;
+    if (isMaster) kindLabel = '월간 원본' + (placementCount ? ' · 배치 ' + placementCount + '개' : '');
+    else if (item.sourceMonthlyItemId) kindLabel = '월간 배치본';
+    else if (item.type === 'divider') kindLabel = '구분선';
+    var kindBadge = null;
+    if (kindLabel) {
+      kindBadge = document.createElement('small');
+      kindBadge.className = 'trash-kind-badge';
+      kindBadge.textContent = kindLabel;
+    }
+
     var subOriginal = document.createElement('small');
     subOriginal.className = 'trash-original-date';
-    subOriginal.textContent = trashOriginalDateLabel(item);
+    subOriginal.textContent = isMaster ? ('원래 이달의 할 일(' + item.monthKey + ')') : trashOriginalDateLabel(item);
     var subDeleted = document.createElement('small');
     subDeleted.className = 'trash-deleted-time';
     subDeleted.textContent = formatTrashDeletedTime(item.deletedAt);
     body.appendChild(title);
+    if (kindBadge) body.appendChild(kindBadge);
     body.appendChild(subOriginal);
     body.appendChild(subDeleted);
 
@@ -1029,7 +3563,9 @@ endDateDraftActive: false,
     restoreBtn.dataset.action = 'trash-restore';
     restoreBtn.dataset.itemId = item.id;
     restoreBtn.textContent = '복원';
-    restoreBtn.setAttribute('aria-label', '복원: ' + item.text);
+    restoreBtn.setAttribute('aria-label', '원래 위치로 복원: ' + item.text);
+    actions.appendChild(restoreBtn);
+
     var deleteBtn = document.createElement('button');
     deleteBtn.type = 'button';
     deleteBtn.className = 'trash-action-btn danger';
@@ -1037,7 +3573,6 @@ endDateDraftActive: false,
     deleteBtn.dataset.itemId = item.id;
     deleteBtn.textContent = '영구 삭제';
     deleteBtn.setAttribute('aria-label', '영구 삭제: ' + item.text);
-    actions.appendChild(restoreBtn);
     actions.appendChild(deleteBtn);
 
     row.appendChild(icon);
@@ -1050,9 +3585,17 @@ endDateDraftActive: false,
   // 삭제일이 위로 오도록 정렬하고, 같은 그룹 안에서는 deletedAt이 최근인 항목이 위로 온다.
   // 날짜를 해석할 수 없는 deletedAt은 별도의 "삭제 날짜 알 수 없음" 그룹으로 모아 앱이
   // 멈추지 않게 한다.
+  // 최종 감사(2026-07-27): 이달의 할 일 원본도 같은 휴지통 화면에서 함께 보여준다(별도
+  // 두 번째 휴지통 화면을 만들지 않는다 -- 요구사항). monthlyItem은 monthKey 필드로
+  // item과 구조적으로 구분되므로(item에는 이 필드가 없다) 별도 래퍼 없이 그대로 섞어
+  // 취급할 수 있다.
+  function getTrashMonthlyMasters() {
+    return state.monthlyItems.filter(function (it) { return !!it.deletedAt; });
+  }
+
   function getTrashGroups() {
     var filterType = state.trashFilter;
-    var items = getTrashItems().filter(function (it) {
+    var items = getTrashItems().concat(getTrashMonthlyMasters()).filter(function (it) {
       return filterType === 'all' || it.type === filterType;
     });
     var groupsByKey = {};
@@ -1090,14 +3633,14 @@ endDateDraftActive: false,
       group.items.forEach(function (it) { frag.appendChild(createTrashItemRow(it)); });
     });
     container.replaceChildren(frag);
-    renderTrashSelectionState();
-    renderTrashBulkBar();
+    renderSelectionState();
     renderEmptyTrashButtonState();
   }
 
   // 8: 현재 화면에 실제로 그려진(=현재 필터에서 보이는) 휴지통 행의 순서 그대로 id 목록을
   // 반환한다 — Shift 범위 선택이 이 순서를 기준으로 계산되므로, 접힌/숨겨진 항목은
-  // 자연히 범위에서 빠진다.
+  // 자연히 범위에서 빠진다. 이제 getVisibleIdsForContainer(TRASH_CONTAINER_KEY)의
+  // 데이터 소스로도 재사용된다.
   function getVisibleTrashIds() {
     return Array.prototype.map.call(
       document.querySelectorAll('#trash-list > .trash-row[data-item-id]'),
@@ -1105,121 +3648,217 @@ endDateDraftActive: false,
     );
   }
 
-  function trashComputeRange(ids, fromId, toId) {
-    var i1 = ids.indexOf(fromId);
-    var i2 = ids.indexOf(toId);
-    if (i1 === -1 || i2 === -1) return [toId];
-    return ids.slice(Math.min(i1, i2), Math.max(i1, i2) + 1);
+  // 휴지통 Ctrl/Cmd+A: 현재 화면에 실제로 보이는(필터 적용된) 휴지통 항목 전체를
+  // selectedItemIds로 교체한다 -- 별도의 trashSelectedItemIds를 다시 만들지 않고
+  // 기존 공용 선택 모델(selectSingleItem 등이 쓰는 것과 같은 state)을 그대로
+  // 재사용한다. getVisibleTrashIds()가 이미 deletedAt 있는·현재 필터에 걸린 행만
+  // DOM 순서대로 돌려주므로 별도 필터링이 필요 없다.
+  function selectAllVisibleTrashItems() {
+    var ids = getVisibleTrashIds();
+    if (!ids.length) return;
+    state.selectedItemIds = new Set(ids);
+    state.selectedOccurrenceById.clear();
+    ids.forEach(function (id) { addSelectedOccurrence(id, TRASH_CONTAINER_KEY); });
+    state.lastSelectedItemId = ids[ids.length - 1];
+    state.selectionAnchor = { itemId: ids[0], context: 'trash', containerKey: TRASH_CONTAINER_KEY };
+    renderSelectionState();
   }
 
-  function renderTrashSelectionState() {
-    document.querySelectorAll('#trash-list .trash-row[data-item-id]').forEach(function (el) {
-      var selected = state.trashSelectedItemIds.has(el.dataset.itemId);
-      el.classList.toggle('is-selected', selected);
-      el.setAttribute('aria-selected', String(selected));
+  function getVisibleMonthlyLogOccurrences() {
+    // Monthly Log의 일반 항목뿐 아니라 일정 격자에 그려진 일정도 Ctrl/Cmd+A 대상이다.
+    // 다일 일정은 날짜별 segment가 여러 개 생기므로 같은 itemId는 보이는 첫 날짜 하나만
+    // occurrence 기준으로 남긴다. 선택 렌더는 itemId 기준이라 전체 세로 막대가 함께 강조된다.
+    var nodes = document.querySelectorAll(
+      '#monthly-log-rows .monthly-log-item[data-item-id], ' +
+      '#monthly-log-rows .monthly-log-schedule-segment[data-item-id]'
+    );
+    var firstById = new Map();
+    Array.prototype.forEach.call(nodes, function (el) {
+      var id = el.dataset.itemId;
+      if (!id) return;
+      var date = el.dataset.occurrenceDate || (el.closest('.monthly-log-row') && el.closest('.monthly-log-row').dataset.date);
+      if (!date) return;
+      var previous = firstById.get(id);
+      if (!previous || date < previous.date) firstById.set(id, { id:id, date:date });
     });
+    return Array.from(firstById.values());
   }
 
+  function selectAllVisibleMonthlyLogItems() {
+    var occurrences = getVisibleMonthlyLogOccurrences();
+    if (!occurrences.length) return;
+    state.selectedItemIds = new Set(occurrences.map(function (entry) { return entry.id; }));
+    state.selectedOccurrenceById.clear();
+    occurrences.forEach(function (entry) { addSelectedOccurrence(entry.id, entry.date); });
+    var last = occurrences[occurrences.length - 1];
+    state.lastSelectedItemId = last.id;
+    state.selectionAnchor = { itemId: last.id, context: 'monthly-log', containerKey: monthlyLogContainerKey(last.date) };
+    renderSelectionState();
+  }
+
+  // 공통 Ctrl/Cmd+A: 휴지통이 아닌 화면에서 "현재 활성 목록" 전체를 선택한다.
+  // 우선순위 -- selectionAnchor가 있으면 그게 곧 방금 클릭/선택한 목록이므로 그 목록을
+  // 그대로 쓰고(Daily/Weekly 열/Monthly Log 행 구분은 anchor.context가 이미 갖고 있음),
+  // anchor가 없으면(아직 아무 것도 선택 안 한 상태) 화면 기준 기본값을 쓴다: today
+  // 화면은 Daily(state.selectedDate), calendar 화면은 마지막으로 활성화한(또는 선택된)
+  // 날짜의 Monthly Log 행. getVisibleIdsForContainer가 이미 Daily/Weekly/Monthly Log
+  // 모두에 대해 "화면에 보이는 순서" id 목록을 주므로 별도 필터링이 필요 없다.
+  function selectAllInActiveList() {
+    var context, containerKey;
+    var anchor = state.selectionAnchor;
+    if (state.currentView === 'calendar' && monthlyLogScheduleGridIsActive && (!anchor || anchor.context !== 'monthly-inbox')) {
+      selectAllVisibleMonthlyLogItems();
+      return;
+    }
+    if (anchor && anchor.context && anchor.context !== 'trash' && anchor.containerKey !== undefined) {
+      context = anchor.context;
+      containerKey = anchor.containerKey;
+    } else if (state.currentView === 'today') {
+      if (!state.selectedDate) return;
+      context = 'daily';
+      containerKey = state.selectedDate;
+    } else if (state.currentView === 'calendar') {
+      // 이번 달 할 일 패널이 마지막 활성 목록이면 그 패널만, 그렇지 않으면 Monthly Log
+      // 달 전체에 실제로 보이는 항목을 모두 선택한다.
+      if (anchor && anchor.context === 'monthly-inbox') {
+        context = 'monthly-inbox';
+        containerKey = anchor.containerKey;
+      } else {
+        selectAllVisibleMonthlyLogItems();
+        return;
+      }
+    } else {
+      return;
+    }
+    var ids = getVisibleIdsForContainer(containerKey);
+    if (!ids.length) return;
+    state.selectedItemIds = new Set(ids);
+    state.selectedOccurrenceById.clear();
+    ids.forEach(function (id) { addSelectedOccurrence(id, containerKey); });
+    state.lastSelectedItemId = ids[ids.length - 1];
+    state.selectionAnchor = { itemId: ids[0], context: context, containerKey: containerKey };
+    renderSelectionState();
+  }
+
+  // 휴지통 진단: 선택 표시는 이제 renderSelectionState()가 .task.trash-row까지 함께
+  // 처리하므로, 이 함수는 상단 bulk bar의 개수/표시 여부만 담당한다(selectedItemIds
+  // 공유 — Daily/Weekly 선택 중에는 화면이 다르므로 이 값이 보이지 않는다).
   function renderTrashBulkBar() {
     var bar = document.getElementById('trash-bulk-bar');
     if (!bar) return;
-    var count = state.trashSelectedItemIds.size;
+    var count = state.selectedItemIds.size;
     bar.hidden = count === 0;
     var countEl = bar.querySelector('.trash-bulk-count');
     if (countEl) countEl.textContent = count + '개 선택';
   }
 
-  function clearTrashSelection() {
-    if (!state.trashSelectedItemIds.size && !state.trashSelectionAnchor) return;
-    state.trashSelectedItemIds.clear();
-    state.trashSelectionAnchor = null;
-    renderTrashSelectionState();
-    renderTrashBulkBar();
-  }
-
-  function selectSingleTrashItem(itemId) {
-    state.trashSelectedItemIds.clear();
-    state.trashSelectedItemIds.add(itemId);
-    state.trashSelectionAnchor = itemId;
-    renderTrashSelectionState();
-    renderTrashBulkBar();
-  }
-
-  function toggleTrashNonContiguous(itemId) {
-    if (state.trashSelectedItemIds.has(itemId)) state.trashSelectedItemIds.delete(itemId);
-    else state.trashSelectedItemIds.add(itemId);
-    state.trashSelectionAnchor = itemId;
-    renderTrashSelectionState();
-    renderTrashBulkBar();
-  }
-
-  function trashRangeReplace(itemId) {
-    if (!state.trashSelectionAnchor) { selectSingleTrashItem(itemId); return; }
-    var range = trashComputeRange(getVisibleTrashIds(), state.trashSelectionAnchor, itemId);
-    state.trashSelectedItemIds = new Set(range);
-    renderTrashSelectionState();
-    renderTrashBulkBar();
-  }
-
-  function trashRangeAdd(itemId) {
-    if (!state.trashSelectionAnchor) {
-      state.trashSelectedItemIds.add(itemId);
-      state.trashSelectionAnchor = itemId;
-      renderTrashSelectionState();
-      renderTrashBulkBar();
-      return;
-    }
-    var range = trashComputeRange(getVisibleTrashIds(), state.trashSelectionAnchor, itemId);
-    range.forEach(function (id) { state.trashSelectedItemIds.add(id); });
-    state.trashSelectionAnchor = itemId;
-    renderTrashSelectionState();
-    renderTrashBulkBar();
-  }
-
   // 7: 행 안의 복원/영구 삭제 버튼은 선택 상태와 완전히 무관하게 항상 그 행 하나에만
   // 적용한다(다중 선택이 있어도 무시) — 일괄 작업은 상단 bulk bar 버튼으로만 실행한다.
+  // 휴지통 진단: 클릭·Ctrl+클릭·Shift+클릭 선택은 이제 Daily/Weekly와 같은
+  // selectSingleItem/toggleNonContiguousSelection/rangeReplaceSelection/
+  // rangeAddSelection을 context='trash', containerKey=TRASH_CONTAINER_KEY로 그대로
+  // 재사용한다(복제 구현 없음). marquee drag 직후의 억제 플래그도 handleListClick과
+  // 동일하게 확인해, 방금 만든 선택을 뒤이은 click이 되돌리지 않게 한다.
+  // 최종 감사(2026-07-27): 휴지통 항목이 일반 item인지 이달의 할 일 원본(monthlyItem)인지
+  // 섞여 있을 수 있어(같은 #trash-list 화면 안에 함께 표시), 각 id가 실제로 어느
+  // 컬렉션에 속하는지 findMonthlyItemById로 확인해 restoreItems/restoreMonthlyItemsFromTrash,
+  // permanentDeleteItems/permanentDeleteMonthlyMasters로 나눠 보낸다 -- 두 종류가 섞인
+  // 다중 선택도 한 withHistoryTransaction으로 묶어 Undo 한 단계가 되게 한다.
+  // 요구사항 6: 휴지통 복원/영구 삭제도 instanceGroupId 연결 그룹 전체에 적용한다. 이미
+  // 휴지통에 있는(deletedAt이 있는) 같은 그룹 항목만 대상에 추가한다 -- 아직 살아있는
+  // 형제 인스턴스는 휴지통에 없으므로 건드리지 않는다.
+  function expandIdsWithDeletedInstanceGroupSiblings(ids) {
+    var groupIds = {};
+    ids.forEach(function (id) {
+      var it = findItemById(id) || findMonthlyItemById(id);
+      if (it && it.instanceGroupId) groupIds[it.instanceGroupId] = true;
+    });
+    if (!Object.keys(groupIds).length) return ids;
+    var expanded = {};
+    ids.forEach(function (id) { expanded[id] = true; });
+    [state.items, state.monthlyItems].forEach(function (collection) {
+      collection.forEach(function (it) {
+        if (it.instanceGroupId && groupIds[it.instanceGroupId] && it.deletedAt) expanded[it.id] = true;
+      });
+    });
+    return Object.keys(expanded);
+  }
+
+  function restoreTrashIds(ids) {
+    ids = expandIdsWithDeletedInstanceGroupSiblings(ids);
+    var monthlyIds = ids.filter(function (id) { return !!findMonthlyItemById(id); });
+    var regularIds = ids.filter(function (id) { return !findMonthlyItemById(id); });
+    if (monthlyIds.length && regularIds.length) {
+      withHistoryTransaction(function () {
+        restoreItems(regularIds);
+        restoreMonthlyItemsFromTrash(monthlyIds);
+      });
+    } else if (monthlyIds.length) {
+      restoreMonthlyItemsFromTrash(monthlyIds);
+    } else {
+      restoreItems(regularIds);
+    }
+  }
+
+  function permanentDeleteTrashIds(ids) {
+    ids = expandIdsWithDeletedInstanceGroupSiblings(ids);
+    var monthlyIds = ids.filter(function (id) { return !!findMonthlyItemById(id); });
+    var regularIds = ids.filter(function (id) { return !findMonthlyItemById(id); });
+    if (monthlyIds.length && regularIds.length) {
+      withHistoryTransaction(function () {
+        permanentDeleteItems(regularIds);
+        permanentDeleteMonthlyMasters(monthlyIds);
+      });
+    } else if (monthlyIds.length) {
+      permanentDeleteMonthlyMasters(monthlyIds);
+    } else {
+      permanentDeleteItems(regularIds);
+    }
+  }
+
   function handleTrashListClick(e) {
     var restoreBtn = e.target.closest('[data-action="trash-restore"]');
     if (restoreBtn) {
       e.stopPropagation();
-      restoreItems([restoreBtn.dataset.itemId]);
+      restoreTrashIds([restoreBtn.dataset.itemId]);
       return;
     }
     var deleteBtn = e.target.closest('[data-action="trash-delete"]');
     if (deleteBtn) {
       e.stopPropagation();
-      var targetItem = findItemById(deleteBtn.dataset.itemId);
+      var targetItem = findItemById(deleteBtn.dataset.itemId) || findMonthlyItemById(deleteBtn.dataset.itemId);
       var label = targetItem ? targetItem.text : '이 항목';
       if (!window.confirm('"' + label + '"을(를) 영구 삭제할까요?')) return;
-      permanentDeleteItems([deleteBtn.dataset.itemId]);
+      permanentDeleteTrashIds([deleteBtn.dataset.itemId]);
       return;
     }
+    if (suppressNextItemGutterClick) { suppressNextItemGutterClick = false; return; }
     var row = e.target.closest('.trash-row[data-item-id]');
     if (!row) return;
     e.stopPropagation();
     var itemId = row.dataset.itemId;
     var isMulti = e.ctrlKey || e.metaKey;
     var isShift = e.shiftKey;
-    if (isMulti && isShift) trashRangeAdd(itemId);
-    else if (isMulti) toggleTrashNonContiguous(itemId);
-    else if (isShift) trashRangeReplace(itemId);
-    else selectSingleTrashItem(itemId);
+    if (isMulti && isShift) rangeAddSelection(itemId, 'trash', TRASH_CONTAINER_KEY);
+    else if (isMulti) toggleNonContiguousSelection(itemId, 'trash', TRASH_CONTAINER_KEY);
+    else if (isShift) rangeReplaceSelection(itemId, 'trash', TRASH_CONTAINER_KEY);
+    else selectSingleItem(itemId, 'trash', TRASH_CONTAINER_KEY);
   }
 
   // 9: 상단 일괄 작업 — bulk bar의 두 버튼 전용. restoreItems/permanentDeleteItems가 실제로
-  // 손댄(touched) id만 trashSelectedItemIds에서 제거하므로, 선택 전체를 대상으로 하는 이
-  // 일괄 작업 뒤에는 선택이 자연히 비워진다.
+  // 손댄(touched) id만 selectedItemIds에서 제거하므로(pruneTrashSelection), 선택 전체를
+  // 대상으로 하는 이 일괄 작업 뒤에는 선택이 자연히 비워진다.
   function bulkRestoreSelectedTrash() {
-    var ids = Array.from(state.trashSelectedItemIds);
+    var ids = Array.from(state.selectedItemIds);
     if (!ids.length) return;
-    restoreItems(ids);
+    restoreTrashIds(ids);
   }
 
   function bulkPermanentDeleteSelectedTrash() {
-    var ids = Array.from(state.trashSelectedItemIds);
+    var ids = Array.from(state.selectedItemIds);
     if (!ids.length) return;
     if (!window.confirm(ids.length + '개 항목을 영구 삭제할까요?')) return;
-    permanentDeleteItems(ids);
+    permanentDeleteTrashIds(ids);
   }
 
   function wireTrashBulkBar() {
@@ -1236,7 +3875,7 @@ endDateDraftActive: false,
   function setTrashFilter(filter) {
     if (state.trashFilter === filter) return;
     state.trashFilter = filter;
-    clearTrashSelection();
+    clearItemSelection();
     renderTrashFilterState();
     renderTrashList();
   }
@@ -1287,26 +3926,56 @@ endDateDraftActive: false,
     if (state.currentView === view) return;
     state.currentView = view;
     document.querySelectorAll('.side-item').forEach(function (el) { el.classList.remove('active'); });
-    var target = document.querySelector('.side-item.' + (view === 'trash' ? 'trash' : 'today'));
+    var activeClass = view === 'trash' ? 'trash' : view === 'calendar' ? 'calendar' : 'today';
+    var target = document.querySelector('.side-item.' + activeClass);
     if (target) target.classList.add('active');
     var normalView = document.querySelector('.daily-normal-view');
     var trashView = document.getElementById('trash-view');
     if (normalView) normalView.hidden = view === 'trash';
     if (trashView) trashView.hidden = view !== 'trash';
-    if (view === 'trash') {
-      state.selectedItemIds.clear();
-      state.selectedOccurrenceById.clear();
-      state.lastSelectedItemId = null;
-      state.selectionAnchor = null;
-    } else {
-      clearTrashSelection();
-    }
+    // Monthly Log(달력 전체 화면) -- Today의 .top(미니 달력+Daily)/.weekly와 서로 배타적으로
+    // 보인다. DOM은 항상 존재하고 hidden만 토글하므로(기존 daily-normal-view/trash-view와
+    // 같은 방식) calendar<->today<->trash를 반복 전환해도 DOM/리스너가 중복 생성되지 않는다.
+    var topEl = document.querySelector('.top');
+    var weeklyEl = document.querySelector('.weekly');
+    var monthlyLogView = document.getElementById('monthly-log-view');
+    if (topEl) topEl.hidden = view === 'calendar';
+    if (weeklyEl) weeklyEl.hidden = view === 'calendar';
+    if (monthlyLogView) monthlyLogView.hidden = view !== 'calendar';
+    // 휴지통 진단: Daily/Weekly와 휴지통이 이제 같은 selectedItemIds를 공유하므로,
+    // 어느 방향으로 전환하든 이전 화면의 선택이 새 화면에 잘못 남지 않게 항상
+    // 초기화한다(기존에는 방향별로 다른 상태를 지웠지만, 이제 지울 상태가 하나뿐이다).
+    state.selectedItemIds.clear();
+    state.selectedOccurrenceById.clear();
+    state.lastSelectedItemId = null;
+    state.selectionAnchor = null;
+    // 라운드2 7: Today의 "이번 달 할 일" 오버레이/도킹 패널(#today-monthly-panel)이 열린
+    // 채로 Calendar로 이동하면, 이 패널은 position:fixed라 view 전환과 무관하게 화면에
+    // 그대로 남아 Calendar 자체의 우측 패널과 겹쳐 보인다(실제 확인된 버그). Calendar는
+    // 이미 같은 데이터를 보여주는 자신의 패널이 있으므로, Today 쪽은 닫는 것이 가장
+    // 안전하고 명확하다(요구사항 "자동으로 닫히거나").
+    if (view === 'calendar' && state.monthlyPanelOpen) closeMonthlyPanel(false);
     renderApp();
+    if (view === 'calendar') {
+      // .monthly-log-view가 [hidden]인 동안은 clientWidth가 0이라 init() 시점의
+      // applyMonthlySplitLayout()이 유효한 값을 잴 수 없었다 -- 실제로 보이게 되는
+      // 이 시점에 다시 계산한다(도킹 여부 판정까지 함께 재확인).
+      applyMonthlyLogInboxDockDom();
+      scrollMonthlyLogTodayIntoView();
+    } else {
+      // 최종 감사(2026-07-27) 10: Calendar 화면을 떠날 때 Monthly Log의 도킹이 .artboard에
+      // 남겨뒀을 수 있는 shift를 정리한다 -- .artboard 스타일은 Today의 도킹과 공유되므로,
+      // Today 자신의 함수(applyMonthlyPanelDom)를 그대로 다시 불러 "지금 Today 패널이
+      // 열려있는지"에 맞는 올바른 상태로 되돌린다(닫혀있으면 그 함수가 스스로 shift를
+      // 초기화한다) -- Today의 계산 로직 자체는 전혀 바꾸지 않고 그대로 재사용한다.
+      applyMonthlyPanelDom();
+    }
   }
 
   function wireSidebarNav() {
     var todayBtn = document.querySelector('.side-item.today');
     var trashBtn = document.querySelector('.side-item.trash');
+    var calendarBtn = document.querySelector('.side-item.calendar');
     function onKeydownActivate(handler) {
       return function (e) {
         if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handler(); }
@@ -1319,6 +3988,10 @@ endDateDraftActive: false,
     if (trashBtn) {
       trashBtn.addEventListener('click', function () { setView('trash'); });
       trashBtn.addEventListener('keydown', onKeydownActivate(function () { setView('trash'); }));
+    }
+    if (calendarBtn) {
+      calendarBtn.addEventListener('click', function () { setView('calendar'); });
+      calendarBtn.addEventListener('keydown', onKeydownActivate(function () { setView('calendar'); }));
     }
   }
 
@@ -1385,7 +4058,14 @@ endDateDraftActive: false,
     renderTrashFilterState();
     renderTrashList();
     renderTrashBadge();
+    renderMonthlyLog();
+    // Monthly Log 기능 복구: renderMonthlyLog()가 #monthly-log-rows를 통째로 다시 그리므로
+    // (replaceChildren) 그 이전에 적용된 선택 클래스는 새 DOM에 남지 않는다 -- 반드시
+    // renderMonthlyLog() 다음에 호출해야 Monthly Log 항목의 .is-selected가 유지된다.
     renderSelectionState();
+    // Today 우측 월간 패널은 열려 있을 때만 다시 그린다 -- selectedDate가 바뀌어 속한
+    // 달이 바뀌어도 패널이 열려 있었다면 닫히지 않고 헤더·목록만 즉시 갱신된다.
+    if (state.monthlyPanelOpen) renderTodayMonthlyPanel();
     syncDetailDrawer();
   }
 
@@ -1393,36 +4073,153 @@ endDateDraftActive: false,
   // 완료 토글 / 종류 변경 — Daily·Weekly가 같은 item.id를 공유하므로
   // renderApp() 한 번으로 양쪽에 동시 반영된다.
   // ---------------------------------------------------------------------
-  // 9~14: 체크박스는 기본적으로 "클릭한 항목/occurrence 하나"만 조작한다. 유일한 예외는
-  // schedule일 때 — 클릭한 occurrence 자체가 선택 상태에 포함돼 있고, 같은 item.id의 다른
-  // occurrence도 함께 선택돼 있으면 그 "선택된 occurrence들"만 함께 완료 처리한다. 서로 다른
-  // item.id는(같이 선택돼 있어도) 절대 함께 바뀌지 않고, task/memo는 선택 상태와 무관하게
-  // 항상 클릭한 항목 하나만 바뀐다.
-  function toggleItemCompleted(itemId, occurrenceDate) {
+  // 체크박스는 기본적으로 "클릭한 항목 하나"만 조작한다. 다만 클릭한 항목/occurrence
+  // 자체가 현재 다중 선택에 포함돼 있으면, 선택된 항목 전체(종류 무관 — 할 일·일정·메모가
+  // 섞여 있어도)를 한 번에 같은 목표 상태로 바꾼다. 다중 선택 여부는 (a) 서로 다른
+  // item.id가 2개 이상 선택돼 있거나, (b) 같은 다일 일정의 occurrence가 2개 이상 선택돼
+  // 있으면(선택된 item.id 자체는 하나) 성립한다. 목표 상태는 항상 "클릭한 항목/occurrence의
+  // 현재 상태"를 반전한 값이다.
+  // 일정(schedule)은 다중 선택 여부와 무관하게 항상 하나의 기간 전체를 한 일정으로
+  // 취급한다 — getOccurrenceDates가 돌려주는 모든 발생 날짜를 applyScheduleRangeCompletion이
+  // 한 번에 통일한다(어느 occurrence를 클릭해도 전체 기간이 함께 완료·완료 취소됨).
+  // 단일 날짜 schedule은 occurrence가 1개뿐이라 결과적으로 기존 동작과 같다. task/memo는
+  // item.completed 하나만 바꾼다.
+  // singleOnly가 true면(상세 패널의 단일 체크박스 전용) 다중 선택 로직을 완전히 건너뛰고
+  // 항상 클릭한 항목 하나만(schedule이면 그 전체 기간을) 바꾼다 — 상세 패널을 연 상태에서
+  // Daily/Weekly에 우연히 다른 항목들이 다중 선택돼 있어도 영향받지 않게 하기 위함이다.
+  // 라운드2 5/11 재검증: 이월(rollover) 대기 중인 항목을 완료 처리하면 정착(settle)까지
+  // 함께 시켜야 한다 -- 그러지 않으면 완료 체크된 채로 계속 "이월" 영역에 남는 실제 버그가
+  // 있었다(재현 확인됨: rolloverPending은 completed 토글과 무관해 그대로 유지됐다). 완료를
+  // 취소(targetCompleted=false)하는 경우는 건드리지 않는다 -- 다시 미완료로 돌아간 항목은
+  // 여전히 "처리 안 된 지난 항목"이라 이월 영역에 남아있는 게 맞다.
+  function settleRolloverPendingOnComplete(item, targetCompleted) {
+    if (!targetCompleted || !item.rolloverPending) return;
+    item.originalDate = item.date;
+    item.migratedFrom = null;
+    item.rolloverPending = false;
+  }
+// 같은 일반 인스턴스 그룹의 완료 상태를 한꺼번에 맞춘다.
+// 날짜·순서·이동 위치는 건드리지 않는다.
+function setInstanceGroupCompleted(
+  instanceGroupId,
+  targetCompleted
+) {
+  if (!instanceGroupId) return;
+
+  // Daily·Weekly·Monthly Log의 일반 항목
+  state.items.forEach(function (linkedItem) {
+    if (
+      linkedItem.instanceGroupId !== instanceGroupId ||
+      linkedItem.deletedAt ||
+      linkedItem.type === 'divider'
+    ) {
+      return;
+    }
+
+    if (linkedItem.type === 'schedule') {
+      // 일정은 현재 정책대로 해당 일정의 전체 기간을 완료 처리
+      applyScheduleRangeCompletion(
+        linkedItem,
+        targetCompleted
+      );
+    } else {
+      setOccurrenceCompleted(
+        linkedItem,
+        linkedItem.date,
+        targetCompleted
+      );
+
+      settleRolloverPendingOnComplete(
+        linkedItem,
+        targetCompleted
+      );
+    }
+
+    linkedItem.updatedAt = Date.now();
+  });
+
+  // 이달의 할 일에 있는 같은 인스턴스
+  state.monthlyItems.forEach(function (linkedItem) {
+    if (
+      linkedItem.instanceGroupId !== instanceGroupId ||
+      linkedItem.deletedAt ||
+      linkedItem.type === 'divider'
+    ) {
+      return;
+    }
+
+    linkedItem.completed = targetCompleted;
+    linkedItem.updatedAt = Date.now();
+  });
+}
+  function toggleItemCompleted(itemId, occurrenceDate, singleOnly) {
     var item = findItemById(itemId);
     if (!item) {
       console.warn('[dotdotplanner] toggleItemCompleted: unknown itemId', itemId);
       return;
     }
+    if (item.type === 'divider') return;
     var occ = occurrenceDate || item.date;
-    // 15: 선택 occurrence는 항상 이 item.id 하나로 한정해서만 읽는다 — 다른 일정의 선택
-    // occurrence는 애초에 이 Set에 섞이지 않으므로 서로 다른 일정이 함께 바뀔 수 없다.
-    var occSet = item.type === 'schedule' ? state.selectedOccurrenceById.get(itemId) : null;
-    var isBulkSchedule = item.type === 'schedule' && state.selectedItemIds.has(itemId) &&
-      !!occSet && occSet.has(occ) && occSet.size > 1;
+
+    var occSetForClicked = (!singleOnly && item.type === 'schedule')
+      ? state.selectedOccurrenceById.get(itemId)
+      : null;
+    var isMultiSelect = !singleOnly && (
+      state.selectedItemIds.size >= 2 ||
+      (!!occSetForClicked && occSetForClicked.size >= 2)
+    );
+    var clickedIncluded = !singleOnly &&
+      state.selectedItemIds.has(itemId) &&
+      (!occSetForClicked || occSetForClicked.has(occ));
+
+    var targetCompleted = !isOccurrenceCompleted(item, occ);
 
     withHistoryTransaction(function () {
-      if (isBulkSchedule) {
-        var targetCompleted = !isOccurrenceCompleted(item, occ);
-        occSet.forEach(function (occDate) {
-          setOccurrenceCompleted(item, occDate, targetCompleted);
+      if (isMultiSelect && clickedIncluded) {
+        state.selectedItemIds.forEach(function (id) {
+          var it = findItemById(id);
+          if (!it || it.deletedAt) return;
+          if (it.type === 'divider') return;
+          if (it.type === 'schedule') {
+            applyScheduleRangeCompletion(it, targetCompleted);
+          } else {
+            setOccurrenceCompleted(it, it.date, targetCompleted);
+            settleRolloverPendingOnComplete(it, targetCompleted);
+          }
+          it.updatedAt = Date.now();
         });
-      } else {
-        setOccurrenceCompleted(item, occ, !isOccurrenceCompleted(item, occ));
+      } else if (item.type === 'schedule') {
+        applyScheduleRangeCompletion(item, targetCompleted);
+        item.updatedAt = Date.now();
+           } else {
+        setOccurrenceCompleted(
+          item,
+          occ,
+          targetCompleted
+        );
+
+        settleRolloverPendingOnComplete(
+          item,
+          targetCompleted
+        );
+
+        item.updatedAt = Date.now();
       }
-      item.updatedAt = Date.now();
+
+      // 클릭한 항목이 인스턴스라면
+      // 같은 그룹 전체를 동일한 완료 상태로 맞춘다.
+      if (item.instanceGroupId) {
+        setInstanceGroupCompleted(
+          item.instanceGroupId,
+          targetCompleted
+        );
+      }
     });
+
+    // 같은 그룹이 state.items와 state.monthlyItems에
+    // 나뉘어 있을 수 있으므로 둘 다 저장한다.
     saveItems();
+    saveMonthlyItems();
     renderApp();
   }
 
@@ -1456,8 +4253,11 @@ endDateDraftActive: false,
         item.type = nextType;
       }
       item.updatedAt = Date.now();
+      if (item.sourceMonthlyItemId) syncSharedMonthlyFields(item.sourceMonthlyItemId, item);
+      if (item.instanceGroupId) syncSharedInstanceGroupFields(item.instanceGroupId, item);
     });
     saveItems();
+    if (item.sourceMonthlyItemId || item.instanceGroupId) saveMonthlyItems();
     renderApp();
     closeTypeMenu();
   }
@@ -1550,6 +4350,7 @@ endDateDraftActive: false,
     }
     var item = findItemById(itemId);
     if (!item) return;
+    if (item.type === 'divider') return;
     if (activeTypeMenu) closeTypeMenu(false);
     if (activeDateWheel) closeDateWheelPopup(false);
     if (activeTimeWheel) closeTimeWheelPopup(false);
@@ -1606,6 +4407,13 @@ endDateDraftActive: false,
   // 15: 같은 item.id라도 다일 일정은 서로 다른 날짜 열에서 각각 선택될 수 있으므로, 기존
   // occurrence 선택에 "더한다"(덮어쓰지 않는다) — 그래야 7/1·7/2·7/3 occurrence를 차례로
   // Ctrl+클릭해 함께 선택하는 게 가능해진다.
+  // 휴지통 진단: TRASH_CONTAINER_KEY도 다른 containerKey(날짜 문자열)와 똑같이 여기서
+  // 기록된다 -- toggleNonContiguousSelection의 "이미 이 컨테이너에서 선택돼 있었는지"
+  // 판정이 이 기록에 의존하므로, 여기서 건너뛰면 같은 항목을 다시 Ctrl+클릭해도 해제되지
+  // 않는 회귀가 생긴다(실제 재현 확인). 휴지통은 occurrence가 여러 개일 수 없어(같은
+  // item.id가 목록에 중복 표시되지 않음) Set 크기가 항상 0또는1로만 쓰이므로 "가짜
+  // occurrence를 만들지 않는다"는 요구는 restoreItems/permanentDeleteItems 및
+  // clearItemSelection/setView가 이 기록을 항상 정리하는 것으로 충족한다(잔여 없음).
   function addSelectedOccurrence(itemId, containerKey) {
     if (containerKey === undefined) return;
     var set = state.selectedOccurrenceById.get(itemId);
@@ -1644,6 +4452,25 @@ endDateDraftActive: false,
   // daily/weekly 모두 "같은 날짜의 항목을 order로 정렬"이라는 동일한 규칙이라
   // containerKey(날짜 문자열)만으로 충분하다.
   function getVisibleIdsForContainer(containerKey) {
+    // 휴지통은 order로 정렬된 날짜별 목록이 아니라 현재 화면에 실제로 그려진(=현재
+    // 필터에서 보이는) 행의 DOM 순서 그대로가 범위 선택 기준이다(getVisibleTrashIds).
+    if (containerKey === TRASH_CONTAINER_KEY) return getVisibleTrashIds();
+    // Monthly Log는 'monthly:'+날짜 형태의 전용 containerKey를 쓴다(monthlyLogContainerKey) --
+    // 같은 날짜 문자열이라도 Weekly와 다른 컨테이너로 취급해야 한다(context 필드로 구분).
+    // Monthly Log 메뉴 정리: divider도 이제 Monthly Log에 표시하므로(구분선 추가 명령)
+    // 더 이상 범위 선택에서 제외하지 않는다 -- 실제 화면 표시와 일치시킨다.
+    if (typeof containerKey === 'string' && containerKey.indexOf('monthly:') === 0) {
+      var monthlyDate = containerKey.slice(8);
+      return getItemsForDate(monthlyDate)
+        .slice()
+        .sort(function (a, b) { return a.order - b.order; })
+        .map(function (it) { return it.id; });
+    }
+    // 이달의 할 일: containerKey가 'YYYY-MM'(monthKey) 형태면 그 달의 원본 목록이다 --
+    // 날짜 문자열(YYYY-MM-DD)과 자릿수가 달라 서로 겹칠 일이 없다.
+    if (typeof containerKey === 'string' && /^\d{4}-\d{2}$/.test(containerKey)) {
+      return getMonthlyItemsForMonth(containerKey).map(function (it) { return it.id; });
+    }
     return getItemsForDate(containerKey)
       .slice()
       .sort(function (a, b) { return a.order - b.order; })
@@ -1718,11 +4545,72 @@ endDateDraftActive: false,
     renderSelectionState();
   }
 
+  // 빠른 입력창에 포커스가 남아 있으면 안전하게 blur한다(값은 절대 지우지 않음 — 작성
+  // 중이던 초안은 그대로 보존돼야 한다). 항목 선택이 실제로 확정되는 공용 지점
+  // (handleItemPointerSelect/marquee 드래그 완료)에서만 호출한다 — 개별 선택 함수마다
+  // 중복해서 넣지 않는다.
+  //
+  // 배경: 6점 grip(.drag/.week-drag)의 pointerdown 핸들러(onDragHandlePointerDown)가
+  // 네이티브 드래그 고스트를 막으려고 e.preventDefault()를 호출하는데, 이게 브라우저의
+  // 네이티브 blur까지 함께 막아버린다(같은 이유로 그 핸들러는 activeTitleEdit/
+  // activeDateWheel/activeTimeWheel을 미리 커밋·정리해 둔다 — #quick-input만 빠져
+  // 있었다). 그 결과 "빠른 입력으로 항목 생성 -> Enter 후에도 포커스가 입력창에 남음 ->
+  // 그 항목을 선택(grip 영역과 실제로 겹치는 select-gutter 클릭 포함)해도 입력창이
+  // blur되지 않음 -> Delete 시 document.activeElement가 여전히 INPUT이라
+  // isTypingElsewhere가 참이 돼 handleGlobalKeydown이 조기 return"하는 문제가 생긴다.
+  // 빈 공간 드래그(marquee) 선택도 같은 이유(onItemListPointerDown의 preventDefault)로
+  // 영향을 받으므로 그 확정 지점에도 동일하게 적용한다.
+  function blurQuickInputIfFocused() {
+    var input = document.getElementById('quick-input');
+    if (input && document.activeElement === input) input.blur();
+    // Monthly Log 기능 복구: 행 직접 입력(.monthly-log-row-input)도 #quick-input과 같은
+    // 이유로 여기서 함께 blur해야 한다 -- 그렇지 않으면 "행 입력 중 Enter로 항목 생성 ->
+    // 포커스가 입력창에 남은 채 그 항목을 선택 -> F2/Delete가 isTypingElsewhere에 막힘"과
+    // 똑같은 회귀가 생긴다(실제 재현 확인).
+    var ae = document.activeElement;
+    if (ae && ae.classList && ae.classList.contains('monthly-log-row-input')) ae.blur();
+  }
+
+  // 2단계(Weekly 구분선): "마지막으로 조작한 Weekly 열"을 기록하는 단일 지점. 세션
+  // 한정(state.lastActiveWeeklyDate, localStorage 미저장)이라 호출부는 날짜 문자열만
+  // 넘기면 된다 -- 값 검증은 하지 않는다(호출부가 이미 실제 열의 날짜만 넘긴다).
+  function markLastActiveWeeklyDate(dateStr) {
+    if (!dateStr) return;
+    state.lastActiveWeeklyDate = dateStr;
+    markLastActiveListDate(dateStr);
+  }
+
+  // 공통 복사/잘라내기/붙여넣기(3단계)가 붙여넣기 대상 날짜를 정할 때 쓰는 범용 추적
+  // 지점 -- Daily/Weekly/Monthly Log 어디서 마지막으로 항목을 클릭/선택했는지(또는
+  // 빈 영역·날짜 라벨을 클릭했는지)를 세션 한정으로 기억한다. lastActiveWeeklyDate와는
+  // 별개 필드다(그쪽은 Weekly 구분선 기능 전용 의미라 건드리지 않는다).
+  function markLastActiveListDate(dateStr) {
+    if (!dateStr) return;
+    state.lastActiveListDate = dateStr;
+  }
+
+  // 붙여넣기 대상 날짜 우선순위: 마지막으로 활성화한 목록/날짜 -> 현재 selectedDate.
+  function resolvePasteTargetDate() {
+    return state.lastActiveListDate || state.selectedDate;
+  }
+
   // 클릭 시 눌린 보조키에 따라 위 네 가지 선택 동작으로 분기하는 단일 진입점.
   // 7A.2: skipOpenDetail이 true면(선택 gutter 클릭) 보조키 없는 클릭도 상세 모달을 열지
   // 않는다 — gutter는 "선택 전용" 영역이라는 요구사항 때문. 카드 본문 클릭은 여전히
   // (skipOpenDetail 생략 = false) 기존처럼 단일 선택 + 상세 모달을 함께 연다.
   function handleItemPointerSelect(e, itemId, context, containerKey, occurrenceDate, skipOpenDetail) {
+    blurQuickInputIfFocused();
+    // 2단계(Weekly 구분선): Weekly 문맥의 클릭/선택은 전부 그 열의 날짜를 "마지막으로
+    // 조작한 Weekly 열"로 기억한다(항목 클릭·선택 트리거 3/6).
+    if (context === 'weekly' && containerKey) markLastActiveWeeklyDate(containerKey);
+    // 9.4/9.6/9.7: 구분선은 상세 패널·타입 변경·완료 토글의 대상이 아니다 -- 선택 자체는
+    // 아래 일반 분기를 그대로 타되, 상세 패널만은 호출자가 뭘 넘겼든 강제로 건너뛴다.
+    var item = findItemById(itemId);
+    // 3단계(공통 복사/붙여넣기): Daily/Weekly/Monthly Log 어디서 항목을 클릭했든, 그
+    // 항목의 실제 날짜를 붙여넣기 대상 후보로 기억한다(occurrenceDate가 없으면
+    // item.date로 대체 -- grip 클릭 등 일부 경로는 occurrenceDate를 안 넘긴다).
+    if (item) markLastActiveListDate(occurrenceDate || item.date);
+    var isDivider = !!item && item.type === 'divider';
     var isMulti = e.ctrlKey || e.metaKey;
     var isShift = e.shiftKey;
     if (isMulti && isShift) {
@@ -1737,21 +4625,37 @@ endDateDraftActive: false,
       // 모달을 연다(기존 task 클릭 동작을 그대로 세 유형에 확장 — 별도 "상세 열기 전용"
       // 영역을 새로 만들지 않는다). 체크박스·상태 문양·화살표·드래그 핸들은 이 지점에
       // 도달하기 전에 각자의 data-action 분기에서 이미 걸러졌다.
-      if (!skipOpenDetail) openDetailDrawer(itemId, occurrenceDate);
+      if (!skipOpenDetail && !isDivider) openDetailDrawer(itemId, occurrenceDate);
     }
   }
 
   // 실제 선택 여부를 DOM에 반영하는 단일 지점. renderApp() 끝에서 항상 다시
   // 호출되므로, 완료 토글/타입 변경 등 다른 재렌더링 후에도 선택 표시가 유지된다.
-  // 8: 휴지통 행(.task.trash-row)은 selectedItemIds가 아니라 별도의 trashSelectedItemIds를
-  // 쓰므로(renderTrashSelectionState 담당) 여기서 제외한다 — 안 그러면 휴지통 보기에서
-  // 매번 selectedItemIds(항상 빈 상태)를 기준으로 휴지통 선택 표시가 지워진다.
+  // 휴지통 진단: 휴지통 행(.task.trash-row)도 이제 같은 selectedItemIds를 쓰므로 더 이상
+  // :not(.trash-row)로 제외하지 않는다 -- Daily/Weekly/휴지통 전부 이 한 번의 호출로
+  // 선택 표시가 갱신된다. 휴지통 상단 일괄 작업 바도 선택이 바뀔 때마다 항상 함께
+  // 갱신한다(호출자가 따로 챙기지 않아도 되게).
   function renderSelectionState() {
-    document.querySelectorAll('.task[data-item-id]:not(.trash-row), .week-card li[data-item-id]').forEach(function (el) {
+    var monthlyLogRowsEl = document.getElementById('monthly-log-rows');
+    if (monthlyLogRowsEl) monthlyLogRowsEl.classList.toggle('has-item-selection', state.selectedItemIds.size > 0);
+    document.querySelectorAll('.task[data-item-id], .week-card li[data-item-id], .monthly-log-item[data-item-id], .monthly-item-row[data-item-id]').forEach(function (el) {
       var selected = state.selectedItemIds.has(el.dataset.itemId);
       el.classList.toggle('is-selected', selected);
       el.setAttribute('aria-selected', String(selected));
     });
+    document.querySelectorAll('.group-header[data-group-id]').forEach(function (header) {
+      var group = findGroupById(header.dataset.groupId);
+      var members = getGroupMembers(header.dataset.groupId);
+      var occurrenceKey = group && groupScope(group) === 'monthly' ? group.monthKey : (group ? group.date : null);
+      var selected = members.length > 0 && members.every(function (it) {
+        if (!state.selectedItemIds.has(it.id)) return false;
+        var set = state.selectedOccurrenceById.get(it.id);
+        return !occurrenceKey || (!!set && (set.has(occurrenceKey) || set.has(monthlyLogContainerKey(occurrenceKey))));
+      });
+      header.classList.toggle('is-selected', selected);
+      header.setAttribute('aria-selected', String(selected));
+    });
+    renderTrashBulkBar();
   }
 
   // ---------------------------------------------------------------------
@@ -1759,6 +4663,11 @@ endDateDraftActive: false,
   // 재렌더링으로 행이 교체돼도 컨테이너 자체는 그대로라 다시 등록할 필요 없다.
   // ---------------------------------------------------------------------
   function handleListClick(e) {
+    // 그룹 헤더는 자기 자신의 리스너(chevron/이름/메뉴)가 이미 처리했다 -- 여기까지
+    // 올라온 클릭(헤더의 빈 여백 등)이 "빈 공간 클릭 = 선택 해제"로 오인되지 않게 막는다.
+    if (e.target.closest('.group-header')) return;
+    // Today 제목을 한 번 클릭하면 상세를 열지 않고 바로 인라인 편집한다.
+
     var checkboxBtn = e.target.closest('[data-action="toggle-complete"]');
     if (checkboxBtn) {
       e.stopPropagation();
@@ -1777,12 +4686,27 @@ endDateDraftActive: false,
       handleMoveDateClick(moveBtn.dataset.itemId, moveBtn);
       return;
     }
+    // 이월 카드 개별 '오늘'/'삭제' -- 체크박스·타입·화살표와 같은 자리에서 먼저 걸러지므로
+    // 카드 본문 클릭(상세 패널 열기)이나 드래그 손잡이로 새지 않는다.
+    var rolloverTodayBtn = e.target.closest('[data-action="rollover-move-today"]');
+    if (rolloverTodayBtn) {
+      e.stopPropagation();
+      moveRolloverItemToToday(rolloverTodayBtn.dataset.itemId);
+      return;
+    }
+    var rolloverDeleteBtn = e.target.closest('[data-action="rollover-delete-one"]');
+    if (rolloverDeleteBtn) {
+      e.stopPropagation();
+      softDeleteItems([rolloverDeleteBtn.dataset.itemId]);
+      return;
+    }
     var plusBtn = e.target.closest('[data-action="weekly-add"]');
     if (plusBtn) {
       e.stopPropagation();
       var card = plusBtn.closest('.week-card');
       var ul = card && card.querySelector('ul[data-date]');
-      if (ul) openWeeklyInlineAdd(ul.dataset.date, plusBtn);
+      // 2단계 트리거 4: 이 날짜의 "+" 버튼 클릭.
+      if (ul) { markLastActiveWeeklyDate(ul.dataset.date); openWeeklyInlineAdd(ul.dataset.date, plusBtn); }
       return;
     }
     // 7A.2(정정): 선택 gutter(overlay)와 6점 grip은 이제 형제 요소라 gutter closest만으로는
@@ -1794,17 +4718,32 @@ endDateDraftActive: false,
     // 제목 인라인 편집 입력 안 클릭(텍스트 선택 등)은 카드 선택으로 이어지지 않는다.
     if (e.target.closest('.title-edit-input')) return;
     // 7A.2 6: 날짜 header(Weekly)는 "빈 영역 클릭"으로 치지 않는다(아무 것도 안 함).
-    if (e.target.closest('.week-card header')) return;
+    // 2단계 트리거 2: 그래도 이 열의 날짜는 active로 기억한다.
+    var headerEl = e.target.closest('.week-card header');
+    if (headerEl) {
+      var headerUl = headerEl.closest('.week-card').querySelector('ul[data-date]');
+      if (headerUl) markLastActiveWeeklyDate(headerUl.dataset.date);
+      return;
+    }
 
     var row = e.target.closest('[data-item-id]');
     if (!row) {
       // 7A.2 6: 카드도 알려진 컨트롤도 아닌 실제 빈 공간 클릭 — 전체 선택 해제(모달 없음,
       // history 없음). marquee drag가 방금 끝났다면(suppressNextItemGutterClick) 중복
-      // 처리하지 않는다.
+      // 처리하지 않는다. 2단계 트리거 1: Weekly 날짜 칸의 빈 영역이면(카드 안, 항목 아님)
+      // 그 열의 날짜를 active로 기억한다 -- 선택 해제 여부와 무관하게 항상 기록한다.
+      var emptyCardUl = e.target.closest('.week-card') ? e.target.closest('.week-card').querySelector('ul[data-date]') : null;
+      if (emptyCardUl) markLastActiveWeeklyDate(emptyCardUl.dataset.date);
       if (suppressNextItemGutterClick) { suppressNextItemGutterClick = false; return; }
       clearItemSelection();
       return;
     }
+    // 손잡이 즉시 드래그: 손잡이가 카드 폭 대비 매우 좁아(9px), 드래그를 아주 살짝만
+    // 움직이다가 취소(Escape)하거나 짧게 끝내면 포인터가 손잡이 밖(카드 본문)에서 놓일 수
+    // 있다 — 이 경우 attachGripSelectClick의 억제 체크(자기 자신에서만 확인)를 거치지 않고
+    // 이 카드 본문 클릭 경로로 그대로 들어와 상세 패널이 뜻하지 않게 열린다. 드래그였다면
+    // (suppressNextItemGutterClick) 여기서도 동일하게 한 번 소비하고 무시한다.
+    if (suppressNextItemGutterClick) { suppressNextItemGutterClick = false; return; }
     e.stopPropagation();
     var itemId = row.dataset.itemId;
     var context, containerKey;
@@ -1824,8 +4763,73 @@ endDateDraftActive: false,
     // 커밋과 중복 실행돼도 commitTitleEdit()은 activeTitleEdit이 없으면 즉시 반환해 안전하다.
     if (activeTitleEdit) commitTitleEdit();
 
-    handleItemPointerSelect(e, itemId, context, containerKey, row.dataset.occurrenceDate);
+var dailyTitleText =
+  context === 'daily'
+    ? e.target.closest('.row-title-text')
+    : null;
+
+/*
+ * Daily 제목은 더블클릭과 단일 클릭을 구분해야 한다.
+ *
+ * 첫 클릭:
+ * - 항목 선택
+ * - 230ms 후 상세페이지 열기
+ *
+ * 두 번째 클릭:
+ * - 예약된 상세 열기 취소
+ * - dblclick 핸들러가 제목 편집 실행
+ */
+if (
+  dailyTitleText &&
+  !e.ctrlKey &&
+  !e.metaKey &&
+  !e.shiftKey
+) {
+  if (e.detail > 1) {
+    if (pendingDailyTitleClickTimer) {
+      clearTimeout(pendingDailyTitleClickTimer);
+      pendingDailyTitleClickTimer = null;
+    }
+
+    return;
   }
+
+  handleItemPointerSelect(
+    e,
+    itemId,
+    context,
+    containerKey,
+    row.dataset.occurrenceDate,
+    true
+  );
+
+  if (pendingDailyTitleClickTimer) {
+    clearTimeout(pendingDailyTitleClickTimer);
+  }
+
+  pendingDailyTitleClickTimer = setTimeout(
+    function () {
+      pendingDailyTitleClickTimer = null;
+
+      openDetailDrawer(
+        itemId,
+        row.dataset.occurrenceDate
+      );
+    },
+    230
+  );
+
+  return;
+}
+
+/* 제목 외 카드 영역은 한 번 클릭하면 즉시 상세페이지 */
+handleItemPointerSelect(
+  e,
+  itemId,
+  context,
+  containerKey,
+  row.dataset.occurrenceDate
+);  }
 
   // 목록/Weekly 카드 "바깥"의 빈 영역 클릭 시 전체 선택 해제.
   function handleDocumentSelectionClear(e) {
@@ -1840,6 +4844,7 @@ endDateDraftActive: false,
     var trashList = document.getElementById('trash-list');
     var trashBulkBar = document.getElementById('trash-bulk-bar');
     var weeklyPanel = document.querySelector('.weekly');
+    var monthlyLogView = document.getElementById('monthly-log-view');
     var insideKnownContainer =
       (dailyList && dailyList.contains(e.target)) ||
       (rolloverList && rolloverList.contains(e.target)) ||
@@ -1849,6 +4854,11 @@ endDateDraftActive: false,
       // week-grid 전부 포함) — 여기를 클릭했다고 선택이 조용히 풀리면 안 된다(7: 내렸다
       // 올려도 선택 유지 요구사항). week-grid만 따로 보던 예전 범위를 패널 전체로 넓혔다.
       (weeklyPanel && weeklyPanel.contains(e.target)) ||
+      // Monthly Log 기능 복구: 날짜 행 목록(#monthly-log-rows)과 오른쪽 월간 할일 패널
+      // 전부를 포함하는 .monthly-log-view 전체를 "알려진 컨테이너"에 추가한다 -- 이게
+      // 없으면 Monthly Log 항목을 클릭해 방금 만든 선택이 이 문서 레벨 핸들러에 의해
+      // 바로 뒤이어 조용히 지워진다(실제 재현 확인된 버그).
+      (monthlyLogView && monthlyLogView.contains(e.target)) ||
       (activeTypeMenu && activeTypeMenu.el.contains(e.target)) ||
       (activeMoveMenu && activeMoveMenu.el.contains(e.target)) ||
       (activeDateWheel && activeDateWheel.el.contains(e.target)) ||
@@ -1857,9 +4867,8 @@ endDateDraftActive: false,
       // drawer는 activeDetailItemId로 독립 관리되고, 닫힘은 자신의 backdrop/X/Escape가 맡는다.
       (activeDetailDrawer && activeDetailDrawer.overlayEl.contains(e.target));
     if (insideKnownContainer) return;
-    // 8: 일반 선택과 휴지통 선택은 서로 다른 상태라 빈 공간 클릭 시 둘 다 각자 초기화한다.
+    // 휴지통 진단: Daily/Weekly/휴지통이 이제 같은 selectedItemIds를 쓰므로 한 번만 지우면 된다.
     if (state.selectedItemIds.size > 0) clearItemSelection();
-    if (state.trashSelectedItemIds.size > 0) clearTrashSelection();
   }
 
   // 항목 하나만 선택돼 있을 때 F2 또는 Enter로 제목 편집을 시작한다(다중 선택이면 무시).
@@ -1868,9 +4877,15 @@ endDateDraftActive: false,
   function startTitleEditForSelection() {
     var itemId = state.selectedItemIds.values().next().value;
     if (!itemId) return;
-    var titleEl = document.querySelector('#daily-list [data-item-id="' + itemId + '"] .row-title') ||
-      document.querySelector('#rollover-list [data-item-id="' + itemId + '"] .row-title') ||
-      document.querySelector('.week-card li[data-item-id="' + itemId + '"] .week-item-title');
+    // Monthly Log 기능 복구: Daily/Weekly와 Monthly Log는 같은 state.items를 공유하므로
+    // 같은 itemId가 (화면엔 안 보이는) Daily/Weekly의 hidden DOM에도 동시에 존재할 수
+    // 있다 -- currentView로 먼저 좁혀야 실제로 "보이는" 화면의 titleEl을 정확히 찾는다
+    // (그렇지 않으면 hidden 상태인 다른 화면의 요소를 잘못 편집 대상으로 잡는 실제 버그가 있었다).
+    var titleEl = state.currentView === 'calendar'
+      ? document.querySelector('.monthly-log-schedule-segment[data-item-id="' + itemId + '"] .monthly-log-schedule-label, .monthly-log-item[data-item-id="' + itemId + '"] .monthly-log-item-title')
+      : document.querySelector('#daily-list [data-item-id="' + itemId + '"] .row-title') ||
+        document.querySelector('#rollover-list [data-item-id="' + itemId + '"] .row-title') ||
+        document.querySelector('.week-card li[data-item-id="' + itemId + '"] .week-item-title');
     if (!titleEl) return;
     startTitleEdit(itemId, titleEl);
   }
@@ -1895,29 +4910,207 @@ endDateDraftActive: false,
     }
 
     // 7: Delete는 항상, Backspace는 입력창 등에 포커스가 없을 때만 선택 항목을 휴지통으로 이동한다.
+    // 휴지통 화면에서는 같은 키가 "휴지통으로 이동"이 아니라 기존 확인 모달을 거치는
+    // 일괄 영구 삭제로 연결된다(즉시 삭제 아님) — Backspace도 위 today 분기와 동일하게
+    // Delete와 같은 경로를 그대로 공유한다.
     if (e.key === 'Delete' || e.key === 'Backspace') {
       if (isTypingElsewhere || activeTitleEdit || activeDateWheel || activeTimeWheel) return;
       if (dragState || calendarRangeDragState || activeTypeMenu || activeMoveMenu || activeWeeklyInlineAdd) return;
       if (state.activeDetailItemId) return; // 5: 상세 drawer가 열린 동안은 차단.
-      if (state.currentView !== 'today') return; // 휴지통 보기 자체에서는 이 단축키로 삭제하지 않는다.
+      if (state.currentView === 'trash') {
+        if (state.selectedItemIds.size === 0) return;
+        e.preventDefault();
+        // bulkPermanentDeleteSelectedTrash 내부의 window.confirm은 동기 호출이라 열려
+        // 있는 동안 이벤트 루프가 멈춘다 — 그 사이 들어오는 추가 Delete 입력은 애초에
+        // 처리될 수 없으므로 별도의 "모달 중복 방지" 플래그가 필요 없다.
+        bulkPermanentDeleteSelectedTrash();
+        return;
+      }
+      if (state.currentView !== 'today' && state.currentView !== 'calendar') return; // 휴지통 외에는 Today/Monthly Log에서만 이 단축키로 삭제한다.
       if (state.selectedItemIds.size === 0) return;
       e.preventDefault();
-      softDeleteItems(Array.from(state.selectedItemIds));
+      // 이달의 할 일(monthlyItems)은 state.items와 별도 컬렉션이라 같은 id 목록 안에
+      // 두 종류가 섞여 있을 수 있다 -- 각자의 삭제 함수로 나누되 withHistoryTransaction의
+      // 중첩 규칙(가장 바깥 호출만 스냅샷)을 이용해 한 번의 Undo로 묶는다.
+      var selectedIds = Array.from(state.selectedItemIds);
+      var monthlyIds = selectedIds.filter(function (id) { return !!findMonthlyItemById(id); });
+      var regularIds = selectedIds.filter(function (id) { return !findMonthlyItemById(id); });
+      withHistoryTransaction(function () {
+        // 라운드3 3: 연결된 배치본이 섞여 있으면 그 연결 세트 전체를 함께 삭제한다
+        // (사용자 확정 정책 -- deleteRegularItemsWithLinkedInstancePolicy가 독립 항목은
+        // 기존과 동일하게 그 항목만 지운다).
+        if (regularIds.length) deleteRegularItemsWithLinkedInstancePolicy(regularIds);
+        if (monthlyIds.length) deleteMonthlyItems(monthlyIds);
+      });
+      renderApp();
       return;
     }
 
     var key = e.key.toLowerCase();
 
-    // 7: Ctrl/Cmd+C·V = 앱 내부 항목 클립보드. 입력창/편집 팝업/드래그 중이거나 휴지통
-    // 화면일 때는 아무 것도 하지 않고 그대로 반환해 브라우저 기본 텍스트 복사·붙여넣기를
-    // 건드리지 않는다.
-    if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && (key === 'c' || key === 'v')) {
-      if (isTypingElsewhere || activeTitleEdit || activeDateWheel || activeTimeWheel || activeWeeklyInlineAdd) return;
-      if (dragState || calendarRangeDragState || activeTypeMenu || activeMoveMenu) return;
-      if (state.activeDetailItemId) return; // 5: 상세 drawer가 열린 동안은 차단.
+    // 4/5: Ctrl/Cmd+N -- 항상 Today의 기존 빠른 입력(#quick-input)으로 포커스만 이동한다.
+    // 새 떠있는 입력창을 만들지 않고, 월간 패널이 열려 있어도 그 패널 자신의 입력은
+    // 절대 자동 포커스하지 않는다(사용자가 직접 클릭/Tab해야만 "활성"으로 보인다).
+    // 브라우저 기본 "새 창" 동작을 막아야 하므로 대상이 아닐 때를 뺀 모든 경우 preventDefault.
+    if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && key === 'n') {
+      if (isTypingElsewhere || activeTitleEdit || activeDateWheel || activeTimeWheel) return;
+      if (state.activeDetailItemId) return;
       if (state.currentView !== 'today') return;
       e.preventDefault();
-      if (key === 'c') copySelectedItemsToClipboard(); else pasteItemsFromClipboard();
+      var qi = document.getElementById('quick-input');
+      if (qi) qi.focus();
+      return;
+    }
+
+    // 4: 이번달 할 일 패널 토글 -- Ctrl/Cmd+Shift+/. 키보드 배열에 안전하도록 event.code를
+    // 우선 판정한다(자판이 달라도 물리적 '/' 위치는 대개 Slash). Today 화면에서만 동작하며
+    // 입력/편집/휠/타입메뉴/상세 패널이 열려 있으면 가로채지 않는다.
+    if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.code === 'Slash' || key === '/')) {
+      if (isTypingElsewhere || activeTitleEdit || activeDateWheel || activeTimeWheel) return;
+      if (activeTypeMenu || activeMoveMenu || activeWeeklyInlineAdd) return;
+      if (activeMonthlyTypeMenu || activeMonthlyTitleEdit) return;
+      if (state.activeDetailItemId) return;
+      if (state.currentView !== 'today') return;
+      e.preventDefault();
+      toggleMonthlyPanel();
+      return;
+    }
+
+    // 3/4단계(공통 복사/잘라내기/붙여넣기): 앱 내부 항목 클립보드. 입력창/편집 팝업/
+    // 드래그 중이거나 휴지통 화면일 때는 아무 것도 하지 않고 그대로 반환해 브라우저
+    // 기본 텍스트 복사·잘라내기·붙여넣기를 건드리지 않는다. Today('today')와 Monthly
+    // Log('calendar') 둘 다에서 동작한다(Weekly divider 이동은 그대로 별개 기능).
+    if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && (key === 'c' || key === 'v' || key === 'x')) {
+      if (isTypingElsewhere || activeTitleEdit || activeDateWheel || activeTimeWheel || activeWeeklyInlineAdd) return;
+      if (dragState || calendarRangeDragState || monthlyLogRangeDragState || activeTypeMenu || activeMoveMenu) return;
+      if (state.activeDetailItemId) return; // 5: 상세 drawer가 열린 동안은 차단.
+      if (state.currentView !== 'today' && state.currentView !== 'calendar') return;
+      e.preventDefault();
+      // 이달의 할 일 패널에서 마지막으로 선택/조작했으면(selectionAnchor.context) 그
+      // 전용 클립보드로 보낸다 -- monthlyItem은 날짜가 없어 일반 항목 클립보드의 날짜
+      // 평행이동 로직과 애초에 맞지 않는다.
+      var clipboardTargetsMonthlyInbox = state.selectionAnchor && state.selectionAnchor.context === 'monthly-inbox';
+      if (clipboardTargetsMonthlyInbox) {
+        if (key === 'c') copySelectedMonthlyItemsToClipboard();
+        else if (key === 'x') cutSelectedMonthlyItemsToClipboard();
+        else pasteMonthlyItemsFromClipboard();
+      } else {
+        if (key === 'c') copySelectedItemsToClipboard();
+        else if (key === 'x') cutSelectedItemsToClipboard();
+        else pasteItemsFromClipboard();
+      }
+      return;
+    }
+
+    // 인스턴스 복제(Ctrl/Cmd+Alt+C·V) -- 위 일반 복사/잘라내기/붙여넣기와 완전히 다른
+    // 클립보드 슬롯(state.instanceClipboard)을 쓴다. 이달의 할 일 원본(날짜 없음)은
+    // 대상이 아니다(위 clipboardTargetsMonthlyInbox와 동일 판정으로 걸러 그 경우는
+    // 조용히 무시 -- 별도 UI 없음, 기존 정책과 같은 스타일).
+    if ((e.ctrlKey || e.metaKey) && e.altKey && !e.shiftKey && (key === 'c' || key === 'v')) {
+      if (isTypingElsewhere || activeTitleEdit || activeDateWheel || activeTimeWheel || activeWeeklyInlineAdd) return;
+      if (dragState || calendarRangeDragState || monthlyLogRangeDragState || activeTypeMenu || activeMoveMenu) return;
+      if (state.activeDetailItemId) return;
+      if (state.currentView !== 'today' && state.currentView !== 'calendar') return;
+      e.preventDefault();
+      if (key === 'c') copySelectedItemsForInstanceClipboard();
+      else pasteInstanceItemsFromClipboard();
+      return;
+    }
+
+    // Ctrl/Cmd+A: 현재 화면에 실제로 보이는 항목 전체 선택. 휴지통은 기존 전용 함수를
+    // 그대로 쓰고(getVisibleTrashIds가 화면 필터를 반영), Daily/Weekly/Monthly Log(=
+    // today/calendar 화면)는 새로 만든 selectAllInActiveList()가 selectionAnchor 기준으로
+    // "현재 활성 목록"을 골라 선택한다 — 그 외 화면에서는 브라우저 기본 동작을 그대로 둔다.
+    if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && key === 'a') {
+      if (isTypingElsewhere || activeTitleEdit || activeDateWheel || activeTimeWheel || activeWeeklyInlineAdd) return;
+      if (dragState || calendarRangeDragState || monthlyLogRangeDragState || activeTypeMenu || activeMoveMenu) return;
+      if (state.activeDetailItemId) return;
+      if (state.currentView === 'trash') {
+        e.preventDefault();
+        selectAllVisibleTrashItems();
+        return;
+      }
+      if (state.currentView === 'today' || state.currentView === 'calendar') {
+        e.preventDefault();
+        selectAllInActiveList();
+        return;
+      }
+      return;
+    }
+
+    // 그룹 단축키: Ctrl/Cmd+[로 그룹 생성, Ctrl/Cmd+]로 그룹 해제.
+    // Shift가 눌린 Ctrl/Cmd+Shift+[·]는 이 기능에서 사용하지 않는다. 이번 달 할 일
+    // 패널 열기·닫기는 별개의 Ctrl/Cmd+Shift+/ 단축키만 사용한다.
+    // event.code를 우선 사용해 키보드 입력 언어와 관계없이 대괄호 물리 키를 판정한다.
+    var isGroupCreateCombo = (e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey &&
+      (e.code === 'BracketLeft' || key === '[');
+    var isGroupReleaseCombo = (e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey &&
+      (e.code === 'BracketRight' || key === ']');
+
+    // 그룹 생성: 선택된 2개 이상의 항목을 그룹으로 묶는다. 조건 미충족(날짜 불일치/
+    // divider 포함/이미 그룹인 항목 포함/선택 1개 이하)이면 createGroupFromSelection이
+    // 스스로 null을 반환하고 조용히 아무 것도 하지 않는다.
+    if (isGroupCreateCombo) {
+      if (isTypingElsewhere || activeTitleEdit || activeDateWheel || activeTimeWheel || activeWeeklyInlineAdd) return;
+      if (dragState || calendarRangeDragState || monthlyLogRangeDragState || activeTypeMenu || activeMoveMenu) return;
+      if (state.activeDetailItemId) return;
+      if (state.currentView !== 'today' && state.currentView !== 'calendar') return;
+      e.preventDefault();
+      createGroupFromSelection();
+      return;
+    }
+
+    // 그룹 해제: 현재 선택된 항목들이 전부 같은 그룹 하나에 속해 있을 때만 그 그룹을
+    // 해제한다(모호한 경우 조용히 무시).
+    if (isGroupReleaseCombo) {
+      if (isTypingElsewhere || activeTitleEdit || activeDateWheel || activeTimeWheel || activeWeeklyInlineAdd) return;
+      if (dragState || calendarRangeDragState || monthlyLogRangeDragState || activeTypeMenu || activeMoveMenu) return;
+      if (state.activeDetailItemId) return;
+      if (state.currentView !== 'today' && state.currentView !== 'calendar') return;
+      if (!state.selectedItemIds.size) return;
+      var groupIds = getSelectedGroupIds();
+      if (groupIds.length !== 1) return;
+      e.preventDefault();
+      ungroupGroup(groupIds[0]);
+      return;
+    }
+
+    // 라운드2 6: Ctrl/Cmd+Alt+I -- 선택된 이달의 할 일 원본(들)을 현재 선택된 날짜에
+    // shared instance(배치본)로 만든다. 브라우저 기본 단축키와 거의 충돌하지 않는
+    // 조합이며, 실패(대상 없음) 시 조용히 무시하고 메뉴(드래그/"이달의 할 일" 패널)가
+    // 항상 fallback으로 남는다.
+    if ((e.ctrlKey || e.metaKey) && e.altKey && !e.shiftKey && key === 'i') {
+      if (isTypingElsewhere || activeTitleEdit || activeDateWheel || activeTimeWheel || activeWeeklyInlineAdd) return;
+      if (dragState || calendarRangeDragState || monthlyLogRangeDragState || activeTypeMenu || activeMoveMenu) return;
+      var masterIds = Array.from(state.selectedItemIds).filter(function (id) { return !!findMonthlyItemById(id); });
+      if (!masterIds.length || !state.selectedDate) return;
+      e.preventDefault();
+      createPlacementsFromMonthlyItems(masterIds, state.selectedDate);
+      renderApp();
+      return;
+    }
+
+    // Ctrl/Cmd+Alt+U -- 선택된 항목의 연결을 끊는다(unlink). 두 가지 서로 다른 연결
+    // 종류(이번 달 할 일 배치의 sourceMonthlyItemId / 인스턴스 복제의 instanceGroupId)를
+    // 같은 단축키로 처리한다 -- 한 항목이 둘 다 갖는 실사용 시나리오는 없지만, 선택
+    // 안에 서로 다른 연결 종류가 섞여도 각자 맞는 함수로 안전하게 나눠 처리한다. 연결된
+    // 항목이 하나도 없으면 조용히 무시한다(메뉴 fallback은 이동 팝업의 "연결 해제" 참고).
+    if ((e.ctrlKey || e.metaKey) && e.altKey && !e.shiftKey && key === 'u') {
+      if (isTypingElsewhere || activeTitleEdit || activeDateWheel || activeTimeWheel || activeWeeklyInlineAdd) return;
+      if (dragState || calendarRangeDragState || monthlyLogRangeDragState || activeTypeMenu || activeMoveMenu) return;
+      var selectedIdsForUnlink = Array.from(state.selectedItemIds);
+      var linkedSelectedIds = selectedIdsForUnlink.filter(function (id) {
+        var it = findItemById(id);
+        return it && it.sourceMonthlyItemId;
+      });
+      var instanceLinkedSelectedIds = selectedIdsForUnlink.filter(function (id) {
+        var it = findItemById(id) || findMonthlyItemById(id);
+        return it && it.instanceGroupId;
+      });
+      if (!linkedSelectedIds.length && !instanceLinkedSelectedIds.length) return;
+      e.preventDefault();
+      if (linkedSelectedIds.length) unlinkMonthlyInstances(linkedSelectedIds);
+      if (instanceLinkedSelectedIds.length) unlinkInstanceGroupItems(instanceLinkedSelectedIds);
       return;
     }
 
@@ -1950,6 +5143,22 @@ endDateDraftActive: false,
       cancelCalendarRangeDrag();
       return;
     }
+    if (monthlyLogRangeDragState) {
+      cancelMonthlyLogRangeDrag();
+      return;
+    }
+    if (monthlyLogScheduleGridDragState) {
+      var monthlyGridDs = monthlyLogScheduleGridDragState;
+      teardownMonthlyLogScheduleGridDrag();
+      monthlyLogScheduleGridDragState = null;
+      cleanupMonthlyLogScheduleMarquee(monthlyGridDs);
+      clearMonthlyLogScheduleGridPreview();
+      return;
+    }
+    if (monthlyLogScheduleCellSelection) {
+      clearMonthlyLogScheduleDraftSelection();
+      return;
+    }
     // 팝업이 열려 있으면 팝업 자신의 캡처 단계 핸들러가 먼저 처리하고
     // stopPropagation()으로 여기까지 전달되지 않게 막는다. 팝업이 없을 때만
     // 아래 우선순위(확정된 날짜 범위 → 항목 선택)를 처리한다.
@@ -1962,12 +5171,18 @@ endDateDraftActive: false,
       clearConfirmedDateRange();
       return;
     }
-    // 8: 휴지통 보기에서는 휴지통 선택을, 그 외에는 기존처럼 일반 선택을 해제한다.
-    if (state.currentView === 'trash') {
-      clearTrashSelection();
-    } else {
+    // 휴지통 진단: Daily/Weekly/휴지통이 이제 같은 selectedItemIds를 쓰므로 화면과
+    // 무관하게 항상 같은 clearItemSelection()으로 선택을 해제한다.
+    if (state.selectedItemIds.size > 0) {
       clearItemSelection();
+      return;
     }
+    // 4: 지울 선택/범위/팝업이 더 없고 월간 패널이 열려 있으면 마지막 우선순위로 닫는다.
+    if (state.monthlyPanelOpen) {
+      closeMonthlyPanel();
+      return;
+    }
+    clearItemSelection();
   }
 
   // ---------------------------------------------------------------------
@@ -1985,13 +5200,31 @@ endDateDraftActive: false,
       // 빈 목록 영역이 #daily-list 자체보다 크다) 달력·빠른입력·이월 토글·제목·입력요소를
       // 명시적으로 제외한다(이들은 data-action이 없다).
       target.closest('.calendar-card') || target.closest('.quick') || target.closest('.rollover') ||
-      target.closest('.daily-title') || target.closest('input') || target.closest('textarea'));
+      target.closest('.daily-title') || target.closest('input') || target.closest('textarea') ||
+      // 휴지통 진단: 휴지통이 marquee 대상 화면에 포함된 뒤(.daily-trash-view도 .top
+      // 하위라 같은 pointerdown 위임을 받는다), 필터 버튼(data-filter, data-action 없음)이
+      // 이 제외 목록에 없어 pointerCapture에 클릭이 가로채여지던 실제 버그를 여기서
+      // 막는다 — 툴바 영역 전체를 제외한다(개별 버튼은 이미 data-action으로 제외됨).
+      target.closest('.trash-toolbar') || target.closest('.trash-bulk-bar') ||
+      // 그룹 헤더(chevron/이름/메뉴)는 data-item-id/data-action이 없는 새 UI라 위 조건에
+      // 안 걸린다 -- 여기 없으면 pointerdown이 marquee로 가로채져 chevron 클릭이 씹힌다
+      // (같은 종류의 pointerCapture 문제, 실제 재현 확인).
+      target.closest('.group-header') ||
+      // 4: 월간 패널 토글도 .daily(=.top 하위) 안에 있어 같은 pointerCapture 문제가
+      // 그대로 재현된다(실제 확인됨: pointerdown은 버튼에 닿지만 pointerup/click이
+      // .top으로 가로채여 버튼이 전혀 눌리지 않았다) — 위 항목들과 같은 이유로 제외한다.
+      target.closest('.monthly-panel-toggle') ||
+      // 라운드2 1: 새로 추가한 Today "..." 메뉴 버튼도 같은 이유로 제외한다(실제 확인됨).
+      target.closest('.today-menu-btn'));
   }
 
   function onItemListPointerDown(e) {
+    if (e.target && e.target.closest && e.target.closest('.monthly-log-schedule-grid-host')) return;
     if (e.pointerType === 'mouse' && e.button !== 0) return;
     if (dragState || itemMarqueeSelectionState) return;
-    if (state.currentView !== 'today') return; // 휴지통 보기에서는 별도 선택 체계를 쓴다.
+    // 휴지통 진단: Daily/Weekly('today')와 휴지통('trash') 모두 같은 marquee 선택
+    // 모델을 쓴다 -- 이 두 값 외의 화면은 없으므로 방어적 안전장치로만 남긴다.
+    if (state.currentView !== 'today' && state.currentView !== 'calendar' && state.currentView !== 'trash') return;
     if (isItemMarqueeExcludedTarget(e.target)) return;
     // 7A.2(정정): Daily marquee의 대상 컨테이너(.top)는 overflow-y:auto 스크롤 영역이다 —
     // preventDefault 없이 두면 브라우저가 이 드래그를 스크롤 제스처로 해석해 도중에
@@ -2050,10 +5283,36 @@ endDateDraftActive: false,
     var x2 = Math.max(ms.startX, ms.currentX), y2 = Math.max(ms.startY, ms.currentY);
     var intersecting = new Set();
     // 7A.2: 화면에 실제로 보이는 카드만(:not([hidden]) 목록·펼쳐진 Weekly 열) 대상으로 한다.
-    document.querySelectorAll('#daily-list .task[data-item-id], #rollover-list .task[data-item-id], .week-card li[data-item-id]').forEach(function (el) {
+    // 휴지통 진단: #trash-list의 행도 같은 방식으로 대상에 포함한다(화면이 다르면
+    // 애초에 hidden이라 rect가 0×0으로 걸러진다).
+    var monthlyLogOccurrenceById = {};
+    var marqueeCandidates;
+    if (ms.containerEl && ms.containerEl.id === 'monthly-log-rows') {
+      marqueeCandidates = ms.containerEl.querySelectorAll('.monthly-log-item[data-item-id]');
+    } else if (
+      ms.containerEl &&
+      (ms.containerEl.id === 'monthly-inbox-list' || ms.containerEl.id === 'today-monthly-list')
+    ) {
+      marqueeCandidates = ms.containerEl.querySelectorAll('.monthly-item-row[data-monthly-item-id]');
+    } else if (state.currentView === 'trash') {
+      marqueeCandidates = document.querySelectorAll('#trash-list .trash-row[data-item-id]');
+    } else {
+      marqueeCandidates = document.querySelectorAll(
+        '#daily-list .task[data-item-id], ' +
+        '#rollover-list .task[data-item-id], ' +
+        '.week-card li[data-item-id]'
+      );
+    }
+    marqueeCandidates.forEach(function (el) {
       var r = el.getBoundingClientRect();
       if (r.width === 0 && r.height === 0) return; // 숨김(display:none) 컨테이너 안 카드 제외.
-      if (r.left < x2 && r.right > x1 && r.top < y2 && r.bottom > y1) intersecting.add(el.dataset.itemId);
+      var marqueeItemId = el.dataset.monthlyItemId || el.dataset.itemId;
+      if (marqueeItemId && r.left < x2 && r.right > x1 && r.top < y2 && r.bottom > y1) {
+        intersecting.add(marqueeItemId);
+        if (el.classList.contains('monthly-log-item')) {
+          monthlyLogOccurrenceById[marqueeItemId] = el.dataset.occurrenceDate || (el.closest('.monthly-log-row') && el.closest('.monthly-log-row').dataset.date);
+        }
+      }
     });
     var finalSet;
     if (ms.additive) {
@@ -2063,6 +5322,34 @@ endDateDraftActive: false,
       finalSet = intersecting;
     }
     state.selectedItemIds = finalSet;
+
+    var isMonthlyList = ms.containerEl && (ms.containerEl.id === 'monthly-inbox-list' || ms.containerEl.id === 'today-monthly-list');
+    var isMonthlyLogList = ms.containerEl && ms.containerEl.id === 'monthly-log-rows';
+    if (isMonthlyLogList) {
+      state.selectedOccurrenceById.clear();
+      Object.keys(monthlyLogOccurrenceById).forEach(function (id) {
+        if (finalSet.has(id) && monthlyLogOccurrenceById[id]) addSelectedOccurrence(id, monthlyLogOccurrenceById[id]);
+      });
+      var monthlyLogIds = Array.from(finalSet).filter(function (id) { return !!findItemById(id); });
+      if (monthlyLogIds.length) {
+        var monthlyLogAnchorId = monthlyLogIds[monthlyLogIds.length - 1];
+        var monthlyLogAnchorDate = monthlyLogOccurrenceById[monthlyLogAnchorId] || state.lastActiveListDate || state.selectedDate;
+        state.lastSelectedItemId = monthlyLogAnchorId;
+        state.selectionAnchor = { itemId: monthlyLogAnchorId, context: 'monthly-log', containerKey: monthlyLogContainerKey(monthlyLogAnchorDate) };
+      }
+    }
+    if (isMonthlyList && finalSet.size) {
+      var monthlySelectedIds = Array.from(finalSet).filter(function (id) { return !!findMonthlyItemById(id); });
+      if (monthlySelectedIds.length) {
+        var anchorId = monthlySelectedIds[monthlySelectedIds.length - 1];
+        state.lastSelectedItemId = anchorId;
+        state.selectionAnchor = {
+          itemId: anchorId,
+          context: 'monthly-inbox',
+          containerKey: ms.containerEl.dataset.monthKey || resolveMonthlyPasteTargetMonthKey()
+        };
+      }
+    }
     renderSelectionState();
   }
 
@@ -2110,8 +5397,24 @@ endDateDraftActive: false,
     cleanupItemMarqueeDom(ms);
     // 실제로 드래그가 활성화됐었다면 뒤에 이어지는 네이티브 'click'이 방금 만든 선택을
     // 곧바로 지우지 않도록 억제한다(gutter click과 같은 억제 플래그 재사용).
-    if (ms.active) suppressNextItemGutterClickOnce();
-    itemMarqueeSelectionState = null;
+    if (ms.active) {
+  suppressNextItemGutterClickOnce();
+  blurQuickInputIfFocused();
+
+} else {
+  // 빈 공간 클릭 시 제목 편집 내용을 저장하고 입력창 종료
+  if (activeTitleEdit) {
+    commitTitleEdit();
+  }
+  if (activeMonthlyTitleEdit) {
+    commitMonthlyTitleEdit();
+  }
+
+  // 보라색 항목 선택도 함께 해제
+  clearItemSelection();
+}
+
+itemMarqueeSelectionState = null;
   }
 
   function onItemListPointerCancel(e) {
@@ -2132,17 +5435,45 @@ endDateDraftActive: false,
   }
 
   function wireItemListMarqueeDelegation(containerEl) {
+    if (!containerEl || containerEl._itemMarqueeWired) return;
+    containerEl._itemMarqueeWired = true;
     containerEl.addEventListener('pointerdown', onItemListPointerDown);
   }
 
   function handleListDblClick(e) {
-    var titleEl = e.target.closest('.row-title, .week-item-title');
-    if (!titleEl) return; // 체크박스/상태문양/드래그핸들/화살표는 이 셀렉터에 안 걸린다.
-    var row = titleEl.closest('[data-item-id]');
-    if (!row) return;
-    e.stopPropagation();
-    startTitleEdit(row.dataset.itemId, titleEl);
+  var dailyTitleText =
+    e.target.closest('.row-title-text');
+
+  var titleEl = dailyTitleText
+    ? dailyTitleText.closest('.row-title')
+    : e.target.closest(
+        '.week-item-title, ' +
+        '.monthly-log-item-title'
+      );
+
+  if (!titleEl) return;
+
+  var row =
+    titleEl.closest('[data-item-id]');
+
+  if (!row) return;
+
+  if (pendingDailyTitleClickTimer) {
+    clearTimeout(pendingDailyTitleClickTimer);
+    pendingDailyTitleClickTimer = null;
   }
+
+  e.preventDefault();
+  e.stopPropagation();
+  if (row.classList.contains('monthly-log-schedule-segment') && state.activeDetailItemId === row.dataset.itemId) {
+    closeDetailDrawer();
+  }
+
+  startTitleEdit(
+    row.dataset.itemId,
+    titleEl
+  );
+}
 
   function wireListDelegation() {
     var dailyList = document.getElementById('daily-list');
@@ -2161,15 +5492,21 @@ endDateDraftActive: false,
     // 건다 — isItemMarqueeExcludedTarget이 달력·빠른입력·이월 토글 등을 걸러낸다.
     var topEl = document.querySelector('.top');
     if (topEl) wireItemListMarqueeDelegation(topEl);
-    var weekGrid = document.querySelector('.week-grid');
-    if (weekGrid) {
+    // 위·아래 두 행이 각각 별개의 .week-grid(.week-grid-top/.week-grid-bottom)이므로
+    // 둘 다 동일하게 위임을 건다(1~7일 단일 행일 때는 위쪽 grid 하나만 존재/매칭된다).
+    document.querySelectorAll('.week-grid').forEach(function (weekGrid) {
       weekGrid.addEventListener('click', handleListClick);
       weekGrid.addEventListener('dblclick', handleListDblClick);
       wireItemListMarqueeDelegation(weekGrid);
-    }
+    });
     var trashList = document.getElementById('trash-list');
     if (trashList) {
       trashList.addEventListener('click', handleTrashListClick);
+      // 휴지통 진단: 빈 공간 드래그 선택도 Daily/Weekly와 같은 marquee 델리게이션을
+      // 그대로 재사용한다(복제 구현 없음) -- #trash-list 자신을 컨테이너로 삼아
+      // 목록의 실제 빈 공간에서만 시작되고, 사이드바·툴바·bulk bar는 이 요소 밖이라
+      // 애초에 대상이 아니다.
+      wireItemListMarqueeDelegation(trashList);
     }
     document.addEventListener('click', handleDocumentSelectionClear);
     document.addEventListener('keydown', handleGlobalKeydown);
@@ -2183,10 +5520,66 @@ endDateDraftActive: false,
   // renderApp()으로 다시 그리면 두 표현(다일 일정의 여러 날짜 칸 포함) 전부 동기화된다.
   // 취소도 데이터를 건드리지 않고 renderApp()만 다시 호출해 원래 제목을 복원한다.
   // ---------------------------------------------------------------------
-  var activeTitleEdit = null; // { itemId, inputEl, originalText }
+function previewInstanceTitleWhileTyping(item, liveText) {
+  if (!item) return;
 
+  var linkedRegularIds = {};
+  var linkedMonthlyIds = {};
+  var isMonthlyEntity = item.monthKey !== undefined;
+
+  if (isMonthlyEntity) linkedMonthlyIds[item.id] = true;
+  else linkedRegularIds[item.id] = true;
+
+  // 일반 인스턴스 그룹은 state.items와 state.monthlyItems를 가로질러 유지된다.
+  if (item.instanceGroupId) {
+    state.items.forEach(function (linkedItem) {
+      if (!linkedItem.deletedAt && linkedItem.instanceGroupId === item.instanceGroupId) {
+        linkedRegularIds[linkedItem.id] = true;
+      }
+    });
+    state.monthlyItems.forEach(function (linkedItem) {
+      if (!linkedItem.deletedAt && linkedItem.instanceGroupId === item.instanceGroupId) {
+        linkedMonthlyIds[linkedItem.id] = true;
+      }
+    });
+  }
+
+  // 이번 달 할 일 원본과 sourceMonthlyItemId로 연결된 날짜 배치.
+  if (!isMonthlyEntity && item.sourceMonthlyItemId) {
+    linkedMonthlyIds[item.sourceMonthlyItemId] = true;
+    state.items.forEach(function (linkedItem) {
+      if (!linkedItem.deletedAt && linkedItem.sourceMonthlyItemId === item.sourceMonthlyItemId) {
+        linkedRegularIds[linkedItem.id] = true;
+      }
+    });
+  } else if (isMonthlyEntity) {
+    state.items.forEach(function (linkedItem) {
+      if (!linkedItem.deletedAt && linkedItem.sourceMonthlyItemId === item.id) {
+        linkedRegularIds[linkedItem.id] = true;
+      }
+    });
+  }
+
+  document.querySelectorAll('[data-item-id]').forEach(function (row) {
+    if (!linkedRegularIds[row.dataset.itemId]) return;
+    var titleEl = row.querySelector('.row-title-text,.week-item-title,.monthly-log-item-title,.monthly-log-schedule-label');
+    if (!titleEl) return;
+    titleEl.textContent = liveText;
+    if (titleEl.hasAttribute('title')) titleEl.title = liveText;
+  });
+
+  document.querySelectorAll('[data-monthly-item-id]').forEach(function (row) {
+    if (!linkedMonthlyIds[row.dataset.monthlyItemId]) return;
+    var titleEl = row.querySelector('.monthly-item-title');
+    if (!titleEl) return;
+    titleEl.textContent = liveText;
+    titleEl.title = liveText;
+  });
+}
+  var activeTitleEdit = null; // { itemId, inputEl, originalText }
+var pendingDailyTitleClickTimer = null;
   function startTitleEdit(itemId, titleEl) {
-    var item = findItemById(itemId);
+    var item = findDetailEditableEntityById(itemId);
     if (!item || !titleEl) return;
     if (activeTitleEdit) {
       if (activeTitleEdit.itemId === itemId) { activeTitleEdit.inputEl.focus(); return; }
@@ -2209,8 +5602,18 @@ endDateDraftActive: false,
     input.select();
 
     activeTitleEdit = { itemId: itemId, inputEl: input, originalText: item.text };
-    input.addEventListener('keydown', onTitleEditKeydown);
-    input.addEventListener('blur', onTitleEditBlur);
+    input.addEventListener('input', function () {
+  var liveItem = findDetailEditableEntityById(itemId);
+  if (!liveItem) return;
+
+  previewInstanceTitleWhileTyping(
+    liveItem,
+    input.value
+  );
+});
+
+input.addEventListener('keydown', onTitleEditKeydown);
+input.addEventListener('blur', onTitleEditBlur);
   }
 
   // item.text/updatedAt만 바꾼다 — id/type/date/endDate/completed/completionByDate/order/
@@ -2220,14 +5623,18 @@ endDateDraftActive: false,
     var edit = activeTitleEdit;
     activeTitleEdit = null; // blur가 중복으로 다시 들어와도 위 가드에서 즉시 멈추게 먼저 비운다.
 
-    var item = findItemById(edit.itemId);
+    var item = findDetailEditableEntityById(edit.itemId);
     var newText = edit.inputEl.value.trim();
     if (item && newText && newText !== item.text) {
       withHistoryTransaction(function () {
         item.text = newText;
         item.updatedAt = Date.now();
+        if (item.monthKey !== undefined) syncSharedMonthlyFields(item.id);
+        else if (item.sourceMonthlyItemId) syncSharedMonthlyFields(item.sourceMonthlyItemId, item);
+        if (item.instanceGroupId) syncSharedInstanceGroupFields(item.instanceGroupId, item);
       });
       saveItems();
+      if (item.monthKey !== undefined || item.sourceMonthlyItemId || item.instanceGroupId) saveMonthlyItems();
     }
     renderApp(); // 변경이 없었거나 공백뿐이었어도 다시 그리면 원래 제목으로 복원된다.
   }
@@ -2449,6 +5856,43 @@ endDateDraftActive: false,
     var list = ensureSubtasks(item);
     var idx = list.findIndex(function (s) { return s.id === subtaskId; });
     if (idx !== -1) list.splice(idx, 1);
+  }
+
+  // 라운드2 12: "+ 하위 할 일 추가"는 클릭 즉시 빈 텍스트 subtask(+연결된 todo 블록)를
+  // 만들어 둔다(quickAddDescTodo) -- 사용자가 아무것도 입력하지 않고 닫으면 그 빈 항목이
+  // item.subtasks에 그대로 남아 itemTodoCounts(카드 배지의 N/M)에 포함되던 실제 버그였다.
+  // 상세를 떠나는 모든 경로(닫기/다른 항목 전환/pagehide)가 공통으로 거치는
+  // flushDescriptionEditorPending에서 호출해, 텍스트가 끝내 비어 있던 todo만 블록+subtask
+  // 양쪽에서 함께 제거한다(실제로 타이핑된 항목은 절대 건드리지 않는다).
+  function pruneEmptyDescTodoBlocks(item) {
+    if (!item || !Array.isArray(item.descriptionBlocks) || !item.descriptionBlocks.length) return false;
+    var subtasks = ensureSubtasks(item);
+    var idsToRemove = [];
+    var keptBlocks = item.descriptionBlocks.filter(function (b) {
+      if (b.type !== 'todo' || !b.subtaskId) return true;
+      var st = subtasks.find(function (s) { return s.id === b.subtaskId; });
+      if (!st || (st.text || '').trim() === '') {
+        if (st) idsToRemove.push(st.id);
+        return false;
+      }
+      return true;
+    });
+    if (!idsToRemove.length) return false;
+    item.descriptionBlocks = keptBlocks;
+    idsToRemove.forEach(function (id) { removeSubtaskById(item, id); });
+    return true;
+  }
+
+  // 신규 사용자가 이 수정 이전 버전에서 만들어 둔 빈 하위 할 일도 정리한다(요구사항 --
+  // load/normalize 시점 정리). 매 로드마다 실행해도 실제로 지울 게 없으면 아무 일도
+  // 안 하는 멱등 함수라 안전하다(pruneInvalidGroupsOnLoad와 같은 패턴).
+  function pruneEmptyDescTodosOnLoad() {
+    var itemsChanged = false;
+    state.items.forEach(function (it) { if (pruneEmptyDescTodoBlocks(it)) itemsChanged = true; });
+    var monthlyChanged = false;
+    state.monthlyItems.forEach(function (it) { if (pruneEmptyDescTodoBlocks(it)) monthlyChanged = true; });
+    if (itemsChanged) saveItems();
+    if (monthlyChanged) saveMonthlyItems();
   }
 
   function getDescTodoSubtask(item, block) {
@@ -3538,7 +6982,12 @@ endDateDraftActive: false,
     var base = {
       id: descBlockUid(), type: type, indent: 0,
       attachmentId: null, name: '', mimeType: '', size: 0,
-      alt: '', caption: '', createdAt: now, updatedAt: now
+      alt: '', caption: '',
+      // 네이버 블로그형 사진 블록: 자유 좌표 대신 크기 단계와 정렬만 저장한다.
+      displaySize: 'large',
+      align: 'center',
+      fit: 'contain',
+      createdAt: now, updatedAt: now
     };
     return Object.assign(base, overrides || {});
   }
@@ -3546,8 +6995,35 @@ endDateDraftActive: false,
   function makeDescMediaGalleryItem(overrides) {
     return Object.assign({
       id: 'mgi_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8),
-      attachmentId: null, name: '', mimeType: '', size: 0, alt: '', caption: ''
+      attachmentId: null, name: '', mimeType: '', size: 0, alt: '', caption: '',
+      // 유연한 미디어 격자: 12열 중 차지할 칸 수와 카드 높이. 기존 데이터는 렌더 시
+      // 안전한 기본값으로 보정하며, 사용자가 모서리를 끌어 바꾸면 그대로 저장한다.
+      span: null,
+      height: null,
+      fit: 'cover',
+      // null이면 자동 배치, 1~12이면 사용자가 놓은 가로 시작 칸을 유지한다.
+      colStart: null
     }, overrides || {});
+  }
+
+  function clampDescMediaSpan(value) {
+    var n = Math.round(Number(value));
+    if (!isFinite(n)) n = 6;
+    return Math.max(2, Math.min(12, n));
+  }
+
+  function clampDescMediaHeight(value) {
+    var n = Math.round(Number(value));
+    if (!isFinite(n)) n = 180;
+    return Math.max(100, Math.min(620, n));
+  }
+
+  function defaultDescMediaSpan(count) {
+    if (count <= 1) return 12;
+    if (count === 2) return 6;
+    if (count === 3) return 4;
+    if (count === 4) return 6;
+    return 4;
   }
 
   // ---------------------------------------------------------------------
@@ -3616,7 +7092,7 @@ function buildDescBlockAddButton(itemId, blockId) {
     e.preventDefault();
     e.stopPropagation();
 
-    var item = findItemById(itemId);
+    var item = findDetailEditableEntityById(itemId);
     if (!item) return;
 
     var blocks = ensureDescriptionBlocks(item);
@@ -3868,7 +7344,7 @@ function buildDescBlockAddButton(itemId, blockId) {
   }
 
   function updateDescTableRangeSelectLive(rs, hitR, hitC) {
-    var item = findItemById(state.activeDetailItemId);
+    var item = findActiveDetailEntity();
     var block = item && ensureDescriptionBlocks(item).find(function (b) { return b.id === rs.blockId; });
     if (!block || !Array.isArray(block.tableData)) return;
     var rowCount = block.tableData.length;
@@ -3980,7 +7456,7 @@ if (handleEl) openDescTableHandleMenu(e, state.descTableSelection);    }
   function onDescTableColResizePointerDown(e, blockId, boundaryIdx) {
     if (e.pointerType === 'mouse' && e.button !== 0) return;
     if (descTableResizeState || descTableDragState || descTableRangeSelectState) return;
-    var item = findItemById(state.activeDetailItemId);
+    var item = findActiveDetailEntity();
     var block = item && ensureDescriptionBlocks(item).find(function (b) { return b.id === blockId; });
     if (!block) return;
     normalizeDescTableSizing(block);
@@ -3999,7 +7475,7 @@ if (handleEl) openDescTableHandleMenu(e, state.descTableSelection);    }
   function onDescTableRowResizePointerDown(e, blockId, boundaryIdx) {
     if (e.pointerType === 'mouse' && e.button !== 0) return;
     if (descTableResizeState || descTableDragState || descTableRangeSelectState) return;
-    var item = findItemById(state.activeDetailItemId);
+    var item = findActiveDetailEntity();
     var block = item && ensureDescriptionBlocks(item).find(function (b) { return b.id === blockId; });
     if (!block) return;
     normalizeDescTableSizing(block);
@@ -4027,7 +7503,7 @@ if (handleEl) openDescTableHandleMenu(e, state.descTableSelection);    }
       document.body.classList.add(rs.axis === 'col' ? 'desc-table-colresize-active' : 'desc-table-rowresize-active');
     }
     if (!rs.active) return;
-    var item = findItemById(rs.itemId);
+    var item = findDetailEditableEntityById(rs.itemId);
     var block = item && ensureDescriptionBlocks(item).find(function (b) { return b.id === rs.blockId; });
     var wrap = activeDetailDrawer && activeDetailDrawer.descriptionEditorEl.querySelector('.desc-table-wrap[data-block-id="' + rs.blockId + '"]');
     if (!block || !wrap) return;
@@ -4061,7 +7537,7 @@ if (handleEl) openDescTableHandleMenu(e, state.descTableSelection);    }
       if (history.undoStack.length > history.limit) history.undoStack.shift();
       history.redoStack = [];
     }
-    var item = findItemById(rs.itemId);
+    var item = findDetailEditableEntityById(rs.itemId);
     var block = item && ensureDescriptionBlocks(item).find(function (b) { return b.id === rs.blockId; });
     if (block) { block.updatedAt = Date.now(); if (item) item.updatedAt = Date.now(); }
     saveItems();
@@ -4080,7 +7556,7 @@ if (handleEl) openDescTableHandleMenu(e, state.descTableSelection);    }
     document.body.classList.remove('desc-table-colresize-active', 'desc-table-rowresize-active');
     descTableResizeState = null;
     if (!rs.active) return;
-    var item = findItemById(rs.itemId);
+    var item = findDetailEditableEntityById(rs.itemId);
     var block = item && ensureDescriptionBlocks(item).find(function (b) { return b.id === rs.blockId; });
     var wrap = activeDetailDrawer && activeDetailDrawer.descriptionEditorEl.querySelector('.desc-table-wrap[data-block-id="' + rs.blockId + '"]');
     if (!block || !wrap) return;
@@ -4106,7 +7582,7 @@ if (handleEl) openDescTableHandleMenu(e, state.descTableSelection);    }
   }
 
   function handleDescTableRowHandleClick(e, blockId, r) {
-    var item = findItemById(state.activeDetailItemId);
+    var item = findActiveDetailEntity();
     var block = item && ensureDescriptionBlocks(item).find(function (b) { return b.id === blockId; });
     if (!block) return;
     var colCount = getDescTableColCount(block);
@@ -4137,7 +7613,7 @@ if (handleEl) openDescTableHandleMenu(e, state.descTableSelection);    }
   }
 
   function handleDescTableColHandleClick(e, blockId, c) {
-    var item = findItemById(state.activeDetailItemId);
+    var item = findActiveDetailEntity();
     var block = item && ensureDescriptionBlocks(item).find(function (b) { return b.id === blockId; });
     if (!block) return;
     var rowCount = Array.isArray(block.tableData) ? block.tableData.length : 1;
@@ -4172,7 +7648,7 @@ if (handleEl) openDescTableHandleMenu(e, state.descTableSelection);    }
   function applyDescTableColor(attrName, colorKey) {
     var sel = state.descTableSelection;
     if (!sel || !sel.cells.size) return;
-    var item = findItemById(state.activeDetailItemId);
+    var item = findActiveDetailEntity();
     if (!item) return;
     var blocks = ensureDescriptionBlocks(item);
     var block = blocks.find(function (b) { return b.id === sel.blockId; });
@@ -4263,7 +7739,7 @@ el.style.top = top + 'px';
   // 메뉴 항목(삽입/복제/삭제)은 구조를 바꾸므로 mutateDescTable과 동일한 절차(선택 좌표
   // 정규화 → withHistoryTransaction 1건 → 선택 해제 → 강제 재렌더 → 저장)를 따른다.
   function runDescTableStructuralAction(blockId, fn) {
-    var item = findItemById(state.activeDetailItemId);
+    var item = findActiveDetailEntity();
     if (!item) return;
     var blocks = ensureDescriptionBlocks(item);
     var block = blocks.find(function (b) { return b.id === blockId; });
@@ -4588,7 +8064,7 @@ if (!Number.isFinite(e.clientX) || !Number.isFinite(e.clientY)) return;
   }
 
   function commitDescTableDrag(ds) {
-    var item = findItemById(ds.itemId);
+    var item = findDetailEditableEntityById(ds.itemId);
     var blocks = item && ensureDescriptionBlocks(item);
     var block = blocks && blocks.find(function (b) { return b.id === ds.blockId; });
     if (!block || !Array.isArray(block.tableData)) return;
@@ -4672,23 +8148,106 @@ if (!Number.isFinite(e.clientX) || !Number.isFinite(e.clientY)) return;
     return caption;
   }
 
+
+  function normalizeDescPhotoSize(value) {
+    return ['small', 'medium', 'large', 'full'].indexOf(value) !== -1 ? value : 'large';
+  }
+
+  function normalizeDescPhotoAlign(value) {
+    return ['left', 'center', 'right'].indexOf(value) !== -1 ? value : 'center';
+  }
+
+  function buildDescPhotoToolbar(block) {
+    var toolbar = document.createElement('div');
+    toolbar.className = 'desc-photo-toolbar';
+    toolbar.setAttribute('role', 'toolbar');
+    toolbar.setAttribute('aria-label', '사진 배치');
+
+    [['small', '작게'], ['medium', '보통'], ['large', '크게'], ['full', '본문폭']].forEach(function (spec) {
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'desc-photo-tool-btn' + (normalizeDescPhotoSize(block.displaySize) === spec[0] ? ' is-active' : '');
+      btn.dataset.action = 'desc-photo-size';
+      btn.dataset.blockId = block.id;
+      btn.dataset.photoSize = spec[0];
+      btn.textContent = spec[1];
+      toolbar.appendChild(btn);
+    });
+
+    var divider = document.createElement('span');
+    divider.className = 'desc-photo-tool-divider';
+    divider.setAttribute('aria-hidden', 'true');
+    toolbar.appendChild(divider);
+
+    [['left', '왼쪽'], ['center', '가운데'], ['right', '오른쪽']].forEach(function (spec) {
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'desc-photo-tool-btn is-icon' + (normalizeDescPhotoAlign(block.align) === spec[0] ? ' is-active' : '');
+      btn.dataset.action = 'desc-photo-align';
+      btn.dataset.blockId = block.id;
+      btn.dataset.photoAlign = spec[0];
+      btn.setAttribute('aria-label', spec[1] + ' 정렬');
+      btn.title = spec[1] + ' 정렬';
+      btn.textContent = spec[0] === 'left' ? '⇤' : (spec[0] === 'right' ? '⇥' : '↔');
+      toolbar.appendChild(btn);
+    });
+
+    var fitBtn = document.createElement('button');
+    fitBtn.type = 'button';
+    fitBtn.className = 'desc-photo-tool-btn';
+    fitBtn.dataset.action = 'desc-photo-fit';
+    fitBtn.dataset.blockId = block.id;
+    fitBtn.textContent = block.fit === 'cover' ? '채우기' : '전체 보기';
+    fitBtn.title = '사진 맞춤 방식 전환';
+    toolbar.appendChild(fitBtn);
+    return toolbar;
+  }
+
+  function mutateDescPhotoBlock(blockId, mutator) {
+    var entity = findActiveDetailEntity();
+    if (!entity) return false;
+    var block = ensureDescriptionBlocks(entity).find(function (entry) { return entry.id === blockId; });
+    if (!block || descBlockMediaKind(block) !== 'image') return false;
+    withHistoryTransaction(function () {
+      mutator(block);
+      block.updatedAt = Date.now();
+      entity.updatedAt = Date.now();
+      syncDescriptionPlainTextMirror(entity);
+    });
+    syncAndSaveDescMediaEntity(entity);
+    descForceRebuild = true;
+    renderApp();
+    return true;
+  }
+
   // 4: image MIME은 실제 <img>로 렌더한다. Blob 로딩은 비동기(IndexedDB)라 로딩/오류
   // 상태를 함께 관리한다 — 캐시된 URL이 있으면 동기적으로 즉시 채워져 재렌더마다 깜빡이지
   // 않는다.
   function buildDescImageDom(block) {
     var meta = getDescMediaMeta(block);
+    var photoSize = normalizeDescPhotoSize(block.displaySize);
+    var photoAlign = normalizeDescPhotoAlign(block.align);
+    var photoFit = block.fit === 'cover' ? 'cover' : 'contain';
     var wrap = document.createElement('div');
-    wrap.className = 'desc-media-block desc-media-image';
+    wrap.className = 'desc-media-block desc-media-image photo-size-' + photoSize + ' photo-align-' + photoAlign;
     wrap.dataset.blockId = block.id;
 
     var imgWrap = document.createElement('div');
-    imgWrap.className = 'desc-media-image-wrap is-loading';
+    imgWrap.className = 'desc-media-image-wrap is-loading is-direct-draggable';
     var img = document.createElement('img');
     img.className = 'desc-media-img';
     img.alt = block.alt || meta.name || '';
     img.draggable = false;
     img.loading = 'lazy';
+    img.style.objectFit = photoFit;
     imgWrap.appendChild(img);
+
+    // 사진 본체를 잡으면 블록 위·아래 이동, 다른 사진의 좌우에 놓으면 최대 3장 묶음으로 합친다.
+    imgWrap.addEventListener('pointerdown', function (e) {
+      if (e.target.closest('button')) return;
+      onDescBlockDragHandlePointerDown(e, state.activeDetailItemId, block.id);
+    });
+
     if (meta.attachmentId) {
       ensureDescBlobUrl(meta.attachmentId, function (url) {
         if (!img.isConnected) return;
@@ -4705,7 +8264,9 @@ if (!Number.isFinite(e.clientX) || !Number.isFinite(e.clientY)) return;
       imgWrap.classList.add('is-error');
       imgWrap.appendChild(buildDescMediaErrorState('파일을 찾을 수 없습니다.'));
     }
+
     wrap.appendChild(imgWrap);
+    wrap.appendChild(buildDescPhotoToolbar(block));
     wrap.appendChild(buildDescMediaActionBar(block));
     wrap.appendChild(buildDescMediaCaptionEl(block, '캡션 추가...'));
     return wrap;
@@ -4760,13 +8321,20 @@ if (!Number.isFinite(e.clientX) || !Number.isFinite(e.clientY)) return;
   // 가로채지 않고, Shift+휠·트랙패드 가로 제스처는 overflow-x:auto의 기본 동작으로 처리된다.
   function buildDescMediaGalleryItemDom(block, item, idx) {
     var kind = descEffectiveMediaKind(item.mimeType, item.name);
+    var fit = item.fit === 'contain' ? 'contain' : 'cover';
+
     var cell = document.createElement('div');
     cell.className = 'desc-media-gallery-item';
     cell.dataset.blockId = block.id;
     cell.dataset.mediaItemId = item.id;
+    cell.dataset.mediaKind = kind;
+    cell.style.setProperty('--media-fit', fit);
 
     var handle = buildDotHandle('desc-media-gallery-handle');
-    handle.addEventListener('pointerdown', function (e) { onDescMediaGalleryItemPointerDown(e, block.id, item.id); });
+    handle.setAttribute('aria-label', '사진 순서 이동');
+    handle.addEventListener('pointerdown', function (e) {
+      onDescMediaGalleryItemPointerDown(e, block.id, item.id);
+    });
     cell.appendChild(handle);
 
     var mediaWrap = document.createElement('div');
@@ -4778,19 +8346,30 @@ if (!Number.isFinite(e.clientX) || !Number.isFinite(e.clientY)) return;
       el.playsInline = true;
       el.preload = 'metadata';
       el.addEventListener('loadedmetadata', function () { mediaWrap.classList.remove('is-loading'); });
-      el.addEventListener('error', function () { mediaWrap.classList.remove('is-loading'); mediaWrap.classList.add('is-error'); mediaWrap.appendChild(buildDescMediaErrorState('재생 불가')); });
+      el.addEventListener('error', function () {
+        mediaWrap.classList.remove('is-loading');
+        mediaWrap.classList.add('is-error');
+        mediaWrap.appendChild(buildDescMediaErrorState('재생 불가'));
+      });
     } else {
       el = document.createElement('img');
       el.alt = item.alt || item.name || '';
       el.draggable = false;
       el.loading = 'lazy';
+      mediaWrap.classList.add('is-direct-draggable');
+      mediaWrap.addEventListener('pointerdown', function (e) {
+        if (e.target.closest('button')) return;
+        onDescMediaGalleryItemPointerDown(e, block.id, item.id);
+      });
     }
     el.className = 'desc-media-gallery-el';
     mediaWrap.appendChild(el);
+
     if (item.attachmentId) {
       ensureDescBlobUrl(item.attachmentId, function (url) {
         if (!el.isConnected) return;
-        if (kind === 'video') el.src = url; else { el.src = url; mediaWrap.classList.remove('is-loading'); }
+        if (kind === 'video') el.src = url;
+        else { el.src = url; mediaWrap.classList.remove('is-loading'); }
       }, function () {
         if (!mediaWrap.isConnected) return;
         mediaWrap.classList.remove('is-loading');
@@ -4805,14 +8384,30 @@ if (!Number.isFinite(e.clientX) || !Number.isFinite(e.clientY)) return;
 
     var itemActions = document.createElement('div');
     itemActions.className = 'desc-media-gallery-item-actions';
+
+    if (kind === 'image') {
+      var fitBtn = document.createElement('button');
+      fitBtn.type = 'button';
+      fitBtn.className = 'desc-media-gallery-item-btn';
+      fitBtn.dataset.action = 'desc-media-gallery-item-fit-toggle';
+      fitBtn.dataset.blockId = block.id;
+      fitBtn.dataset.mediaItemId = item.id;
+      fitBtn.setAttribute('aria-label', fit === 'cover' ? '사진 전체 보이기' : '영역 가득 채우기');
+      fitBtn.title = fit === 'cover' ? '전체 보이기' : '영역 채우기';
+      fitBtn.textContent = fit === 'cover' ? '□' : '■';
+      itemActions.appendChild(fitBtn);
+    }
+
     var sepBtn = document.createElement('button');
     sepBtn.type = 'button';
     sepBtn.className = 'desc-media-gallery-item-btn';
     sepBtn.dataset.action = 'desc-media-gallery-item-separate';
     sepBtn.dataset.blockId = block.id;
     sepBtn.dataset.mediaItemId = item.id;
-    sepBtn.setAttribute('aria-label', '별도 블록으로 분리');
+    sepBtn.setAttribute('aria-label', '별도 사진 블록으로 분리');
+    sepBtn.title = '별도 블록으로 분리';
     sepBtn.textContent = '⇱';
+
     var delBtn = document.createElement('button');
     delBtn.type = 'button';
     delBtn.className = 'desc-media-gallery-item-btn danger';
@@ -4821,21 +8416,22 @@ if (!Number.isFinite(e.clientX) || !Number.isFinite(e.clientY)) return;
     delBtn.dataset.mediaItemId = item.id;
     delBtn.setAttribute('aria-label', '이 미디어 삭제');
     delBtn.textContent = '×';
+
     itemActions.appendChild(sepBtn);
     itemActions.appendChild(delBtn);
     cell.appendChild(itemActions);
-
     return cell;
   }
 
   function buildDescMediaGalleryDom(block) {
     var wrap = document.createElement('div');
-    wrap.className = 'desc-media-gallery';
+    wrap.className = 'desc-media-gallery is-naver-photo-group';
     wrap.dataset.blockId = block.id;
     var items = Array.isArray(block.items) ? block.items : [];
-    var count = items.length;
-    wrap.classList.add(count >= 4 ? 'is-scroll' : 'cols-' + Math.max(1, count));
-    items.forEach(function (item, idx) { wrap.appendChild(buildDescMediaGalleryItemDom(block, item, idx)); });
+    wrap.style.setProperty('--gallery-columns', String(Math.max(1, Math.min(3, items.length))));
+    items.forEach(function (item, idx) {
+      wrap.appendChild(buildDescMediaGalleryItemDom(block, item, idx));
+    });
     return wrap;
   }
 
@@ -4844,21 +8440,26 @@ if (!Number.isFinite(e.clientX) || !Number.isFinite(e.clientY)) return;
   function normalizeDescMediaGalleryAt(blocks, idx) {
     var block = blocks[idx];
     if (!block || block.type !== 'mediaGallery') return;
+    block.items = Array.isArray(block.items) ? block.items : [];
     if (block.items.length === 0) {
       blocks.splice(idx, 1);
       if (!blocks.length) blocks.push(makeDescriptionBlock('paragraph', {}));
-    } else if (block.items.length === 1) {
-      var only = block.items[0];
-      var kind = descEffectiveMediaKind(only.mimeType, only.name);
-      blocks[idx] = makeDescMediaBlock(kind === 'other' ? 'attachment' : kind, {
-        id: block.id, attachmentId: only.attachmentId, name: only.name, mimeType: only.mimeType, size: only.size,
-        alt: only.alt || '', caption: only.caption || '', indent: block.indent, createdAt: block.createdAt
-      });
+      return;
+    }
+    if (block.items.length === 1) {
+      var lone = mediaItemToStandaloneBlock(block.items[0]);
+      lone.id = block.id;
+      lone.indent = block.indent || 0;
+      lone.createdAt = block.createdAt || lone.createdAt;
+      lone.displaySize = normalizeDescPhotoSize(block.displaySize || 'large');
+      lone.align = normalizeDescPhotoAlign(block.align || 'center');
+      lone.fit = block.items[0].fit === 'cover' ? 'cover' : 'contain';
+      blocks[idx] = lone;
     }
   }
 
   function deleteDescMediaGalleryItem(blockId, mediaItemId) {
-    var item = findItemById(state.activeDetailItemId);
+    var item = findActiveDetailEntity();
     if (!item) return;
     var blocks = ensureDescriptionBlocks(item);
     var idx = blocks.findIndex(function (b) { return b.id === blockId; });
@@ -4877,13 +8478,14 @@ if (!Number.isFinite(e.clientX) || !Number.isFinite(e.clientY)) return;
     state.descriptionEditor = { itemId: item.id, activeBlockId: focusBlockId, selectionStart: null };
     descForceRebuild = true;
     saveItems();
+    saveMonthlyItems();
     renderApp();
   }
 
   // 11: gallery 안 미디어 하나를 별도 단일 블록으로 꺼낸다 — gallery 바로 뒤에 삽입하고,
   // 남은 gallery는 필요하면(0/1개) 함께 정규화한다.
   function separateDescMediaGalleryItem(blockId, mediaItemId) {
-    var item = findItemById(state.activeDetailItemId);
+    var item = findActiveDetailEntity();
     if (!item) return;
     var blocks = ensureDescriptionBlocks(item);
     var idx = blocks.findIndex(function (b) { return b.id === blockId; });
@@ -4910,13 +8512,145 @@ if (!Number.isFinite(e.clientX) || !Number.isFinite(e.clientY)) return;
     state.descriptionEditor = { itemId: item.id, activeBlockId: newBlockId, selectionStart: null };
     descForceRebuild = true;
     saveItems();
+    saveMonthlyItems();
+    renderApp();
+  }
+
+  function mutateDescMediaGalleryItem(blockId, mediaItemId, mutator) {
+    var entity = findActiveDetailEntity();
+    if (!entity) return false;
+    var blocks = ensureDescriptionBlocks(entity);
+    var block = blocks.find(function (b) { return b.id === blockId; });
+    if (!block || block.type !== 'mediaGallery' || !Array.isArray(block.items)) return false;
+    var mediaItem = block.items.find(function (entry) { return entry.id === mediaItemId; });
+    if (!mediaItem) return false;
+    withHistoryTransaction(function () {
+      mutator(mediaItem, block);
+      block.updatedAt = Date.now();
+      entity.updatedAt = Date.now();
+      syncDescriptionPlainTextMirror(entity);
+    });
+    syncSharedInstanceGroupFields(entity.instanceGroupId, entity);
+    saveItems();
+    saveMonthlyItems();
+    return true;
+  }
+
+  function cycleDescMediaGalleryItemWidth(blockId, mediaItemId) {
+    if (!mutateDescMediaGalleryItem(blockId, mediaItemId, function (mediaItem) {
+      var current = clampDescMediaSpan(mediaItem.span || 6);
+      mediaItem.span = current <= 4 ? 6 : (current <= 6 ? 9 : (current < 12 ? 12 : 4));
+    })) return;
+    descForceRebuild = true;
+    renderApp();
+  }
+
+  function toggleDescMediaGalleryItemFit(blockId, mediaItemId) {
+    if (!mutateDescMediaGalleryItem(blockId, mediaItemId, function (mediaItem) {
+      mediaItem.fit = mediaItem.fit === 'contain' ? 'cover' : 'contain';
+    })) return;
+    descForceRebuild = true;
+    renderApp();
+  }
+
+  var descMediaGalleryResizeState = null;
+
+  function onDescMediaGalleryResizePointerDown(e, galleryBlockId, mediaItemId) {
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    if (descMediaGalleryResizeState) return;
+    e.preventDefault();
+    e.stopPropagation();
+    var cell = e.currentTarget.closest('.desc-media-gallery-item');
+    var gallery = cell && cell.closest('.desc-media-gallery');
+    if (!cell || !gallery) return;
+    var cellRect = cell.getBoundingClientRect();
+    var galleryRect = gallery.getBoundingClientRect();
+    var entity = findActiveDetailEntity();
+    var block = entity && ensureDescriptionBlocks(entity).find(function (b) { return b.id === galleryBlockId; });
+    var mediaItem = block && block.items && block.items.find(function (entry) { return entry.id === mediaItemId; });
+    if (!mediaItem) return;
+    var state0 = {
+      pointerId: e.pointerId,
+      handle: e.currentTarget,
+      cell: cell,
+      gallery: gallery,
+      galleryBlockId: galleryBlockId,
+      mediaItemId: mediaItemId,
+      startX: e.clientX,
+      startY: e.clientY,
+      startWidth: cellRect.width,
+      startHeight: cellRect.height,
+      startSpan: clampDescMediaSpan(mediaItem.span || defaultDescMediaSpan(block.items.length)),
+      startMediaHeight: clampDescMediaHeight(mediaItem.height || 180),
+      galleryWidth: galleryRect.width,
+      active: false,
+      nextSpan: null,
+      nextHeight: null
+    };
+    descMediaGalleryResizeState = state0;
+    try { state0.handle.setPointerCapture(e.pointerId); } catch (err) {}
+    state0.handle.addEventListener('pointermove', onDescMediaGalleryResizePointerMove);
+    state0.handle.addEventListener('pointerup', onDescMediaGalleryResizePointerUp);
+    state0.handle.addEventListener('pointercancel', onDescMediaGalleryResizePointerCancel);
+  }
+
+  function onDescMediaGalleryResizePointerMove(e) {
+    var rs = descMediaGalleryResizeState;
+    if (!rs || e.pointerId !== rs.pointerId) return;
+    var dx = e.clientX - rs.startX;
+    var dy = e.clientY - rs.startY;
+    if (!rs.active && Math.hypot(dx, dy) < 3) return;
+    rs.active = true;
+    document.body.classList.add('desc-media-resize-active');
+    var targetWidth = Math.max(80, rs.startWidth + dx);
+    var span = clampDescMediaSpan(Math.round(targetWidth / Math.max(1, rs.galleryWidth) * 12));
+    var height = clampDescMediaHeight(rs.startMediaHeight + dy);
+    rs.nextSpan = span;
+    rs.nextHeight = height;
+    rs.cell.style.setProperty('--media-span', String(span));
+    rs.cell.style.setProperty('--media-height', height + 'px');
+  }
+
+  function teardownDescMediaGalleryResize(rs) {
+    if (!rs) return;
+    rs.handle.removeEventListener('pointermove', onDescMediaGalleryResizePointerMove);
+    rs.handle.removeEventListener('pointerup', onDescMediaGalleryResizePointerUp);
+    rs.handle.removeEventListener('pointercancel', onDescMediaGalleryResizePointerCancel);
+    try { rs.handle.releasePointerCapture(rs.pointerId); } catch (err) {}
+    document.body.classList.remove('desc-media-resize-active');
+  }
+
+  function onDescMediaGalleryResizePointerUp(e) {
+    var rs = descMediaGalleryResizeState;
+    if (!rs || e.pointerId !== rs.pointerId) return;
+    descMediaGalleryResizeState = null;
+    teardownDescMediaGalleryResize(rs);
+    if (!rs.active) return;
+    mutateDescMediaGalleryItem(rs.galleryBlockId, rs.mediaItemId, function (mediaItem) {
+      mediaItem.span = rs.nextSpan || rs.startSpan;
+      mediaItem.height = rs.nextHeight || rs.startMediaHeight;
+      if (mediaItem.colStart) {
+        mediaItem.colStart = Math.max(1, Math.min(Number(mediaItem.colStart) || 1, 13 - mediaItem.span));
+      }
+    });
+    descForceRebuild = true;
+    renderApp();
+  }
+
+  function onDescMediaGalleryResizePointerCancel(e) {
+    var rs = descMediaGalleryResizeState;
+    if (!rs || e.pointerId !== rs.pointerId) return;
+    descMediaGalleryResizeState = null;
+    teardownDescMediaGalleryResize(rs);
+    descForceRebuild = true;
     renderApp();
   }
 
   // ---------------------------------------------------------------------
-  // 10: gallery 내부 순서 drag. 5A 표 행/열 drag와 같은 5px threshold·Escape 취소
-  // 패턴이지만 대상이 block.items 배열이라 새로 짠다. 핸들(desc-media-gallery-handle)에서만
-  // 시작하므로 video controls·이미지 자체 클릭과 절대 겹치지 않는다.
+  // 미디어 자유 배치 drag
+  // - 포인터를 따라다니는 이미지 복제본은 만들지 않는다.
+  // - 원본 자리는 빈 placeholder로 남기고, 놓일 위치에도 실제 빈 칸을 이동시킨다.
+  // - 같은 갤러리의 다른 행/열, 다른 갤러리, 단독 이미지 옆, 블록 사이로 이동 가능하다.
   // ---------------------------------------------------------------------
   var descMediaGalleryDragState = null;
 
@@ -4926,88 +8660,212 @@ if (!Number.isFinite(e.clientX) || !Number.isFinite(e.clientY)) return;
     flushDescTextEditSession();
     e.preventDefault();
     descMediaGalleryDragState = {
-      galleryBlockId: galleryBlockId, itemId: state.activeDetailItemId, mediaItemId: mediaItemId,
-      pointerId: e.pointerId, pending: true, active: false,
-      startX: e.clientX, startY: e.clientY, previewEl: null, overMediaItemId: mediaItemId, dropPosition: 'before'
+      galleryBlockId: galleryBlockId,
+      sourceGalleryBlockId: galleryBlockId,
+      targetGalleryBlockId: galleryBlockId,
+      itemId: state.activeDetailItemId,
+      mediaItemId: mediaItemId,
+      pointerId: e.pointerId,
+      pending: true,
+      active: false,
+      startX: e.clientX,
+      startY: e.clientY,
+      lastX: e.clientX,
+      lastY: e.clientY,
+      sourceCell: null,
+      sourceGalleryEl: null,
+      placeholderEl: null,
+      blockPlaceholderEl: null,
+      targetMode: 'gallery',
+      mergeTargetBlockId: null,
+      mergeInsertPosition: 'after',
+      detachBeforeBlockId: null,
+      dropColumnStart: null,
+      span: 6,
+      height: 180
     };
     document.addEventListener('pointermove', onDescMediaGalleryItemPointerMove);
     document.addEventListener('pointerup', onDescMediaGalleryItemPointerUp);
     document.addEventListener('pointercancel', onDescMediaGalleryItemPointerCancel);
   }
 
+  function getDescMediaGalleryByBlockId(blockId) {
+    return activeDetailDrawer && activeDetailDrawer.descriptionEditorEl
+      ? activeDetailDrawer.descriptionEditorEl.querySelector('.desc-media-gallery[data-block-id="' + blockId + '"]')
+      : null;
+  }
+
+  function getDescMediaGalleryItemElsByWrap(wrap, excludedId) {
+    if (!wrap) return [];
+    return Array.prototype.slice.call(wrap.querySelectorAll(':scope > .desc-media-gallery-item')).filter(function (el) {
+      return el.dataset.mediaItemId !== excludedId && !el.classList.contains('desc-media-gallery-drag-source-hidden');
+    });
+  }
+
+  function clearDescMediaGalleryExternalTargets(ds) {
+    if (!activeDetailDrawer || !activeDetailDrawer.descriptionEditorEl) return;
+    activeDetailDrawer.descriptionEditorEl.querySelectorAll('.desc-media-gallery.is-gallery-drop-active').forEach(function (el) {
+      el.classList.remove('is-gallery-drop-active');
+    });
+    activeDetailDrawer.descriptionEditorEl.querySelectorAll('.desc-block.desc-block-merge-target').forEach(function (el) {
+      el.classList.remove('desc-block-merge-target', 'merge-before', 'merge-after');
+    });
+  }
+
   function activateDescMediaGalleryDrag(ds) {
+    var wrap = getDescMediaGalleryByBlockId(ds.sourceGalleryBlockId);
+    var cell = wrap && wrap.querySelector('.desc-media-gallery-item[data-media-item-id="' + ds.mediaItemId + '"]');
+    if (!wrap || !cell) return;
     ds.pending = false;
     ds.active = true;
+    ds.sourceGalleryEl = wrap;
+    ds.sourceCell = cell;
+    var rect = cell.getBoundingClientRect();
+    ds.height = Math.max(110, rect.height || 180);
+
+    var placeholder = document.createElement('div');
+    placeholder.className = 'desc-media-gallery-drop-placeholder';
+    wrap.insertBefore(placeholder, cell);
+    cell.classList.add('desc-media-gallery-drag-source-hidden');
+    ds.placeholderEl = placeholder;
     document.body.classList.add('desc-media-gallery-dnd-active');
-    var preview = document.createElement('div');
-    preview.className = 'desc-media-gallery-drag-preview';
-    preview.textContent = '이동 중';
-    document.body.appendChild(preview);
-    ds.previewEl = preview;
+    wrap.classList.add('is-gallery-drop-active');
   }
 
-  function getDescMediaGalleryItemEls(ds) {
-    var wrap = activeDetailDrawer && activeDetailDrawer.descriptionEditorEl.querySelector('.desc-media-gallery[data-block-id="' + ds.galleryBlockId + '"]');
-    if (!wrap) return [];
-    return Array.prototype.slice.call(wrap.querySelectorAll('.desc-media-gallery-item'));
+  function moveGalleryPlaceholderToPointer(ds, wrap, clientX, clientY) {
+    if (!ds.placeholderEl || !wrap) return;
+    clearDescMediaGalleryExternalTargets(ds);
+    wrap.classList.add('is-gallery-drop-active');
+    ds.targetMode = 'gallery';
+    ds.targetGalleryBlockId = wrap.dataset.blockId;
+    ds.mergeTargetBlockId = null;
+    ds.detachBeforeBlockId = null;
+    if (ds.blockPlaceholderEl) { ds.blockPlaceholderEl.remove(); ds.blockPlaceholderEl = null; }
+    if (ds.placeholderEl.parentNode !== wrap) wrap.appendChild(ds.placeholderEl);
+
+    var cells = getDescMediaGalleryItemElsByWrap(wrap, ds.mediaItemId);
+    if (!cells.length) { wrap.appendChild(ds.placeholderEl); return; }
+
+    var hit = document.elementFromPoint(clientX, clientY);
+    var targetCell = hit && hit.closest ? hit.closest('.desc-media-gallery-item') : null;
+    if (!targetCell || targetCell.parentNode !== wrap || targetCell.dataset.mediaItemId === ds.mediaItemId) {
+      var best = null;
+      var bestScore = Infinity;
+      cells.forEach(function (el) {
+        var r = el.getBoundingClientRect();
+        var score = Math.abs(clientX - (r.left + r.width / 2)) + Math.abs(clientY - (r.top + r.height / 2)) * 1.2;
+        if (score < bestScore) { bestScore = score; best = el; }
+      });
+      targetCell = best;
+    }
+    if (!targetCell) { wrap.appendChild(ds.placeholderEl); return; }
+    var r = targetCell.getBoundingClientRect();
+    var before = clientX < r.left + r.width / 2;
+    if (before) wrap.insertBefore(ds.placeholderEl, targetCell);
+    else wrap.insertBefore(ds.placeholderEl, targetCell.nextSibling);
   }
 
-  function clearDescMediaGalleryDropIndicator(ds) {
-    getDescMediaGalleryItemEls(ds).forEach(function (el) { el.classList.remove('is-drop-before', 'is-drop-after'); });
+  function showGalleryItemStandaloneMergeTarget(ds, blockEl, clientX) {
+    clearDescMediaGalleryExternalTargets(ds);
+    ds.targetMode = 'standalone-merge';
+    ds.mergeTargetBlockId = blockEl.dataset.blockId;
+    ds.mergeInsertPosition = clientX < blockEl.getBoundingClientRect().left + blockEl.getBoundingClientRect().width / 2 ? 'before' : 'after';
+    ds.targetGalleryBlockId = null;
+    ds.detachBeforeBlockId = null;
+    if (ds.blockPlaceholderEl) { ds.blockPlaceholderEl.remove(); ds.blockPlaceholderEl = null; }
+    blockEl.classList.add('desc-block-merge-target', ds.mergeInsertPosition === 'before' ? 'merge-before' : 'merge-after');
   }
 
-  function updateDescMediaGalleryDropIndicator(ds) {
-    clearDescMediaGalleryDropIndicator(ds);
-    var els = getDescMediaGalleryItemEls(ds);
-    var target = els.filter(function (el) { return el.dataset.mediaItemId === ds.overMediaItemId; })[0];
-    if (target) target.classList.add(ds.dropPosition === 'after' ? 'is-drop-after' : 'is-drop-before');
+  function showGalleryItemBlockPlaceholder(ds, clientY) {
+    if (!activeDetailDrawer || !activeDetailDrawer.descriptionEditorEl) return;
+    clearDescMediaGalleryExternalTargets(ds);
+    ds.targetMode = 'detach';
+    ds.mergeTargetBlockId = null;
+    ds.targetGalleryBlockId = null;
+    var editor = activeDetailDrawer.descriptionEditorEl;
+    if (!ds.blockPlaceholderEl) {
+      ds.blockPlaceholderEl = document.createElement('div');
+      ds.blockPlaceholderEl.className = 'desc-media-detach-placeholder';
+      ds.blockPlaceholderEl.style.height = Math.min(260, Math.max(110, ds.height)) + 'px';
+    }
+    var rows = Array.prototype.slice.call(editor.querySelectorAll(':scope > .desc-block:not(.desc-block-drag-hidden)'));
+    var beforeEl = null;
+    for (var i = 0; i < rows.length; i++) {
+      var r = rows[i].getBoundingClientRect();
+      if (clientY < r.top + r.height / 2) { beforeEl = rows[i]; break; }
+    }
+    if (beforeEl) editor.insertBefore(ds.blockPlaceholderEl, beforeEl);
+    else editor.appendChild(ds.blockPlaceholderEl);
+    ds.detachBeforeBlockId = beforeEl ? beforeEl.dataset.blockId : null;
   }
 
-  function computeDescMediaGalleryOver(ds, clientX, clientY) {
-    var els = getDescMediaGalleryItemEls(ds).filter(function (el) { return el.dataset.mediaItemId !== ds.mediaItemId; });
-    for (var i = 0; i < els.length; i++) {
-      var r = els[i].getBoundingClientRect();
-      if (clientX >= r.left && clientX <= r.right && clientY >= r.top && clientY <= r.bottom) {
-        return { id: els[i].dataset.mediaItemId, position: clientX < r.left + r.width / 2 ? 'before' : 'after' };
+  function updateDescMediaGalleryDragTarget(ds, clientX, clientY) {
+    var hit = document.elementFromPoint(clientX, clientY);
+    var entity = findDetailEditableEntityById(ds.itemId);
+    var blocks = entity ? ensureDescriptionBlocks(entity) : [];
+    var sourceBlock = blocks.find(function (b) { return b.id === ds.sourceGalleryBlockId; });
+    var movedItem = sourceBlock && sourceBlock.items && sourceBlock.items.find(function (entry) { return entry.id === ds.mediaItemId; });
+    var movedIsPhoto = !!movedItem && descEffectiveMediaKind(movedItem.mimeType, movedItem.name) === 'image';
+
+    var gallery = hit && hit.closest ? hit.closest('.desc-media-gallery') : null;
+    if (gallery && activeDetailDrawer.descriptionEditorEl.contains(gallery)) {
+      var targetBlock = blocks.find(function (b) { return b.id === gallery.dataset.blockId; });
+      var sameGallery = gallery.dataset.blockId === ds.sourceGalleryBlockId;
+      var targetIsPhotoGroup = targetBlock && targetBlock.type === 'mediaGallery' && (targetBlock.items || []).every(function (entry) {
+        return descEffectiveMediaKind(entry.mimeType, entry.name) === 'image';
+      });
+      if (sameGallery || (movedIsPhoto && targetIsPhotoGroup && targetBlock.items.length < 3)) {
+        moveGalleryPlaceholderToPointer(ds, gallery, clientX, clientY);
+        return;
       }
     }
-    var closest = null, closestDist = Infinity, closestRect = null;
-    els.forEach(function (el) {
-      var r = el.getBoundingClientRect();
-      var cx = r.left + r.width / 2, cy = r.top + r.height / 2;
-      var d = Math.hypot(clientX - cx, clientY - cy);
-      if (d < closestDist) { closestDist = d; closest = el; closestRect = r; }
-    });
-    if (!closest) return { id: ds.overMediaItemId, position: ds.dropPosition };
-    return { id: closest.dataset.mediaItemId, position: clientX < closestRect.left + closestRect.width / 2 ? 'before' : 'after' };
+
+    var blockEl = hit && hit.closest ? hit.closest('.desc-block') : null;
+    if (movedIsPhoto && blockEl && blockEl.dataset.blockId !== ds.sourceGalleryBlockId && blockEl.querySelector('.desc-media-image')) {
+      showGalleryItemStandaloneMergeTarget(ds, blockEl, clientX);
+      return;
+    }
+
+    var editor = activeDetailDrawer && activeDetailDrawer.descriptionEditorEl;
+    if (editor) {
+      var er = editor.getBoundingClientRect();
+      if (clientX >= er.left - 20 && clientX <= er.right + 20 && clientY >= er.top && clientY <= er.bottom) {
+        showGalleryItemBlockPlaceholder(ds, clientY);
+        return;
+      }
+    }
+
+    ds.targetMode = 'invalid';
+    clearDescMediaGalleryExternalTargets(ds);
   }
 
   function onDescMediaGalleryItemPointerMove(e) {
     var ds = descMediaGalleryDragState;
     if (!ds || e.pointerId !== ds.pointerId) return;
+    ds.lastX = e.clientX;
+    ds.lastY = e.clientY;
     if (ds.pending) {
-      var dx = e.clientX - ds.startX, dy = e.clientY - ds.startY;
+      var dx = e.clientX - ds.startX;
+      var dy = e.clientY - ds.startY;
       if (Math.hypot(dx, dy) < DRAG_THRESHOLD) return;
       activateDescMediaGalleryDrag(ds);
+      if (!ds.active) return;
     }
-    ds.previewEl.style.left = (e.clientX + 12) + 'px';
-    ds.previewEl.style.top = (e.clientY + 12) + 'px';
-    var over = computeDescMediaGalleryOver(ds, e.clientX, e.clientY);
-    ds.overMediaItemId = over.id;
-    ds.dropPosition = over.position;
-    updateDescMediaGalleryDropIndicator(ds);
-  }
-
-  function cleanupDescMediaGalleryDragDom(ds) {
-    document.body.classList.remove('desc-media-gallery-dnd-active');
-    if (ds.previewEl && ds.previewEl.isConnected) ds.previewEl.remove();
-    clearDescMediaGalleryDropIndicator(ds);
+    updateDescMediaGalleryDragTarget(ds, e.clientX, e.clientY);
   }
 
   function teardownDescMediaGalleryDragListeners() {
     document.removeEventListener('pointermove', onDescMediaGalleryItemPointerMove);
     document.removeEventListener('pointerup', onDescMediaGalleryItemPointerUp);
     document.removeEventListener('pointercancel', onDescMediaGalleryItemPointerCancel);
+  }
+
+  function cleanupDescMediaGalleryDragDom(ds) {
+    document.body.classList.remove('desc-media-gallery-dnd-active');
+    clearDescMediaGalleryExternalTargets(ds);
+    if (ds.sourceCell) ds.sourceCell.classList.remove('desc-media-gallery-drag-source-hidden');
+    if (ds.placeholderEl && ds.placeholderEl.isConnected) ds.placeholderEl.remove();
+    if (ds.blockPlaceholderEl && ds.blockPlaceholderEl.isConnected) ds.blockPlaceholderEl.remove();
   }
 
   function abortDescMediaGalleryDrag() {
@@ -5024,25 +8882,107 @@ if (!Number.isFinite(e.clientX) || !Number.isFinite(e.clientY)) return;
     abortDescMediaGalleryDrag();
   }
 
-  function commitDescMediaGalleryDrag(ds) {
-    var item = findItemById(ds.itemId);
-    var blocks = item && ensureDescriptionBlocks(item);
-    var block = blocks && blocks.filter(function (b) { return b.id === ds.galleryBlockId; })[0];
-    if (!block || !Array.isArray(block.items)) return;
-    var fromIdx = block.items.findIndex(function (i) { return i.id === ds.mediaItemId; });
-    var overIdx = block.items.findIndex(function (i) { return i.id === ds.overMediaItemId; });
-    if (fromIdx === -1 || overIdx === -1) return;
-    var toIdx = overIdx + (ds.dropPosition === 'after' ? 1 : 0);
-    if (toIdx > fromIdx) toIdx -= 1;
-    if (toIdx === fromIdx) return;
-    withHistoryTransaction(function () {
-      var moved = block.items.splice(fromIdx, 1)[0];
-      block.items.splice(toIdx, 0, moved);
-      block.updatedAt = Date.now();
-      item.updatedAt = Date.now();
+  function galleryPlaceholderIndex(ds) {
+    if (!ds.placeholderEl || !ds.placeholderEl.parentElement) return 0;
+    var children = Array.prototype.slice.call(ds.placeholderEl.parentElement.children);
+    var idx = 0;
+    for (var i = 0; i < children.length; i++) {
+      if (children[i] === ds.placeholderEl) break;
+      if (children[i].classList && children[i].classList.contains('desc-media-gallery-item') &&
+          children[i].dataset.mediaItemId !== ds.mediaItemId) idx += 1;
+    }
+    return idx;
+  }
+
+  function mediaItemToStandaloneBlock(mediaItem) {
+    var kind = descEffectiveMediaKind(mediaItem.mimeType, mediaItem.name);
+    return makeDescMediaBlock(kind === 'other' ? 'attachment' : kind, {
+      attachmentId: mediaItem.attachmentId,
+      name: mediaItem.name,
+      mimeType: mediaItem.mimeType,
+      size: mediaItem.size,
+      alt: mediaItem.alt || '',
+      caption: mediaItem.caption || ''
     });
+  }
+
+  function commitDescMediaGalleryDrag(ds) {
+    var entity = findDetailEditableEntityById(ds.itemId);
+    var blocks = entity && ensureDescriptionBlocks(entity);
+    var sourceBlock = blocks && blocks.find(function (b) { return b.id === ds.sourceGalleryBlockId; });
+    if (!sourceBlock || !Array.isArray(sourceBlock.items)) return;
+    var fromIdx = sourceBlock.items.findIndex(function (entry) { return entry.id === ds.mediaItemId; });
+    if (fromIdx === -1 || ds.targetMode === 'invalid') return;
+
+    var galleryIndex = ds.targetMode === 'gallery' ? galleryPlaceholderIndex(ds) : null;
+    var detachBeforeId = ds.detachBeforeBlockId;
+    var movedId = ds.mediaItemId;
+
+    withHistoryTransaction(function () {
+      var currentSource = blocks.find(function (b) { return b.id === ds.sourceGalleryBlockId; });
+      if (!currentSource || !Array.isArray(currentSource.items)) return;
+      var currentFrom = currentSource.items.findIndex(function (entry) { return entry.id === movedId; });
+      if (currentFrom === -1) return;
+      var moved = currentSource.items.splice(currentFrom, 1)[0];
+      moved.colStart = null;
+      moved.span = null;
+      moved.height = null;
+      currentSource.updatedAt = Date.now();
+
+      if (ds.targetMode === 'gallery') {
+        var targetBlock = blocks.find(function (b) { return b.id === ds.targetGalleryBlockId; });
+        if (!targetBlock || targetBlock.type !== 'mediaGallery') {
+          currentSource.items.splice(currentFrom, 0, moved);
+          return;
+        }
+        var sameTarget = targetBlock.id === currentSource.id;
+        var movedKind = descEffectiveMediaKind(moved.mimeType, moved.name);
+        var targetPhotoOnly = targetBlock.items.every(function (entry) {
+          return descEffectiveMediaKind(entry.mimeType, entry.name) === 'image';
+        });
+        if (!sameTarget && (movedKind !== 'image' || !targetPhotoOnly || targetBlock.items.length >= 3)) {
+          currentSource.items.splice(currentFrom, 0, moved);
+          return;
+        }
+        var insertAt = Math.max(0, Math.min(targetBlock.items.length, galleryIndex));
+        targetBlock.items.splice(insertAt, 0, moved);
+        targetBlock.updatedAt = Date.now();
+      } else if (ds.targetMode === 'standalone-merge') {
+        var targetIdx = blocks.findIndex(function (b) { return b.id === ds.mergeTargetBlockId; });
+        var target = targetIdx >= 0 ? blocks[targetIdx] : null;
+        if (!target) { currentSource.items.splice(currentFrom, 0, moved); return; }
+        moved.span = null;
+        moved.height = null;
+        moved.colStart = null;
+        var targetMeta = getDescMediaMeta(target);
+        var targetItem = makeDescMediaGalleryItem({
+          attachmentId: targetMeta.attachmentId, name: targetMeta.name, mimeType: targetMeta.mimeType,
+          size: targetMeta.size, alt: target.alt || '', caption: target.caption || '',
+          fit: target.fit === 'cover' ? 'cover' : 'contain'
+        });
+        var pair = ds.mergeInsertPosition === 'before' ? [moved, targetItem] : [targetItem, moved];
+        blocks[targetIdx] = makeDescMediaBlock('mediaGallery', {
+          id: target.id, indent: target.indent || 0, createdAt: target.createdAt, items: pair
+        });
+      } else if (ds.targetMode === 'detach') {
+        var standalone = mediaItemToStandaloneBlock(moved);
+        var insertBlockAt = detachBeforeId
+          ? blocks.findIndex(function (b) { return b.id === detachBeforeId; })
+          : blocks.length;
+        if (insertBlockAt < 0) insertBlockAt = blocks.length;
+        blocks.splice(insertBlockAt, 0, standalone);
+      }
+
+      var sourceIdx = blocks.findIndex(function (b) { return b.id === ds.sourceGalleryBlockId; });
+      if (sourceIdx >= 0) normalizeDescMediaGalleryAt(blocks, sourceIdx);
+      syncDescriptionPlainTextMirror(entity);
+      entity.updatedAt = Date.now();
+    });
+
+    syncSharedInstanceGroupFields(entity.instanceGroupId, entity);
     descForceRebuild = true;
     saveItems();
+    saveMonthlyItems();
     renderApp();
   }
 
@@ -5053,8 +8993,9 @@ if (!Number.isFinite(e.clientX) || !Number.isFinite(e.clientY)) return;
     descMediaGalleryDragState = null;
     if (!ds.active) return;
     suppressNextDescEditorClickOnce();
-    cleanupDescMediaGalleryDragDom(ds);
+    // placeholder DOM 순서가 commit 계산에 필요하므로 commit 후 정리한다.
     commitDescMediaGalleryDrag(ds);
+    cleanupDescMediaGalleryDragDom(ds);
   }
 
   // 7A 0/1: 표 본체(<table>)에는 실제 데이터 셀([data-row][data-col])만 들어간다 — 행/열
@@ -5638,11 +9579,93 @@ container.replaceChildren.apply(container, rows);
   }
 
   // 모달을 닫기 직전 등, 아직 반영되지 않은 debounce 저장/history를 즉시 흘려보낸다.
+  // 최종 감사(2026-07-27): pagehide/visibilitychange(hidden)에서도 이 함수 하나만
+  // 호출되므로(flushPendingSaveOnHide), 공유 항목(이달의 할 일 원본을 직접 편집 중이거나
+  // sourceMonthlyItemId가 있는 배치본을 편집 중)이면 여기서 바로 원본/다른 배치에도
+  // 전파하고 두 컬렉션 모두 동기 저장한다 -- renderApp()은 호출하지 않는다(요구사항:
+  // 페이지가 사라지는 순간에는 레이아웃을 다시 만들 필요도, 만들 수도 없다).
   function flushDescriptionEditorPending(item) {
     if (descSaveDebounceTimer) { clearTimeout(descSaveDebounceTimer); descSaveDebounceTimer = null; }
+    if (item) pruneEmptyDescTodoBlocks(item);
     if (item) syncDescriptionPlainTextMirror(item);
-    if (item) saveItems();
+    if (item) {
+      var isMonthlyMasterEntity = item.monthKey !== undefined;
+      withHistoryTransaction(function () {
+        if (isMonthlyMasterEntity) syncSharedMonthlyFields(item.id);
+        else if (item.sourceMonthlyItemId) syncSharedMonthlyFields(item.sourceMonthlyItemId, item);
+        if (item.instanceGroupId) syncSharedInstanceGroupFields(item.instanceGroupId, item);
+      });
+      saveItems();
+      if (isMonthlyMasterEntity || item.sourceMonthlyItemId || item.instanceGroupId) saveMonthlyItems();
+    }
     flushDescTextEditSession();
+  }
+
+  // 데이터 유실 진단: 설명 블록 타이핑은 화면(state.items)에는 즉시 반영되지만 실제
+  // localStorage 저장은 300~800ms debounce다(scheduleDescAutosave). 그 사이 사용자가 탭/
+  // 브라우저를 바로 닫으면(모달을 직접 닫지 않았으므로 flushDescriptionEditorPending을 부르는
+  // 기존 경로들을 전혀 거치지 않는다) 방금 입력한 내용이 화면에는 보였지만 저장은 안 된 채로
+  // 사라진다 — 재현 확인됨. pagehide/visibilitychange(hidden)에서 남은 debounce를 동기적으로
+  // 흘려보내 이 유실 창을 막는다. localStorage.setItem은 동기 호출이라 두 이벤트 모두
+  // 페이지가 실제로 사라지기 전에 안전하게 끝난다.
+  function flushPendingSaveOnHide() {
+    if (!descSaveDebounceTimer && !descTextEditSession) return;
+    var item = state.activeDetailItemId ? findActiveDetailEntity() : null;
+    flushDescriptionEditorPending(item);
+  }
+
+  // 최종 감사(2026-07-27) 6: 일정 진행률 원(--pct) 주기 갱신. renderApp() 전체를 다시
+  // 돌리지 않고(요구사항 10 -- 매초는 물론 과도한 재렌더도 금지), 이미 화면에 있는
+  // .ic-ring[data-pct-item-id] 각각의 --pct만 다시 계산해 얹는다. state.items뿐 아니라
+  // 이달의 할 일 원본(dateless)도 찾아본다 -- 배치 없이 열린 원본 상세의 헤더 아이콘도
+  // 같은 data-pct-* 표식을 쓰기 때문.
+  function refreshScheduleProgressRings() {
+    var now = new Date();
+    document.querySelectorAll('.ic-ring[data-pct-item-id]').forEach(function (ringEl) {
+      var itemId = ringEl.dataset.pctItemId;
+      var occ = ringEl.dataset.pctOccurrence || null;
+      var item = findItemById(itemId) || findMonthlyItemById(itemId);
+      if (!item) return;
+      ringEl.style.setProperty('--pct', String(computeSchedulePct(item, occ, now)));
+    });
+  }
+
+  var scheduleProgressRingTimer = null;
+  // 11: 분 단위 갱신이면 충분하다(초 단위 정밀도가 필요한 화면이 아니다) -- 그리고 탭이
+  // 숨겨진 동안은 아예 타이머를 멈춰 낭비를 없앤다(아래 visibilitychange 분기에서 정지/재개).
+  var SCHEDULE_PROGRESS_RING_INTERVAL_MS = 60000;
+
+  function startScheduleProgressRingTimer() {
+    if (scheduleProgressRingTimer) return;
+    scheduleProgressRingTimer = setInterval(refreshScheduleProgressRings, SCHEDULE_PROGRESS_RING_INTERVAL_MS);
+  }
+
+  function stopScheduleProgressRingTimer() {
+    if (!scheduleProgressRingTimer) return;
+    clearInterval(scheduleProgressRingTimer);
+    scheduleProgressRingTimer = null;
+  }
+
+  // 자동 이월 실행 시점(탭 visible 복귀/창 focus 복귀/자정 timer)을 기존 unload-flush
+  // 생명주기 리스너에 통합한다 -- visibilitychange는 새로 등록하지 않고 기존 리스너의
+  // 'hidden' 분기 옆에 'visible' 분기만 추가하고, focus는 여기서 처음 등록한다.
+  // 자동 이월(runAutoRollover)이 이미 todayDate를 최신으로 맞춘 직후, Weekly 자동
+  // 추적 범위도 같은 트리거에서 함께 갱신한다(visibility 복귀/focus 복귀 공용).
+  function onAppVisibleOrFocused() {
+    runAutoRollover();
+    refreshWeeklyAutoFollowRange();
+    refreshScheduleProgressRings(); // 11: 다시 보일 때 즉시 최신 값으로 갱신.
+    startScheduleProgressRingTimer();
+  }
+
+  function wireUnloadFlush() {
+    window.addEventListener('pagehide', flushPendingSaveOnHide);
+    document.addEventListener('visibilitychange', function () {
+      if (document.visibilityState === 'hidden') { flushPendingSaveOnHide(); stopScheduleProgressRingTimer(); }
+      else if (document.visibilityState === 'visible') onAppVisibleOrFocused();
+    });
+    window.addEventListener('focus', onAppVisibleOrFocused);
+    scheduleAutoRolloverMidnightCheck();
   }
 
   function scheduleDescAutosave(item) {
@@ -5650,7 +9673,11 @@ container.replaceChildren.apply(container, rows);
     descSaveDebounceTimer = setTimeout(function () {
       descSaveDebounceTimer = null;
       syncDescriptionPlainTextMirror(item);
+      if (item.monthKey !== undefined) syncSharedMonthlyFields(item.id);
+      else if (item.sourceMonthlyItemId) syncSharedMonthlyFields(item.sourceMonthlyItemId, item);
+      if (item.instanceGroupId) syncSharedInstanceGroupFields(item.instanceGroupId, item);
       saveItems();
+      if (item.monthKey !== undefined || item.sourceMonthlyItemId || item.instanceGroupId) saveMonthlyItems();
       // 6차 7: 일반 타이핑은(라이브 입력을 방해하지 않으려고) renderApp()을 부르지
       // 않는다 — 하지만 Daily/Weekly의 "상세 내용 있음" 배지는 그래서 실시간으로 갱신되지
       // 않는 사각지대가 생긴다. 전체 renderApp 대신 이 두 목록만(가볍게) 다시 그려
@@ -5662,7 +9689,11 @@ container.replaceChildren.apply(container, rows);
     descHistoryDebounceTimer = setTimeout(function () {
       descHistoryDebounceTimer = null;
       syncDescriptionPlainTextMirror(item);
+      if (item.monthKey !== undefined) syncSharedMonthlyFields(item.id);
+      else if (item.sourceMonthlyItemId) syncSharedMonthlyFields(item.sourceMonthlyItemId, item);
+      if (item.instanceGroupId) syncSharedInstanceGroupFields(item.instanceGroupId, item);
       saveItems();
+      if (item.monthKey !== undefined || item.sourceMonthlyItemId || item.instanceGroupId) saveMonthlyItems();
       flushDescTextEditSession();
     }, 800);
   }
@@ -5768,7 +9799,7 @@ function insertParagraphBeforeBlock(item, idx) {
   // todo 블록 하나 + 연결 subtask 하나를 만든다. 이미 그 자리가 빈 todo라면 중복 생성 없이
   // 거기로 포커스만 옮긴다.
   function quickAddDescTodo(itemId) {
-    var item = findItemById(itemId);
+    var item = findDetailEditableEntityById(itemId);
     if (!item) return;
     flushDescTextEditSession();
     var blocks = ensureDescriptionBlocks(item);
@@ -5800,7 +9831,11 @@ function insertParagraphBeforeBlock(item, idx) {
     });
     state.descriptionEditor = { itemId: item.id, activeBlockId: newBlock.id, selectionStart: 0 };
     descForceRebuild = true;
+    if (item.monthKey !== undefined) syncSharedMonthlyFields(item.id);
+    else if (item.sourceMonthlyItemId) syncSharedMonthlyFields(item.sourceMonthlyItemId, item);
+    if (item.instanceGroupId) syncSharedInstanceGroupFields(item.instanceGroupId, item);
     saveItems();
+    if (item.monthKey !== undefined || item.sourceMonthlyItemId || item.instanceGroupId) saveMonthlyItems();
     renderApp();
   }
 
@@ -5962,7 +9997,7 @@ function insertParagraphBeforeBlock(item, idx) {
   // 토글 접기/펼치기는 콘텐츠가 아니라 화면 상태에 가깝다(Weekly 패널의 lastExpandedTop과
   // 같은 결) — Undo 스택을 여기서까지 쌓지 않는다(새로고침 유지를 위해 저장은 한다).
   function toggleDescBlockCollapsed(blockId) {
-    var item = findItemById(state.activeDetailItemId);
+    var item = findActiveDetailEntity();
     if (!item) return;
     var blocks = ensureDescriptionBlocks(item);
     var block = blocks.find(function (b) { return b.id === blockId; });
@@ -5980,7 +10015,7 @@ function insertParagraphBeforeBlock(item, idx) {
   // 그 외(선택이 없거나 todo 하나뿐)에는 기존 toggleSubtaskCompleted 단일 동작을 그대로
   // 재사용한다(부모 task의 completed는 손대지 않는다는 규칙 포함).
   function toggleDescTodoBlockChecked(blockId) {
-    var item = findItemById(state.activeDetailItemId);
+    var item = findActiveDetailEntity();
     if (!item) return;
     var blocks = ensureDescriptionBlocks(item);
     var block = blocks.find(function (b) { return b.id === blockId; });
@@ -6019,7 +10054,7 @@ function insertParagraphBeforeBlock(item, idx) {
   // 복원된다. 최소 하나의 paragraph는 항상 유지한다는 일반 규칙과 동일하게, 지우고 나서
   // 블록이 하나도 안 남으면 빈 paragraph를 하나 남긴다.
   function deleteDescTodoBlock(blockId) {
-    var item = findItemById(state.activeDetailItemId);
+    var item = findActiveDetailEntity();
     if (!item) return;
     var blocks = ensureDescriptionBlocks(item);
     var idx = blocks.findIndex(function (b) { return b.id === blockId; });
@@ -6045,7 +10080,7 @@ function insertParagraphBeforeBlock(item, idx) {
   // 블록만 지운다는 게 기본 규칙). 자식도 지우고 싶으면 자식도 함께 선택돼 있어야 한다
   // (그러면 그 자식도 그냥 selectedIds에 포함돼 있으므로 같은 방식으로 지워진다).
   function deleteSelectedDescBlocks() {
-    var item = findItemById(state.activeDetailItemId);
+    var item = findActiveDetailEntity();
     if (!item) return;
     var blocks = ensureDescriptionBlocks(item);
     var sel = state.detailBlockSelection;
@@ -6075,7 +10110,7 @@ function insertParagraphBeforeBlock(item, idx) {
   // 서로 다른 indent였던 블록들 사이의 상대 차이가 그대로 유지된다. divider/table/
   // attachment처럼 들여쓰기 대상이 아닌 타입은 조용히 건너뛴다.
   function indentSelectedDescBlocks(delta) {
-    var item = findItemById(state.activeDetailItemId);
+    var item = findActiveDetailEntity();
     if (!item) return;
     var blocks = ensureDescriptionBlocks(item);
     var sel = state.detailBlockSelection;
@@ -6265,7 +10300,7 @@ function insertParagraphBeforeBlock(item, idx) {
   }
 
   function mutateDescTable(blockId, action) {
-    var item = findItemById(state.activeDetailItemId);
+    var item = findActiveDetailEntity();
     if (!item) return;
     var blocks = ensureDescriptionBlocks(item);
     var block = blocks.find(function (b) { return b.id === blockId; });
@@ -6293,7 +10328,7 @@ function insertParagraphBeforeBlock(item, idx) {
 
   function onDescEditorInput(e) {
     var target = e.target;
-    var item = findItemById(state.activeDetailItemId);
+    var item = findActiveDetailEntity();
     if (!item) return;
 
     if (target.dataset && target.dataset.mediaCaption) {
@@ -6372,7 +10407,7 @@ function insertParagraphBeforeBlock(item, idx) {
     if (!target.dataset || !target.dataset.blockId) return;
     var blockId = target.dataset.blockId;
     if (activeDescSlashMenu && activeDescSlashMenu.blockId !== blockId) closeDescSlashMenu();
-    var item = findItemById(state.activeDetailItemId);
+    var item = findActiveDetailEntity();
     if (!item) return;
     var offset = target.classList.contains('desc-block-text') ? getDescCaretOffset(target) : null;
     state.descriptionEditor = { itemId: item.id, activeBlockId: blockId, selectionStart: offset };
@@ -6417,7 +10452,7 @@ function insertParagraphBeforeBlock(item, idx) {
       if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); closeDescSlashMenu(); return; }
     }
 
-    var item = findItemById(state.activeDetailItemId);
+    var item = findActiveDetailEntity();
     if (!item) return;
     var blocks = ensureDescriptionBlocks(item);
     var idx = blocks.findIndex(function (b) { return b.id === blockId; });
@@ -6624,10 +10659,32 @@ function onDescEditorClick(e) {
     if (replaceBtn) { e.preventDefault(); replaceDescMediaBlock(replaceBtn.dataset.blockId); return; }
     var delBtn = e.target.closest('[data-action="desc-media-delete"]');
     if (delBtn) { e.preventDefault(); deleteDescMediaBlock(delBtn.dataset.blockId); return; }
+    var galleryWidthCycle = e.target.closest('[data-action="desc-media-gallery-item-width-cycle"]');
+    if (galleryWidthCycle) { e.preventDefault(); cycleDescMediaGalleryItemWidth(galleryWidthCycle.dataset.blockId, galleryWidthCycle.dataset.mediaItemId); return; }
+    var galleryFitToggle = e.target.closest('[data-action="desc-media-gallery-item-fit-toggle"]');
+    if (galleryFitToggle) { e.preventDefault(); toggleDescMediaGalleryItemFit(galleryFitToggle.dataset.blockId, galleryFitToggle.dataset.mediaItemId); return; }
     var galleryItemDel = e.target.closest('[data-action="desc-media-gallery-item-delete"]');
     if (galleryItemDel) { e.preventDefault(); deleteDescMediaGalleryItem(galleryItemDel.dataset.blockId, galleryItemDel.dataset.mediaItemId); return; }
     var galleryItemSep = e.target.closest('[data-action="desc-media-gallery-item-separate"]');
     if (galleryItemSep) { e.preventDefault(); separateDescMediaGalleryItem(galleryItemSep.dataset.blockId, galleryItemSep.dataset.mediaItemId); return; }
+    var photoSizeBtn = e.target.closest('[data-action="desc-photo-size"]');
+    if (photoSizeBtn) {
+      e.preventDefault();
+      mutateDescPhotoBlock(photoSizeBtn.dataset.blockId, function (block) { block.displaySize = photoSizeBtn.dataset.photoSize; });
+      return;
+    }
+    var photoAlignBtn = e.target.closest('[data-action="desc-photo-align"]');
+    if (photoAlignBtn) {
+      e.preventDefault();
+      mutateDescPhotoBlock(photoAlignBtn.dataset.blockId, function (block) { block.align = photoAlignBtn.dataset.photoAlign; });
+      return;
+    }
+    var photoFitBtn = e.target.closest('[data-action="desc-photo-fit"]');
+    if (photoFitBtn) {
+      e.preventDefault();
+      mutateDescPhotoBlock(photoFitBtn.dataset.blockId, function (block) { block.fit = block.fit === 'cover' ? 'contain' : 'cover'; });
+      return;
+    }
     var addRow = e.target.closest('[data-action="desc-table-add-row"]');
     if (addRow) { e.preventDefault(); mutateDescTable(addRow.dataset.blockId, 'add-row'); return; }
     var addCol = e.target.closest('[data-action="desc-table-add-col"]');
@@ -6711,7 +10768,14 @@ if (colHandle) {
     }
     // 16: video controls·이미지 자체·gallery item 클릭은 블록 선택으로 바뀌지 않는다
     // (표 셀 클릭과 같은 우선순위 — 미디어 자체 조작이 caret/컨트롤 조작보다 앞선다).
-    if (e.target.closest('.desc-media-image-wrap') || e.target.closest('.desc-media-video-wrap') || e.target.closest('.desc-media-gallery-item')) {
+    var clickedPhoto = e.target.closest('.desc-media-image-wrap');
+    if (clickedPhoto) {
+      clearDescTableSelection();
+      var photoBlock = clickedPhoto.closest('.desc-block');
+      if (photoBlock) handleDescBlockSelectionClick(e, photoBlock.dataset.blockId);
+      return;
+    }
+    if (e.target.closest('.desc-media-video-wrap') || e.target.closest('.desc-media-gallery-item')) {
       clearDetailBlockSelection();
       clearDescTableSelection();
       return;
@@ -6723,6 +10787,341 @@ if (colHandle) {
     handleDescBlockSelectionClick(e, blockWrap.dataset.blockId);
   }
 
+  // ---------------------------------------------------------------------
+  // 상세 설명으로 파일을 바로 붙여넣거나 끌어놓기.
+  // 클립보드/드롭에 실제 File·Blob이 들어온 경우만 가로채며, 일반 텍스트 붙여넣기는
+  // 기존 contenteditable 동작을 그대로 유지한다. 여러 이미지·동영상은 한 번에
+  // mediaGallery가 되고, 단일 시각 미디어는 image/video 블록으로 들어간다.
+  // ---------------------------------------------------------------------
+  var descExternalFileDragDepth = 0;
+
+  function collectDescTransferFiles(transfer) {
+    if (!transfer) return [];
+    var files = [];
+
+    if (transfer.items && transfer.items.length) {
+      Array.prototype.forEach.call(transfer.items, function (entry) {
+        if (!entry || entry.kind !== 'file' || !entry.getAsFile) return;
+        var file = entry.getAsFile();
+        if (file) files.push(file);
+      });
+    }
+
+    if (!files.length && transfer.files && transfer.files.length) {
+      files = Array.prototype.slice.call(transfer.files);
+    }
+
+    // 같은 객체가 items/files 양쪽에 중복으로 잡힌 경우만 제거한다.
+    return files.filter(function (file, index) {
+      if (!file) return false;
+      for (var i = 0; i < index; i++) {
+        if (files[i] === file) return false;
+      }
+      return true;
+    });
+  }
+
+  function descTransferHasFiles(transfer) {
+    if (!transfer) return false;
+    if (transfer.files && transfer.files.length) return true;
+    if (transfer.items && transfer.items.length) {
+      for (var i = 0; i < transfer.items.length; i++) {
+        if (transfer.items[i] && transfer.items[i].kind === 'file') return true;
+      }
+    }
+    if (transfer.types) {
+      for (var j = 0; j < transfer.types.length; j++) {
+        if (transfer.types[j] === 'Files') return true;
+      }
+    }
+    return false;
+  }
+
+  function defaultDescTransferredFileName(file, index) {
+    if (file && file.name) return file.name;
+    var mime = file && file.type ? file.type.toLowerCase() : '';
+    var ext = '';
+    if (mime === 'image/png') ext = '.png';
+    else if (mime === 'image/jpeg') ext = '.jpg';
+    else if (mime === 'image/gif') ext = '.gif';
+    else if (mime === 'image/webp') ext = '.webp';
+    else if (mime === 'video/mp4') ext = '.mp4';
+    else if (mime === 'video/webm') ext = '.webm';
+    return '붙여넣은 파일 ' + (index + 1) + ext;
+  }
+
+  function isEmptyDescParagraph(item, block) {
+    return !!block && block.type === 'paragraph' && !getDescBlockDisplayText(item, block).trim();
+  }
+
+  // 삽입 위치는 실제 DOM 블록과 포인터 위치를 기준으로 계산한다. 빈 문단이면 그 자리를
+  // 재사용하고, 내용이 있는 블록이면 붙여넣기는 뒤에, 드롭은 위·아래 절반에 따라 넣는다.
+  function resolveDescTransferredInsertSpec(item, eventTarget, clientY, isPaste, files) {
+    var blocks = ensureDescriptionBlocks(item);
+    var blockEl = eventTarget && eventTarget.closest ? eventTarget.closest('.desc-block') : null;
+    var blockId = blockEl && blockEl.dataset ? blockEl.dataset.blockId : null;
+    var idx = blockId ? blocks.findIndex(function (b) { return b.id === blockId; }) : -1;
+
+    if (idx !== -1) {
+      var block = blocks[idx];
+      if (isEmptyDescParagraph(item, block)) return { mode: 'replace', blockId: block.id };
+
+      // 시각 미디어를 기존 사진·동영상·갤러리 중앙에 놓으면 즉시 한 줄 갤러리로 합친다.
+      var allPhotos = files && files.length && files.every(function (file) {
+        return descEffectiveMediaKind(file.type, file.name) === 'image';
+      });
+      var targetPhotoCount = getDescPhotoItemsForBlock(block).length;
+      var targetMedia = targetPhotoCount > 0 && targetPhotoCount + files.length <= 3;
+      if (!isPaste && allPhotos && targetMedia && blockEl && clientY != null) {
+        var rect = blockEl.getBoundingClientRect();
+        if (clientY >= rect.top + rect.height * 0.25 && clientY <= rect.top + rect.height * 0.75) {
+          return { mode: 'merge', blockId: block.id };
+        }
+      }
+
+      if (isPaste || clientY == null || !blockEl) return { mode: 'after', blockId: block.id };
+      var r = blockEl.getBoundingClientRect();
+      return { mode: clientY < r.top + r.height / 2 ? 'before' : 'after', blockId: block.id };
+    }
+
+    var activeId = state.descriptionEditor && state.descriptionEditor.itemId === item.id
+      ? state.descriptionEditor.activeBlockId
+      : null;
+    var activeBlock = activeId && blocks.find(function (b) { return b.id === activeId; });
+    if (activeBlock) {
+      if (isEmptyDescParagraph(item, activeBlock)) return { mode: 'replace', blockId: activeBlock.id };
+      return { mode: 'after', blockId: activeBlock.id };
+    }
+
+    var last = blocks[blocks.length - 1];
+    if (isEmptyDescParagraph(item, last)) return { mode: 'replace', blockId: last.id };
+    return { mode: 'append', blockId: null };
+  }
+
+  function buildDescBlocksFromStoredFiles(files, indent) {
+    var images = files.filter(function (f) { return f.kind === 'image'; });
+    var videos = files.filter(function (f) { return f.kind === 'video'; });
+    var other = files.filter(function (f) { return f.kind !== 'image' && f.kind !== 'video'; });
+    var newBlocks = [];
+
+    for (var i = 0; i < images.length; i += 3) {
+      var chunk = images.slice(i, i + 3);
+      if (chunk.length === 1) {
+        newBlocks.push(makeDescMediaBlock('image', {
+          attachmentId: chunk[0].attachmentId,
+          name: chunk[0].name,
+          mimeType: chunk[0].mimeType,
+          size: chunk[0].size,
+          indent: indent || 0
+        }));
+      } else {
+        newBlocks.push(makeDescMediaBlock('mediaGallery', {
+          indent: indent || 0,
+          items: chunk.map(function (f) {
+            return makeDescMediaGalleryItem({
+              attachmentId: f.attachmentId,
+              name: f.name,
+              mimeType: f.mimeType,
+              size: f.size,
+              fit: 'cover'
+            });
+          })
+        }));
+      }
+    }
+
+    videos.forEach(function (f) {
+      newBlocks.push(makeDescMediaBlock('video', {
+        attachmentId: f.attachmentId,
+        name: f.name,
+        mimeType: f.mimeType,
+        size: f.size,
+        indent: indent || 0
+      }));
+    });
+
+    other.forEach(function (f) {
+      newBlocks.push(makeDescMediaBlock('attachment', {
+        attachmentId: f.attachmentId,
+        name: f.name,
+        mimeType: f.mimeType,
+        size: f.size,
+        indent: indent || 0
+      }));
+    });
+    return newBlocks;
+  }
+
+  function syncAndSaveDescMediaEntity(item) {
+    if (item.monthKey !== undefined) syncSharedMonthlyFields(item.id);
+    else if (item.sourceMonthlyItemId) syncSharedMonthlyFields(item.sourceMonthlyItemId, item);
+    if (item.instanceGroupId) syncSharedInstanceGroupFields(item.instanceGroupId, item);
+    saveItems();
+    if (item.monthKey !== undefined || item.sourceMonthlyItemId || item.instanceGroupId) saveMonthlyItems();
+  }
+
+  function finalizeDescTransferredFiles(itemId, insertSpec, files, entityType) {
+    var item = entityType === 'monthly-master' ? findMonthlyItemById(itemId) : findItemById(itemId);
+    if (!item || !files.length) return;
+    var blocks = ensureDescriptionBlocks(item);
+    var targetIdx = insertSpec && insertSpec.blockId
+      ? blocks.findIndex(function (b) { return b.id === insertSpec.blockId; })
+      : -1;
+    var targetBlock = targetIdx !== -1 ? blocks[targetIdx] : null;
+    var indent = targetBlock ? (targetBlock.indent || 0) : 0;
+    var newBlocks = buildDescBlocksFromStoredFiles(files, indent);
+    if (!newBlocks.length) return;
+    var firstFocusId = null;
+
+    flushDescTextEditSession();
+    withHistoryTransaction(function () {
+      if (insertSpec && insertSpec.mode === 'merge' && targetBlock) {
+        var visualFiles = files.filter(function (f) { return f.kind === 'image'; });
+        var otherFiles = files.filter(function (f) { return f.kind !== 'image'; });
+        var visualItems = visualFiles.map(function (f) {
+          return makeDescMediaGalleryItem({ attachmentId: f.attachmentId, name: f.name, mimeType: f.mimeType, size: f.size });
+        });
+
+        if (visualItems.length) {
+          if (targetBlock.type === 'mediaGallery') {
+            targetBlock.items = (targetBlock.items || []).concat(visualItems);
+            targetBlock.updatedAt = Date.now();
+          } else {
+            var targetMeta = getDescMediaMeta(targetBlock);
+            var targetGalleryItem = makeDescMediaGalleryItem({
+              attachmentId: targetMeta.attachmentId,
+              name: targetMeta.name,
+              mimeType: targetMeta.mimeType,
+              size: targetMeta.size,
+              alt: targetBlock.alt || '',
+              caption: targetBlock.caption || ''
+            });
+            blocks[targetIdx] = makeDescMediaBlock('mediaGallery', {
+              id: targetBlock.id,
+              indent: targetBlock.indent || 0,
+              createdAt: targetBlock.createdAt,
+              items: [targetGalleryItem].concat(visualItems)
+            });
+            targetBlock = blocks[targetIdx];
+          }
+          firstFocusId = targetBlock.id;
+        }
+
+        if (otherFiles.length) {
+          var otherBlocks = buildDescBlocksFromStoredFiles(otherFiles, indent);
+          blocks.splice.apply(blocks, [targetIdx + 1, 0].concat(otherBlocks));
+          if (!firstFocusId && otherBlocks.length) firstFocusId = otherBlocks[0].id;
+        }
+      } else {
+        var mode = insertSpec && insertSpec.mode ? insertSpec.mode : 'append';
+        if (mode === 'replace' && targetIdx !== -1 && isEmptyDescParagraph(item, targetBlock)) {
+          var originalId = targetBlock.id;
+          var originalCreatedAt = targetBlock.createdAt;
+          newBlocks[0].id = originalId;
+          newBlocks[0].createdAt = originalCreatedAt;
+          blocks[targetIdx] = newBlocks[0];
+          if (newBlocks.length > 1) blocks.splice.apply(blocks, [targetIdx + 1, 0].concat(newBlocks.slice(1)));
+          firstFocusId = newBlocks[0].id;
+        } else {
+          var insertAt = blocks.length;
+          if (targetIdx !== -1) insertAt = mode === 'before' ? targetIdx : targetIdx + 1;
+          blocks.splice.apply(blocks, [insertAt, 0].concat(newBlocks));
+          firstFocusId = newBlocks[0].id;
+        }
+      }
+
+      enforceDescTrailingParagraph(blocks);
+      syncDescriptionPlainTextMirror(item);
+      item.updatedAt = Date.now();
+    });
+
+    state.descriptionEditor = { itemId: item.id, activeBlockId: firstFocusId, selectionStart: null };
+    descForceRebuild = true;
+    syncAndSaveDescMediaEntity(item);
+    renderApp();
+  }
+
+  function saveDescTransferredFiles(itemId, insertSpec, rawFiles, container, entityType) {
+    var files = Array.prototype.slice.call(rawFiles || []).filter(Boolean);
+    if (!files.length) return;
+    if (container) container.classList.add('is-media-importing');
+
+    Promise.allSettled(files.map(function (file, index) {
+      var attachmentId = descAttachmentUid();
+      var name = defaultDescTransferredFileName(file, index);
+      return saveDescAttachmentBlob(attachmentId, file).then(function () {
+        return {
+          ok: true,
+          attachmentId: attachmentId,
+          name: name,
+          size: file.size || 0,
+          mimeType: file.type || '',
+          kind: descEffectiveMediaKind(file.type, name)
+        };
+      }, function () {
+        return { ok: false, name: name };
+      });
+    })).then(function (settled) {
+      var results = settled.map(function (s) { return s.value; });
+      var succeeded = results.filter(function (r) { return r && r.ok; });
+      var failed = results.filter(function (r) { return r && !r.ok; });
+      if (container) container.classList.remove('is-media-importing');
+      if (succeeded.length) finalizeDescTransferredFiles(itemId, insertSpec, succeeded, entityType);
+      failed.forEach(function (r) { announce('"' + r.name + '" 파일을 저장하지 못했습니다.'); });
+    }, function () {
+      if (container) container.classList.remove('is-media-importing');
+      announce('파일을 저장하지 못했습니다.');
+    });
+  }
+
+  function onDescEditorPasteFiles(e) {
+    var files = collectDescTransferFiles(e.clipboardData);
+    if (!files.length) return; // 일반 텍스트·HTML 붙여넣기는 기존 동작 유지.
+    var item = findActiveDetailEntity();
+    if (!item) return;
+    e.preventDefault();
+    e.stopPropagation();
+    closeDescSlashMenu();
+    var spec = resolveDescTransferredInsertSpec(item, e.target, null, true, files);
+    saveDescTransferredFiles(item.id, spec, files, e.currentTarget, state.activeDetailEntityType);
+  }
+
+  function onDescEditorFileDragEnter(e) {
+    if (!descTransferHasFiles(e.dataTransfer)) return;
+    e.preventDefault();
+    descExternalFileDragDepth += 1;
+    e.currentTarget.classList.add('is-file-dragover');
+  }
+
+  function onDescEditorFileDragOver(e) {
+    if (!descTransferHasFiles(e.dataTransfer)) return;
+    e.preventDefault();
+    if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
+    e.currentTarget.classList.add('is-file-dragover');
+  }
+
+  function onDescEditorFileDragLeave(e) {
+    if (!descTransferHasFiles(e.dataTransfer)) return;
+    descExternalFileDragDepth = Math.max(0, descExternalFileDragDepth - 1);
+    if (descExternalFileDragDepth === 0 || !e.currentTarget.contains(e.relatedTarget)) {
+      e.currentTarget.classList.remove('is-file-dragover');
+    }
+  }
+
+  function onDescEditorFileDrop(e) {
+    var files = collectDescTransferFiles(e.dataTransfer);
+    if (!files.length) return;
+    var item = findActiveDetailEntity();
+    if (!item) return;
+    e.preventDefault();
+    e.stopPropagation();
+    descExternalFileDragDepth = 0;
+    e.currentTarget.classList.remove('is-file-dragover');
+    closeDescSlashMenu();
+    var spec = resolveDescTransferredInsertSpec(item, e.target, e.clientY, false, files);
+    saveDescTransferredFiles(item.id, spec, files, e.currentTarget, state.activeDetailEntityType);
+  }
+
   function wireDescriptionEditorDelegation(container) {
     container.addEventListener('click', onDescEditorClick);
     container.addEventListener('keydown', onDescEditorKeydown);
@@ -6732,6 +11131,11 @@ if (colHandle) {
     container.addEventListener('click', trackDescCaretPosition);
     container.addEventListener('keyup', trackDescCaretPosition);
     container.addEventListener('contextmenu', onDescTableContextMenuEvent);
+    container.addEventListener('paste', onDescEditorPasteFiles);
+    container.addEventListener('dragenter', onDescEditorFileDragEnter);
+    container.addEventListener('dragover', onDescEditorFileDragOver);
+    container.addEventListener('dragleave', onDescEditorFileDragLeave);
+    container.addEventListener('drop', onDescEditorFileDrop);
   }
 
   // ---------------------------------------------------------------------
@@ -7105,7 +11509,7 @@ if (colHandle) {
   // 때만 실제로 타입이 바뀐다 — 취소/실패 시 paragraph 그대로 남아 빈 첨부 블록이 생기지
   // 않는다).
   function applyDescSlashCommand(itemId, blockId, type) {
-    var item = findItemById(itemId);
+    var item = findDetailEditableEntityById(itemId);
     if (!item) return;
     var blocks = ensureDescriptionBlocks(item);
     var idx = blocks.findIndex(function (b) { return b.id === blockId; });
@@ -7276,8 +11680,8 @@ if (colHandle) {
         var attachmentId = descAttachmentUid();
         return saveDescAttachmentBlob(attachmentId, file).then(function () {
           return { ok: true, attachmentId: attachmentId, name: file.name, size: file.size, mimeType: file.type, kind: descEffectiveMediaKind(file.type, file.name) };
-        }, function () {
-          return { ok: false, name: file.name };
+        }, function (err) {
+          return { ok: false, name: file.name, error: err };
         });
       })).then(function (settled) {
         var results = settled.map(function (s) { return s.value; });
@@ -7285,6 +11689,13 @@ if (colHandle) {
         var failed = results.filter(function (r) { return !r.ok; });
         if (succeeded.length) finalizeDescPickedFiles(itemId, blockId, succeeded);
         failed.forEach(function (r) { showDescAttachmentError(itemId, blockId, '"' + r.name + '" 파일을 저장하지 못했습니다.'); });
+        // 라운드5 A: 첨부 IndexedDB 저장 실패도 블록 옆 일시 메시지뿐 아니라 지속 배너로
+        // 알린다(요구사항 -- console.warn/일시 메시지만으로 끝내지 않기).
+        if (failed.length) reportStorageFailure('indexeddb', failed[0].error);
+        // 이번 라운드: indexeddb도 다른 저장 대상과 독립된 kind를 쓰므로, 이 경로 자체가
+        // 다시 성공했을 때 그 kind만 직접 정리해줘야 한다(예전처럼 다른 저장의 성공에
+        // 묻어가지 않는다).
+        else if (succeeded.length) reportStorageSuccessIfRecovering('indexeddb');
       });
     });
     input.click();
@@ -7296,31 +11707,18 @@ if (colHandle) {
   // 블록으로 재활용하고, 나머지는 바로 뒤에 순서대로 삽입한다 — history/save/render는
   // 한 번씩만 수행한다.
   function finalizeDescPickedFiles(itemId, blockId, files) {
-    var item = findItemById(itemId);
+    var item = findDetailEditableEntityById(itemId);
     if (!item) return;
     var blocks = ensureDescriptionBlocks(item);
     var anchorIdx = blocks.findIndex(function (b) { return b.id === blockId; });
     if (anchorIdx === -1) return;
-    var visual = files.filter(function (f) { return f.kind === 'image' || f.kind === 'video'; });
-    var other = files.filter(function (f) { return f.kind !== 'image' && f.kind !== 'video'; });
-    var newBlocks = [];
-    if (visual.length === 1) {
-      newBlocks.push(makeDescMediaBlock(visual[0].kind, { attachmentId: visual[0].attachmentId, name: visual[0].name, mimeType: visual[0].mimeType, size: visual[0].size, indent: blocks[anchorIdx].indent || 0 }));
-    } else if (visual.length >= 2) {
-      newBlocks.push(makeDescMediaBlock('mediaGallery', {
-        indent: blocks[anchorIdx].indent || 0,
-        items: visual.map(function (f) { return makeDescMediaGalleryItem({ attachmentId: f.attachmentId, name: f.name, mimeType: f.mimeType, size: f.size }); })
-      }));
-    }
-    other.forEach(function (f) {
-      newBlocks.push(makeDescMediaBlock('attachment', { attachmentId: f.attachmentId, name: f.name, mimeType: f.mimeType, size: f.size, indent: blocks[anchorIdx].indent || 0 }));
-    });
+    var newBlocks = buildDescBlocksFromStoredFiles(files, blocks[anchorIdx].indent || 0);
     if (!newBlocks.length) return;
     var firstFocusId;
     withHistoryTransaction(function () {
       var first = newBlocks[0];
       var anchorBlock = blocks[anchorIdx];
-      first.id = anchorBlock.id; // 트리거 블록 자리를 그대로 재사용(빈 paragraph가 남지 않게).
+      first.id = anchorBlock.id;
       first.createdAt = anchorBlock.createdAt;
       blocks[anchorIdx] = first;
       firstFocusId = first.id;
@@ -7331,12 +11729,12 @@ if (colHandle) {
     });
     state.descriptionEditor = { itemId: item.id, activeBlockId: firstFocusId, selectionStart: null };
     descForceRebuild = true;
-    saveItems();
+    syncAndSaveDescMediaEntity(item);
     renderApp();
   }
 
   function downloadDescMediaBlock(blockId) {
-    var item = findItemById(state.activeDetailItemId);
+    var item = findActiveDetailEntity();
     if (!item) return;
     var blocks = ensureDescriptionBlocks(item);
     var block = blocks.find(function (b) { return b.id === blockId; });
@@ -7361,7 +11759,7 @@ if (colHandle) {
   // 데이터 손실을 만들지 않기 위해, 이번 단계에서는 orphan Blob이 남는 쪽을 택한다
   // (완전한 GC는 범위 밖).
   function deleteDescMediaBlock(blockId) {
-    var item = findItemById(state.activeDetailItemId);
+    var item = findActiveDetailEntity();
     if (!item) return;
     var blocks = ensureDescriptionBlocks(item);
     var idx = blocks.findIndex(function (b) { return b.id === blockId; });
@@ -7385,7 +11783,7 @@ if (colHandle) {
   // (image<->video<->일반) block.type도 안전하게 맞춰 바꾼다 — 블록 id는 그대로 유지돼
   // 선택·포커스가 끊기지 않는다.
   function replaceDescMediaBlock(blockId) {
-    var item = findItemById(state.activeDetailItemId);
+    var item = findActiveDetailEntity();
     if (!item) return;
     var blocks = ensureDescriptionBlocks(item);
     var block = blocks.find(function (b) { return b.id === blockId; });
@@ -7454,7 +11852,10 @@ if (colHandle) {
     if (!anchorRow) return;
     var listEl = anchorRow.parentElement;
     if (!listEl) return;
-    var handle = anchorRow.querySelector('.desc-block-drag');
+    var directSurface = e.currentTarget && e.currentTarget.classList && e.currentTarget.classList.contains('is-direct-draggable')
+      ? e.currentTarget
+      : null;
+    var handle = directSurface || anchorRow.querySelector('.desc-block-drag');
     if (!handle) return;
     var anchorRect = anchorRow.getBoundingClientRect();
 
@@ -7491,24 +11892,9 @@ if (colHandle) {
   }
 
   function createDescBlockDragPreview() {
-    var ds = descriptionBlockDragState;
-    var rect = ds.anchorRect;
-    var preview = document.createElement('div');
-    preview.className = 'desc-block-drag-preview';
-    preview.style.width = rect.width + 'px';
-    preview.style.height = rect.height + 'px';
-    var clone = ds.anchorRow.cloneNode(true);
-    preview.appendChild(clone);
-    var extraCount = ds.moveBlockIds.length - 1;
-    if (extraCount > 0) {
-      var badge = document.createElement('span');
-      badge.className = 'desc-block-drag-preview-badge';
-      badge.textContent = '+' + extraCount;
-      preview.appendChild(badge);
-    }
-    document.body.appendChild(preview);
-    ds.previewEl = preview;
-    positionDescBlockDragPreview(ds.startX, ds.startY);
+    // 이미지 전체 복제본이 포인터를 따라다니면 화면을 가리므로 만들지 않는다.
+    // 원본 자리의 placeholder와 대상 위치의 빈 슬롯만으로 이동 위치를 표시한다.
+    if (descriptionBlockDragState) descriptionBlockDragState.previewEl = null;
   }
 
   function positionDescBlockDragPreview(x, y) {
@@ -7551,7 +11937,7 @@ if (colHandle) {
     ds.active = true;
     document.body.classList.add('desc-block-dnd-active');
 
-    var item = findItemById(ds.itemId);
+    var item = findDetailEditableEntityById(ds.itemId);
     var blocks = item ? ensureDescriptionBlocks(item) : [];
     var sel = state.detailBlockSelection;
     var rootIds;
@@ -7587,7 +11973,7 @@ if (colHandle) {
     createDescBlockPlaceholder();
   }
 
-  function updateDescBlockDropTarget(clientY) {
+  function updateDescBlockDropTarget(clientX, clientY) {
     var ds = descriptionBlockDragState;
     if (!ds || !ds.placeholderEl) return;
     var rows = Array.prototype.slice.call(
@@ -7604,16 +11990,31 @@ if (colHandle) {
     // placeholder를 잠시 감추고 mergeTargetBlockId를 세팅한다(merge 아닐 땐 항상 null이라
     // 기존 재정렬 동작은 그대로다).
     var mergeTargetId = null;
+    var mergeInsertPosition = 'after';
+    var mergeEntity = findDetailEditableEntityById(ds.itemId);
+    var mergeSourceBlock = mergeEntity && ensureDescriptionBlocks(mergeEntity).find(function (b) { return b.id === ds.blockId; });
     if (ds.moveBlockIds && ds.moveBlockIds.length === 1 && isDescBlockDraggedTypeMergeable(ds)) {
       for (var j = 0; j < rows.length; j++) {
-        if (!isDescBlockElMergeTarget(rows[j])) continue;
+        if (!isDescBlockElMergeTarget(rows[j], mergeSourceBlock)) continue;
         var mr = rows[j].getBoundingClientRect();
-        var bandTop = mr.top + mr.height * 0.25, bandBottom = mr.top + mr.height * 0.75;
-        if (clientY >= bandTop && clientY <= bandBottom) { mergeTargetId = rows[j].dataset.blockId; break; }
+        var inRect = clientX >= mr.left && clientX <= mr.right && clientY >= mr.top && clientY <= mr.bottom;
+        var bandTop = mr.top + Math.min(34, mr.height * 0.18);
+        var bandBottom = mr.bottom - Math.min(34, mr.height * 0.18);
+        if (inRect && clientY >= bandTop && clientY <= bandBottom) {
+          mergeTargetId = rows[j].dataset.blockId;
+          mergeInsertPosition = clientX < mr.left + mr.width / 2 ? 'before' : 'after';
+          break;
+        }
       }
     }
     ds.mergeTargetBlockId = mergeTargetId;
-    rows.forEach(function (el) { el.classList.toggle('desc-block-merge-target', el.dataset.blockId === mergeTargetId); });
+    ds.mergeInsertPosition = mergeInsertPosition;
+    rows.forEach(function (el) {
+      var active = el.dataset.blockId === mergeTargetId;
+      el.classList.toggle('desc-block-merge-target', active);
+      el.classList.toggle('merge-before', active && mergeInsertPosition === 'before');
+      el.classList.toggle('merge-after', active && mergeInsertPosition === 'after');
+    });
 
     if (mergeTargetId) {
       if (ds.placeholderEl.isConnected) ds.placeholderEl.remove();
@@ -7626,17 +12027,42 @@ if (colHandle) {
     ds.overBlockId = (insertBeforeEl && insertBeforeEl.dataset.blockId) ? insertBeforeEl.dataset.blockId : null;
   }
 
-  function isDescBlockDraggedTypeMergeable(ds) {
-    var item = findItemById(ds.itemId);
-    var block = item && ensureDescriptionBlocks(item).find(function (b) { return b.id === ds.blockId; });
-    if (!block) return false;
-    var kind = descBlockMediaKind(block);
-    return kind === 'image' || kind === 'video';
+  function getDescPhotoItemsForBlock(block) {
+    if (!block) return [];
+    if (block.type === 'mediaGallery') {
+      var items = Array.isArray(block.items) ? block.items : [];
+      return items.every(function (entry) { return descEffectiveMediaKind(entry.mimeType, entry.name) === 'image'; }) ? items : [];
+    }
+    if (descBlockMediaKind(block) !== 'image') return [];
+    var meta = getDescMediaMeta(block);
+    return [makeDescMediaGalleryItem({
+      attachmentId: meta.attachmentId,
+      name: meta.name,
+      mimeType: meta.mimeType,
+      size: meta.size,
+      alt: block.alt || '',
+      caption: block.caption || '',
+      fit: block.fit === 'cover' ? 'cover' : 'contain'
+    })];
   }
 
-  function isDescBlockElMergeTarget(el) {
-    if (!el.querySelector) return false;
-    return !!(el.querySelector('.desc-media-image') || el.querySelector('.desc-media-video') || el.querySelector('.desc-media-gallery'));
+  function canDescPhotoBlocksMerge(sourceBlock, targetBlock) {
+    var sourceItems = getDescPhotoItemsForBlock(sourceBlock);
+    var targetItems = getDescPhotoItemsForBlock(targetBlock);
+    return sourceItems.length > 0 && targetItems.length > 0 && sourceItems.length + targetItems.length <= 3;
+  }
+
+  function isDescBlockDraggedTypeMergeable(ds) {
+    var item = findDetailEditableEntityById(ds.itemId);
+    var block = item && ensureDescriptionBlocks(item).find(function (b) { return b.id === ds.blockId; });
+    return getDescPhotoItemsForBlock(block).length > 0;
+  }
+
+  function isDescBlockElMergeTarget(el, sourceBlock) {
+    if (!el || !el.dataset) return false;
+    var entity = descriptionBlockDragState && findDetailEditableEntityById(descriptionBlockDragState.itemId);
+    var targetBlock = entity && ensureDescriptionBlocks(entity).find(function (b) { return b.id === el.dataset.blockId; });
+    return canDescPhotoBlocksMerge(sourceBlock, targetBlock);
   }
 
   function moveDescBlockPlaceholderWithFlip(insertBeforeEl) {
@@ -7689,7 +12115,7 @@ if (colHandle) {
     var before = info.container.scrollTop;
     info.container.scrollTop += info.direction * info.speed;
     if (info.container.scrollTop !== before) {
-      updateDescBlockDropTarget(descriptionBlockDragState.lastClientY);
+      updateDescBlockDropTarget(descriptionBlockDragState.lastClientX, descriptionBlockDragState.lastClientY);
       positionDescBlockDragPreview(descriptionBlockDragState.lastClientX, descriptionBlockDragState.lastClientY);
     }
     descBlockAutoScrollRAF = requestAnimationFrame(descBlockAutoScrollTick);
@@ -7708,7 +12134,7 @@ if (colHandle) {
     if (!descriptionBlockDragState) return;
     descriptionBlockDragState.rafScheduled = false;
     positionDescBlockDragPreview(descriptionBlockDragState.lastClientX, descriptionBlockDragState.lastClientY);
-    updateDescBlockDropTarget(descriptionBlockDragState.lastClientY);
+    updateDescBlockDropTarget(descriptionBlockDragState.lastClientX, descriptionBlockDragState.lastClientY);
     ensureDescBlockAutoScrollLoop();
   }
 
@@ -7743,44 +12169,71 @@ if (colHandle) {
     if (ds.placeholderEl) ds.placeholderEl.remove();
     (ds.hiddenRows || []).forEach(function (el) { el.classList.remove('desc-block-drag-hidden'); });
     document.body.classList.remove('desc-block-dnd-active');
-    if (ds.listEl) Array.prototype.forEach.call(ds.listEl.querySelectorAll('.desc-block-merge-target'), function (el) { el.classList.remove('desc-block-merge-target'); });
+    if (ds.listEl) Array.prototype.forEach.call(ds.listEl.querySelectorAll('.desc-block-merge-target'), function (el) {
+      el.classList.remove('desc-block-merge-target', 'merge-before', 'merge-after');
+    });
   }
 
   // 5B 9: 단일 image/video 블록을 다른 image/video/mediaGallery 블록의 가운데 절반에
   // 놓으면 재정렬 대신 gallery로 합친다. 원본 블록은 배열에서 제거되므로(splice가 아니라
   // filter) 중복으로 남지 않는다.
   function commitDescMediaMerge(ds) {
-    var item = findItemById(ds.itemId);
+    var item = findDetailEditableEntityById(ds.itemId);
     var blocks = item && ensureDescriptionBlocks(item);
     var draggedBlock = blocks && blocks.find(function (b) { return b.id === ds.blockId; });
     var targetBlock = blocks && blocks.find(function (b) { return b.id === ds.mergeTargetBlockId; });
     cleanupDescBlockDragDom(ds);
     descriptionBlockDragState = null;
-    if (!draggedBlock || !targetBlock || draggedBlock.id === targetBlock.id) { renderApp(); return; }
-    var draggedMeta = getDescMediaMeta(draggedBlock);
-    var draggedItem = makeDescMediaGalleryItem({ attachmentId: draggedMeta.attachmentId, name: draggedMeta.name, mimeType: draggedMeta.mimeType, size: draggedMeta.size, alt: draggedBlock.alt || '', caption: draggedBlock.caption || '' });
+    if (!draggedBlock || !targetBlock || draggedBlock.id === targetBlock.id || !canDescPhotoBlocksMerge(draggedBlock, targetBlock)) {
+      renderApp();
+      return;
+    }
+
+    var draggedItems = getDescPhotoItemsForBlock(draggedBlock).map(function (entry) {
+      return makeDescMediaGalleryItem({
+        attachmentId: entry.attachmentId,
+        name: entry.name,
+        mimeType: entry.mimeType,
+        size: entry.size,
+        alt: entry.alt || '',
+        caption: entry.caption || '',
+        fit: entry.fit === 'cover' ? 'cover' : 'contain'
+      });
+    });
+    var targetItems = getDescPhotoItemsForBlock(targetBlock).map(function (entry) {
+      return makeDescMediaGalleryItem({
+        attachmentId: entry.attachmentId,
+        name: entry.name,
+        mimeType: entry.mimeType,
+        size: entry.size,
+        alt: entry.alt || '',
+        caption: entry.caption || '',
+        fit: entry.fit === 'cover' ? 'cover' : 'contain'
+      });
+    });
+
     var focusBlockId;
     withHistoryTransaction(function () {
       var remaining = blocks.filter(function (b) { return b.id !== draggedBlock.id; });
       var targetIdx = remaining.findIndex(function (b) { return b.id === targetBlock.id; });
-      if (targetBlock.type === 'mediaGallery') {
-        remaining[targetIdx].items = remaining[targetIdx].items.concat([draggedItem]);
-        remaining[targetIdx].updatedAt = Date.now();
-        focusBlockId = remaining[targetIdx].id;
-      } else {
-        var targetMeta = getDescMediaMeta(targetBlock);
-        var targetItem = makeDescMediaGalleryItem({ attachmentId: targetMeta.attachmentId, name: targetMeta.name, mimeType: targetMeta.mimeType, size: targetMeta.size, alt: targetBlock.alt || '', caption: targetBlock.caption || '' });
-        var galleryBlock = makeDescMediaBlock('mediaGallery', { id: targetBlock.id, indent: targetBlock.indent || 0, createdAt: targetBlock.createdAt, items: [targetItem, draggedItem] });
-        remaining[targetIdx] = galleryBlock;
-        focusBlockId = galleryBlock.id;
-      }
+      var merged = ds.mergeInsertPosition === 'before'
+        ? draggedItems.concat(targetItems)
+        : targetItems.concat(draggedItems);
+      var galleryBlock = makeDescMediaBlock('mediaGallery', {
+        id: targetBlock.id,
+        indent: targetBlock.indent || 0,
+        createdAt: targetBlock.createdAt,
+        items: merged.slice(0, 3)
+      });
+      remaining[targetIdx] = galleryBlock;
+      focusBlockId = galleryBlock.id;
       item.descriptionBlocks = remaining;
       syncDescriptionPlainTextMirror(item);
       item.updatedAt = Date.now();
     });
     state.descriptionEditor = { itemId: ds.itemId, activeBlockId: focusBlockId, selectionStart: null };
     descForceRebuild = true;
-    saveItems();
+    syncAndSaveDescMediaEntity(item);
     renderApp();
   }
 
@@ -7794,7 +12247,7 @@ if (colHandle) {
   // 끼워넣는다. drop 대상(overBlockId)은 항상 숨겨진(=이동 그룹) 행을 제외한 나머지
   // 중에서만 고른 것이므로 "그룹 내부로 drop"은 애초에 불가능하다.
   function commitDescBlockDrop(ds) {
-    var item = findItemById(ds.itemId);
+    var item = findDetailEditableEntityById(ds.itemId);
     var mutated = false;
     if (item) {
       var blocks = ensureDescriptionBlocks(item);
@@ -7917,54 +12370,70 @@ if (colHandle) {
   function renderDetailDrawerContent(item) {
     var d = activeDetailDrawer;
     if (!d) return;
+    var isMasterEntity = state.activeDetailEntityType === 'monthly-master';
     if (!activeTitleEdit || activeTitleEdit.itemId !== item.id) {
       rebuildDetailTitleText(item);
     }
     renderDescriptionEditor(item);
     // occurrence(다일 일정의 현재 보는 날짜) 기준 — task/memo는 isOccurrenceCompleted가
-    // item.completed로 그대로 폴백하므로 동작이 바뀌지 않는다.
-    var occ = state.activeDetailOccurrenceDate || item.date;
+    // item.completed로 그대로 폴백하므로 동작이 바뀌지 않는다. 이달의 할 일 원본은
+    // 날짜가 없어 occ 자체가 의미 없다(항상 null).
+    var occ = isMasterEntity ? null : (state.activeDetailOccurrenceDate || item.date);
     // 완료 체크박스 -- Daily/Weekly와 같은 checkboxButton(내부에서 toggleItemCompleted가
     // 참조하는 것과 같은 isOccurrenceCompleted를 그대로 씀)을 제목 맨 앞에 다시 그린다.
-    // "완료로 표시" 하단 버튼은 폐지하고 이 체크박스 하나로 대체한다.
+    // "완료로 표시" 하단 버튼은 폐지하고 이 체크박스 하나로 대체한다. 원본은 날짜별
+    // occurrence 개념이 없어 item.completed를 직접 보고 toggleMonthlyItemCompleted로 토글한다.
     var newCheckbox = checkboxButton(item, occ);
+    if (isMasterEntity) {
+      // 원본은 occurrence 개념이 없어 isOccurrenceCompleted(schedule 분기에서 occ=null을
+      // 조회해 항상 false가 되는) 대신 item.completed를 직접 반영한다(이달의 할 일
+      // 패널의 자기 체크박스와 같은 판정 기준).
+      newCheckbox.classList.toggle('checked', !!item.completed);
+      newCheckbox.setAttribute('aria-checked', String(!!item.completed));
+    }
     newCheckbox.addEventListener('click', function (e) {
       e.stopPropagation();
-      toggleItemCompleted(item.id, occ);
+      if (isMasterEntity) { toggleMonthlyItemCompleted(item.id); return; }
+      // singleOnly=true: 상세 패널 체크박스는 Daily/Weekly의 다중 선택 상태와 무관하게
+      // 항상 이 항목 하나만 바꾼다(회귀 금지 요구사항).
+      toggleItemCompleted(item.id, occ, true);
     });
     if (d.checkboxEl && d.checkboxEl.parentNode) d.checkboxEl.replaceWith(newCheckbox);
     d.checkboxEl = newCheckbox;
-    if (
-  item.endDate &&
-  item.endDate !== item.date
-) {
-  d.moveDateBtn.textContent =
-    '날짜 이동 — ' +
-    formatDotDate(item.date) +
-    ' - ' +
-    formatDotDate(item.endDate);
-} else {
-  d.moveDateBtn.textContent =
-    '날짜 이동 — ' +
-    formatDotDate(item.date);
-}
 
-d.moveDateBtn.dataset.action = 'move-date';
-d.moveDateBtn.dataset.itemId = item.id;
-
-d.timeBtn.textContent =
-  formatDetailTimeButtonText(item);
-
-d.timeBtn.dataset.itemId = item.id;
+    // 이달의 할 일 원본은 date/endDate/시간 개념이 없으므로 날짜 이동·시간 버튼을 숨긴다
+    // (요구사항 -- 배치가 없어도 상세는 열리지만 날짜/시간 UI는 배치별 값이라 원본에는
+    // 존재하지 않는다).
+    d.moveDateBtn.hidden = isMasterEntity;
+    d.timeBtn.hidden = isMasterEntity;
+    if (!isMasterEntity) {
+      if (item.endDate && item.endDate !== item.date) {
+        d.moveDateBtn.textContent = '날짜 이동 — ' + formatDotDate(item.date) + ' - ' + formatDotDate(item.endDate);
+      } else {
+        d.moveDateBtn.textContent = '날짜 이동 — ' + formatDotDate(item.date);
+      }
+      d.moveDateBtn.dataset.action = 'move-date';
+      d.moveDateBtn.dataset.itemId = item.id;
+      d.timeBtn.textContent = formatDetailTimeButtonText(item);
+      d.timeBtn.dataset.itemId = item.id;
+    }
+    // 프로젝트 버튼은 원본에도 보인다(날짜 개념과 무관한 전역 소속이므로 moveDateBtn/
+    // timeBtn과 달리 숨기지 않는다).
+    if (d.projectBtn) {
+      var currentProject = item.projectId ? findProjectById(item.projectId) : null;
+      d.projectBtn.textContent = currentProject ? '프로젝트 — ' + currentProject.name : '프로젝트 없음';
+    }
     // 6차 1: 헤더 아이콘도 실제 item.type(task/schedule/memo)에 맞춰 매번 새로 그린다
     // (예전엔 항상 task라 ic-dot을 고정해 둬도 됐지만 이제는 아니다).
     // 7A.1 11/13: Daily·Weekly 행에서 이미 쓰던 typeMenuButton(기존 openTypeMenu/
     // changeItemType 재사용, 새 변환 시스템 아님)을 그대로 써서 이 기호를 실제 버튼으로
-    // 승격한다 — 클릭하면 같은 종류 선택 popover가 열린다.
+    // 승격한다 — 클릭하면 같은 종류 선택 popover가 열린다. 원본은 changeMonthlyItemType이
+    // 참조하는 openMonthlyTypeMenu를 대신 연다.
     var newIcon = typeMenuButton(item, 'detail-header-icon', occ);
     newIcon.title = '유형 변경';
     newIcon.addEventListener('click', function (e) {
       e.stopPropagation();
+      if (isMasterEntity) { openMonthlyTypeMenu(item.id, newIcon); return; }
       openTypeMenu(item.id, newIcon);
     });
     if (d.typeIconEl && d.typeIconEl.parentNode) d.typeIconEl.replaceWith(newIcon);
@@ -8282,6 +12751,22 @@ timeBtn.addEventListener('click', function () {
   }
 });
 
+// 프로젝트 지정 -- item/monthly-master 둘 다 지원해야 하므로 findItemById가 아니라
+// findActiveDetailEntity()로 현재 열린 entityType에 맞는 대상을 찾는다(moveDateBtn/
+// timeBtn과 달리 원본에도 이 버튼은 숨기지 않는다 -- 프로젝트는 날짜 개념이 없다).
+var projectBtn =
+  document.createElement('button');
+
+projectBtn.type = 'button';
+projectBtn.className = 'detail-action-btn';
+projectBtn.setAttribute('aria-haspopup', 'menu');
+projectBtn.setAttribute('aria-expanded', 'false');
+
+projectBtn.addEventListener('click', function () {
+  var entity = findActiveDetailEntity();
+  if (entity) openProjectMenu(entity, projectBtn);
+});
+
 var trashBtn =
   document.createElement('button');
 
@@ -8303,6 +12788,7 @@ trashBtn.addEventListener('click', function () {
 
 footer.appendChild(moveDateBtn);
 footer.appendChild(timeBtn);
+footer.appendChild(projectBtn);
 footer.appendChild(trashBtn);
 
     drawer.appendChild(header);
@@ -8321,17 +12807,23 @@ footer.appendChild(trashBtn);
       headerLeftEl: headerLeft, titleTextEl: titleText, typeIconEl: typeIcon,
       checkboxEl: checkboxPlaceholder, closeBtn: closeBtn,
       descriptionEditorEl: descEditor,
-     moveDateBtn: moveDateBtn, timeBtn: timeBtn, trashBtn: trashBtn,
+     moveDateBtn: moveDateBtn, timeBtn: timeBtn, projectBtn: projectBtn, trashBtn: trashBtn,
       returnFocusEl: document.activeElement
     };
   }
 
   // 6차 1: task·schedule·memo 모두 같은 상세 모달을 연다(더 이상 task 전용이 아니다).
-  function openDetailDrawer(itemId, occurrenceDate) {
-    var item = findItemById(itemId);
+  // 최종 감사(2026-07-27): entityType='monthly-master'면 state.monthlyItems에서 찾고
+  // (배치가 하나도 없어도 원본 자체의 상세를 열 수 있게), 날짜 개념이 없으므로 occ는
+  // 항상 null로 둔다(occ 의존 로직 -- 완료 체크박스/시간 버튼 -- 은 renderDetailDrawerContent가
+  // entityType을 보고 따로 분기한다).
+  function openDetailDrawer(itemId, occurrenceDate, entityType) {
+    entityType = entityType === 'monthly-master' ? 'monthly-master' : 'item';
+    var item = entityType === 'monthly-master' ? findMonthlyItemById(itemId) : findItemById(itemId);
     if (!item || item.deletedAt) return;
-    var occ = occurrenceDate || item.date;
-    if (state.activeDetailItemId === itemId && activeDetailDrawer) {
+    if (item.type === 'divider') return;
+    var occ = entityType === 'monthly-master' ? null : (occurrenceDate || item.date);
+    if (state.activeDetailItemId === itemId && state.activeDetailEntityType === entityType && activeDetailDrawer) {
       // 6차 9: 같은 item을 다른 occurrence(다일 일정의 다른 날짜 칸)에서 다시 열었을
       // 뿐이면 문서 상태를 재생성하지 않고 occurrence만 갱신한다.
       if (state.activeDetailOccurrenceDate !== occ) {
@@ -8341,9 +12833,10 @@ footer.appendChild(trashBtn);
       return;
     }
     // 14: 다른 항목으로 전환하기 전, 이전 항목의 설명 블록에 아직 반영되지 않은
-    // debounce 저장/history가 있으면 먼저 흘려보낸다.
+    // debounce 저장/history가 있으면 먼저 흘려보낸다(state.activeDetailEntityType이 아직
+    // 이전 항목 것이므로 findActiveDetailEntity()가 정확히 그 이전 항목을 돌려준다).
     if (activeDetailDrawer && state.activeDetailItemId && state.activeDetailItemId !== itemId) {
-      flushDescriptionEditorPending(findItemById(state.activeDetailItemId));
+      flushDescriptionEditorPending(findActiveDetailEntity());
       closeDescSlashMenu();
       closeDescFloatingToolbar(); // 6차 9: close 경로와 동일하게 toolbar도 정리한다.
       descSavedFormatRange = null;
@@ -8354,6 +12847,7 @@ footer.appendChild(trashBtn);
     }
     var isFirstOpen = !activeDetailDrawer;
     state.activeDetailItemId = itemId;
+    state.activeDetailEntityType = entityType;
     state.activeDetailOccurrenceDate = occ;
     if (isFirstOpen) buildDetailDrawerDom();
     renderDetailDrawerContent(item);
@@ -8373,8 +12867,38 @@ footer.appendChild(trashBtn);
     if (descriptionBlockDragState || detailMarqueeSelectionState || descTableDragState || descMediaGalleryDragState || descTableRangeSelectState || descTableResizeState) return;
     // 14: 아직 반영되지 않은 설명 블록의 debounce 저장/history를 닫기 직전 즉시 흘려보낸다
     // (마지막 입력이 유실되지 않게).
-    var closingItem = state.activeDetailItemId ? findItemById(state.activeDetailItemId) : null;
+    var closingItem = state.activeDetailItemId ? findActiveDetailEntity() : null;
     flushDescriptionEditorPending(closingItem);
+
+    // 이달의 할 일 배치 인스턴스의 상세(drawer)를 닫는 시점에 그동안의 설명/하위 할일
+    // 변경을 원본 및 다른 배치들에 한 번에 전파한다(블록 단위마다 매번 동기화하면 리치
+    // 에디터의 수십 개 변형 지점을 전부 손대야 해 위험이 크다 -- drawer를 닫을 때 최종
+    // 상태 하나만 퍼뜨리는 편이 안전하고 요구사항도 "닫을 때"가 아니라 "반영"만 요구한다).
+    if (closingItem) {
+      withHistoryTransaction(function () {
+        if (closingItem.sourceMonthlyItemId) {
+          syncSharedMonthlyFields(closingItem.sourceMonthlyItemId, closingItem);
+        } else if (state.activeDetailEntityType === 'monthly-master') {
+          syncSharedMonthlyFields(closingItem.id);
+        }
+        if (closingItem.instanceGroupId) {
+          syncSharedInstanceGroupFields(closingItem.instanceGroupId, closingItem);
+        }
+      });
+      saveItems();
+      if (closingItem.sourceMonthlyItemId || state.activeDetailEntityType === 'monthly-master' || closingItem.instanceGroupId) {
+        saveMonthlyItems();
+      }
+    }
+
+    // 라운드2 12: flushDescriptionEditorPending가 방금 pruneEmptyDescTodoBlocks로 빈 하위
+    // 할 일을 지웠어도(위에서 이미 반영됨), closeDetailDrawer는 원래 전체 renderApp()을
+    // 부르지 않아(닫힘 애니메이션과 무관한 리스트는 갱신 안 됨) Daily/Weekly 카드의 N/M
+    // 배지가 방금 지워진 항목을 포함한 값으로 그대로 남아있는 실제 문제가 있었다 --
+    // 배지에 영향 있는 두 목록만 가볍게 다시 그린다(전체 renderApp()은 닫힘 트랜지션
+    // 중 불필요한 재작업이라 피한다).
+    renderDailyList();
+    renderWeekly();
 
 if (activeDetailTimeMenu) {
   closeDetailTimeMenu(false);
@@ -8418,7 +12942,7 @@ closeDescSlashMenu();
   // task가 아니게 되면(이론상으로만 가능) 자동으로 닫는다. 그 외에는 내용만 최신화한다.
   function syncDetailDrawer() {
     if (!activeDetailDrawer) return;
-    var item = state.activeDetailItemId ? findItemById(state.activeDetailItemId) : null;
+    var item = state.activeDetailItemId ? findActiveDetailEntity() : null;
     // 6차 1: task/schedule/memo 전부 유효한 상세 대상이므로 더 이상 type으로 자동 닫지
     // 않는다 — 삭제(휴지통 이동 포함)됐을 때만 닫는다.
     if (!item || item.deletedAt) {
@@ -10366,37 +14890,80 @@ endInput.classList.toggle(
   // 버그였던 "시작만 바꿔도 종료가 함께 활성화되는" 문제의 수정 지점).
   var endActive = hasExplicitEndDate;
 
-  // 시작 날짜 라이브 커밋 -- moveSingleItemToDate가 "종료 비활성(=endDate와 date가 같음)이면
-  // 함께 이동, 종료 활성(다일 일정)이면 기간 길이를 보존해 함께 이동"을 이미 정확히
-  // 처리하므로 그대로 재사용한다. 종료가 비활성일 때 이 함수는 종료를 새로 만들지 않는다.
+  // 시작 날짜를 직접 바꿀 때는 현재 종료 날짜를 고정한다.
+  // 시작이 종료와 같아지거나 종료를 넘어가면 단일 날짜 항목으로 자동 전환한다.
   function applyStartLiveChange(newDate) {
-    if (rangeItem.date === newDate) return;
-    withHistoryTransaction(function () {
-      moveSingleItemToDate(rangeItem, newDate);
-      assignOrderForMove([rangeItem], newDate);
-    });
-    saveItems();
-    // moveSingleItemToDate는 클램프를 적용하지 않지만(항상 요청한 날짜 그대로 이동),
-    // target 기반 휠 전반에 쓰는 동기화 함수를 그대로 재사용해 휠 컬럼도 최종 값과
-    // 일관되게 맞춘다(값이 이미 같으면 아무 것도 하지 않는다).
-    syncActiveDateWheelToCommittedDate();
-    renderApp();
-    startInput.value = rangeItem.date;
-    if (endActive) {
-      endInput.value = rangeItem.endDate || rangeItem.date;
-      endDateClearBtn.hidden = false;
+    var currentEndDate = endActive
+      ? (rangeItem.endDate || rangeItem.date)
+      : newDate;
+
+    if (
+      rangeItem.date === newDate &&
+      (!endActive || currentEndDate === rangeItem.endDate)
+    ) {
+      return;
     }
+
+    applyMoveMenuRangeChange(
+      rangeItem.id,
+      newDate,
+      currentEndDate,
+      false
+    );
+
+    syncActiveDateWheelToCommittedDate();
+
+    startInput.value = rangeItem.date;
+
+    // applyMoveMenuRangeChange가 종료<시작을 시작일로 보정했거나
+    // 시작과 종료가 같아졌다면 종료 날짜를 자동으로 비활성화한다.
+    endActive = !!(
+      rangeItem.endDate &&
+      rangeItem.endDate !== rangeItem.date
+    );
+
+    endInput.value = endActive
+      ? rangeItem.endDate
+      : '';
+
+    endInput.classList.toggle(
+      'is-placeholder',
+      !endActive
+    );
+
+    endDateClearBtn.hidden = !endActive;
   }
 
   function applyEndLiveChange(newDate) {
-    if (!endActive) return; // 방어적 가드 -- 명시적으로 활성화되기 전에는 절대 커밋하지 않는다.
-    applyMoveMenuRangeChange(rangeItem.id, rangeItem.date, newDate, false);
-    // 종료<시작 클램프로 실제 저장값이 방금 조작한 휠의 원시 위치와 달라졌을 수 있다 --
-    // 상단 메인 날짜 입력의 클램프 동기화와 같은 함수를 재사용한다.
+    if (!endActive) return;
+
+    applyMoveMenuRangeChange(
+      rangeItem.id,
+      rangeItem.date,
+      newDate,
+      false
+    );
+
     syncActiveDateWheelToCommittedDate();
+
     startInput.value = rangeItem.date;
-    endInput.value = rangeItem.endDate || rangeItem.date;
-    endDateClearBtn.hidden = false;
+
+    // 종료 날짜가 시작 날짜와 같아지면 기간을 끝내고 종료 입력을 비활성화한다.
+    endActive = !!(
+      rangeItem.endDate &&
+      rangeItem.endDate !== rangeItem.date
+    );
+
+    endInput.value = endActive
+      ? rangeItem.endDate
+      : '';
+
+    endInput.classList.toggle(
+      'is-placeholder',
+      !endActive
+    );
+
+    endDateClearBtn.hidden = !endActive;
   }
 
   wireMoveMenuDateInput(startInput, 'start', function () {
@@ -10554,9 +15121,40 @@ endInput.classList.toggle(
   customWrap.appendChild(dateInput);
 }
 
+    // 날짜 이동 메뉴에는 날짜 변경과 연결 관리만 남긴다.
+    // 상세 열기·타입 변경·이달의 할 일에 복사는 각각 기존 전용 경로를 사용한다.
     menu.appendChild(todayBtn);
     menu.appendChild(tomorrowBtn);
     menu.appendChild(customWrap);
+
+    // 라운드2 6: 이 항목이 이달의 할 일 원본과 연결된 배치본이면, 연결을 끊는 fallback
+    // 메뉴 버튼을 제공한다(Ctrl/Cmd+Alt+U 단축키와 같은 동작 -- 요구사항의 "단축키 실패
+    // 시 메뉴 버튼 fallback"). 다중 선택이어도 그중 연결된 것만 골라 해제한다.
+    var linkedIds = itemIds.filter(function (id) {
+      var it = findItemById(id);
+      return it && it.sourceMonthlyItemId;
+    });
+    if (linkedIds.length) {
+      var unlinkBtn = makeItemButton('이번 달 할 일 연결 해제', function () {
+        unlinkMonthlyInstances(linkedIds);
+        closeMoveDateMenu();
+      });
+      menu.appendChild(unlinkBtn);
+    }
+    if (linkedIds.length === 1) {
+      var deleteInstanceBtn = makeItemButton('연결된 항목 전체 삭제', function () {
+        deleteEntireMonthlyInstance(linkedIds[0]);
+        closeMoveDateMenu();
+      });
+      menu.appendChild(deleteInstanceBtn);
+      // 라운드3 3: 일반 Delete 키는 이제 연결 세트 전체를 지우는 게 기본값이라, "이 배치
+      // 하나만" 지우고 싶을 때를 위한 명시적 안전 보조 경로를 남긴다(요구사항).
+      var deleteHereOnlyBtn = makeItemButton('이 위치에서만 제거', function () {
+        softDeleteItems(linkedIds);
+        closeMoveDateMenu();
+      });
+      menu.appendChild(deleteHereOnlyBtn);
+    }
 
     document.body.appendChild(menu);
     positionPopup(menu, anchorEl);
@@ -10573,13 +15171,30 @@ endInput.classList.toggle(
   // ---------------------------------------------------------------------
   // 날짜 이동 실행
   // ---------------------------------------------------------------------
-  function moveSingleItemToDate(item, targetDate) {
+  // 중앙 이동 함수 -- 이동 메뉴/날짜 휠/드래그/휴지통 날짜 복원이 전부 이 함수(또는
+  // applyMoveItemsToDate를 통해 이 함수)를 거친다. pending=true는 오직 자동 이월
+  // staging(runAutoRollover)만 쓴다 -- 그 외 모든 명시적 이동은 기본값(pending 생략/
+  // false)으로 목적 날짜에 즉시 "정착"한다(originalDate=목적 날짜, migratedFrom=null,
+  // rolloverPending=false). originalDate/migratedFrom은 이력 참고용일 뿐 어디에도 렌더
+  // 조건으로 쓰이지 않는다 -- 실제 렌더 여부는 오직 rolloverPending(=isRolloverItem)만 본다.
+  function moveSingleItemToDate(item, targetDate, pending) {
     if (item.date === targetDate) {
       // 같은 날짜로 "이동"은 아무 것도 바꾸지 않는다(originalDate/migratedFrom/updatedAt 불변).
       return false;
     }
-    if (!item.originalDate) item.originalDate = item.date;
-    item.migratedFrom = item.date;
+    if (pending) {
+      if (!item.originalDate) item.originalDate = item.date;
+      item.migratedFrom = item.date;
+      item.rolloverPending = true;
+    } else {
+      item.originalDate = targetDate;
+      item.migratedFrom = null;
+      item.rolloverPending = false;
+    }
+    // 그룹핑 정책: 날짜가 실제로 바뀌면(자동 이월/명시적 이동/드래그 전부 이 함수를
+    // 거친다) 그룹에서 자동으로 빠진다 -- 그룹은 "같은 날짜"가 전제라, 구성원 하나가
+    // 다른 날짜로 옮겨가면 더 이상 그 그룹의 유효한 구성원이 아니다.
+    clearAllGroupMembershipForItem(item);
     var oldStartDate = item.date;
 
     // 기간 보존 이동은 종류와 무관하게 endDate가 실제로 date와 다를 때만 적용한다 --
@@ -10624,7 +15239,7 @@ endInput.classList.toggle(
   // 이동의 핵심 로직만 수행한다(검증 + 이동 + order 재배치 + 저장). 팝업 정리/선택
   // 해제/렌더링/알림은 호출자마다 다르므로(수동 이동 팝업은 선택 해제, 드래그앤드롭은
   // 선택 유지) 여기서 하지 않는다 — moveItemsToDate()와 performDrop()이 각자 감싼다.
-  function applyMoveItemsToDate(itemIds, targetDate) {
+  function applyMoveItemsToDate(itemIds, targetDate, pending) {
     if (!targetDate || !/^\d{4}-\d{2}-\d{2}$/.test(targetDate)) {
       console.warn('[dotdotplanner] applyMoveItemsToDate: invalid targetDate', targetDate);
       return null;
@@ -10638,7 +15253,7 @@ endInput.classList.toggle(
           console.warn('[dotdotplanner] applyMoveItemsToDate: unknown itemId', id);
           return;
         }
-        var changed = moveSingleItemToDate(item, targetDate);
+        var changed = moveSingleItemToDate(item, targetDate, pending);
         if (changed) touched.push(item);
       });
 
@@ -10755,6 +15370,8 @@ function applyMoveMenuRangeChange(
     item.endDate = endDate;
 item.originalDate = startDate;
 item.migratedFrom = null;
+item.rolloverPending = false;
+if (oldStartDate !== startDate) clearAllGroupMembershipForItem(item); // 날짜 범위가 바뀌면 기존 날짜별 그룹 소속을 정리한다.
     /*
      * 새 기간에 맞춰 날짜별 완료 기록을 정리한다(schedule 전용 -- task/memo는
      * item.completed 하나만 쓰고 완료 규칙 자체를 바꾸지 않는다).
@@ -10854,38 +15471,407 @@ function moveSingleScheduleToRange(
     return touched;
   }
 
-  // 8: 복원/영구 삭제된 항목만 trashSelectedItemIds에서 제거한다(전체를 비우지 않음) —
+  // 8: 복원/영구 삭제된 항목만 selectedItemIds에서 제거한다(전체를 비우지 않음) —
   // 행별 버튼으로 선택 밖의 항목 하나만 복원해도 나머지 선택은 그대로 남는다. 반대로
   // bulk 작업은 선택 전체를 대상으로 호출되므로 이 가지치기만으로 자연히 선택이 비워진다.
   function pruneTrashSelection(touchedIds) {
     var changed = false;
     touchedIds.forEach(function (id) {
-      if (state.trashSelectedItemIds.delete(id)) changed = true;
+      if (state.selectedItemIds.delete(id)) changed = true;
+      state.selectedOccurrenceById.delete(id);
     });
-    if (state.trashSelectionAnchor && touchedIds.indexOf(state.trashSelectionAnchor) !== -1) {
-      state.trashSelectionAnchor = null;
+    if (state.selectionAnchor && touchedIds.indexOf(state.selectionAnchor.itemId) !== -1) {
+      state.selectionAnchor = null;
     }
-    if (changed) { renderTrashSelectionState(); renderTrashBulkBar(); }
+    if (state.lastSelectedItemId && touchedIds.indexOf(state.lastSelectedItemId) !== -1) {
+      state.lastSelectedItemId = null;
+    }
+    if (changed) renderSelectionState();
   }
 
   function restoreItems(itemIds) {
+    var uniqueIds = Array.from(new Set(itemIds));
+    var touched = [];
+    var groupIds = {};
+    uniqueIds.forEach(function (id) {
+      var item = findItemById(id);
+      if (item && item.instanceGroupId) groupIds[item.instanceGroupId] = true;
+    });
+    withHistoryTransaction(function () {
+      uniqueIds.forEach(function (id) {
+        var item = findItemById(id);
+        if (!item || !item.deletedAt || item.instanceGroupId) return;
+        item.deletedAt = null;
+        item.updatedAt = Date.now();
+        touched.push(item);
+      });
+      Object.keys(groupIds).forEach(function (groupId) {
+        [state.items, state.monthlyItems].forEach(function (collection) {
+          collection.forEach(function (item) {
+            if (item.instanceGroupId !== groupId || !item.deletedAt) return;
+            item.deletedAt = null;
+            item.updatedAt = Date.now();
+            touched.push(item);
+          });
+        });
+      });
+    });
+    if (!touched.length) return touched;
+    saveItems();
+    saveMonthlyItems();
+    pruneTrashSelection(touched.map(function (it) { return it.id; }));
+    renderApp();
+    announce(touched.length + '개 항목을 복원했습니다.');
+    return touched;
+  }
+
+  // 휴지통 날짜 지정 복원 -- restoreItems(원위치)와 달리 명시적으로 고른 날짜로 즉시
+  // "정착"시킨다(moveSingleItemToDate가 남기는 이월 마커를 쓰지 않는다 -- 그걸 쓰면 방금
+  // 복원한 항목이 isRolloverItem 취급을 받아 Weekly에 나타나지 않는, 사용자 의도와
+  // 정반대의 결과가 된다). 다일 항목은 기존 기간 길이를 그대로 보존해 옮긴다. Weekly의
+  // 특정 날짜로 복원도 이 함수 하나로 충분하다(Weekly도 결국 같은 date 필드를 보는
+  // 화면이라 별도 경로가 필요 없다).
+  function restoreItemsToDate(itemIds, targetDate) {
     var uniqueIds = Array.from(new Set(itemIds));
     var touched = [];
     withHistoryTransaction(function () {
       uniqueIds.forEach(function (id) {
         var item = findItemById(id);
         if (!item || !item.deletedAt) return;
+        var span = (item.endDate && item.endDate !== item.date) ? differenceInCalendarDays(item.date, item.endDate) : 0;
         item.deletedAt = null;
+        item.date = targetDate;
+        item.endDate = span ? addCalendarDays(targetDate, span) : targetDate;
+        clearAllGroupMembershipForItem(item); // 날짜 지정 복원은 기존 날짜별 그룹 소속을 정리한다.
+        item.originalDate = targetDate;
+        item.migratedFrom = null;
+        item.rolloverPending = false;
         item.updatedAt = Date.now();
         touched.push(item);
       });
+      if (touched.length) assignOrderForMove(touched, targetDate);
     });
     if (!touched.length) return touched;
     saveItems();
     pruneTrashSelection(touched.map(function (it) { return it.id; }));
     renderApp();
-    announce(touched.length + '개 항목을 복원했습니다.');
+    announce(touched.length + '개 항목을 ' + targetDate + '(으)로 복원했습니다.');
     return touched;
+  }
+
+  // 라운드3 2: 휴지통 항목을 잡은 채 사이드바 Today/Calendar 아이콘 위에서 일정 시간
+  // hover하면 드래그를 끊지 않고 그 화면으로 자동 전환된 뒤, 실제 Daily/Weekly/Monthly
+  // Log 날짜 영역에 드롭해 그 날짜로 정착 복원한다(요구사항). 기존 dragState(항목
+  // 재정렬용) 파이프라인과 의미가 완전히 달라(목적지가 다른 "화면"일 수 있음) 독립된
+  // 최소 상태 머신으로 만든다(이달의 할 일 -> 날짜 배치 드래그를 별도로 만든 것과 같은
+  // 이유). 화면 전환 후에도 이 pointermove/up 리스너는 document에 그대로 남아 있으므로
+  // 드래그 자체는 끊기지 않는다(요구사항 7: preview/dragged ids 유지).
+  var trashDragState = null; // { pointerId, itemIds, previewEl, hoverIconView, hoverTimer, dropEl, dropDate }
+  var TRASH_DRAG_VIEW_SWITCH_HOVER_MS = 420; // 350~500ms 권장 범위의 중간값.
+
+  function positionTrashDragPreview(x, y) {
+    if (!trashDragState || !trashDragState.previewEl) return;
+    trashDragState.previewEl.style.left = (x + 14) + 'px';
+    trashDragState.previewEl.style.top = (y + 14) + 'px';
+  }
+
+  function setTrashDragIconHighlight(view) {
+    ['today', 'calendar'].forEach(function (v) {
+      var el = document.querySelector('.side-item.' + v);
+      if (el) el.classList.toggle('is-trash-drop-target', v === view);
+    });
+  }
+
+  function clearTrashDragHoverTimer() {
+    if (!trashDragState) return;
+    if (trashDragState.hoverTimer) { clearTimeout(trashDragState.hoverTimer); trashDragState.hoverTimer = null; }
+    trashDragState.hoverIconView = null;
+  }
+
+  // 사이드바 아이콘 위에서 TRASH_DRAG_VIEW_SWITCH_HOVER_MS만큼 머물면 화면을 전환한다.
+  // 이미 그 화면이면(전환 후 다시 같은 아이콘 위를 지나가는 경우) 아무 것도 하지 않는다.
+  function scheduleTrashDragViewSwitch(view) {
+    if (!trashDragState) return;
+    if (state.currentView === view) { clearTrashDragHoverTimer(); setTrashDragIconHighlight(null); return; }
+    setTrashDragIconHighlight(view);
+    if (trashDragState.hoverIconView === view) return; // 이미 이 아이콘용 타이머가 진행 중.
+    clearTrashDragHoverTimer();
+    trashDragState.hoverIconView = view;
+    trashDragState.hoverTimer = setTimeout(function () {
+      if (!trashDragState) return;
+      trashDragState.hoverTimer = null;
+      setView(view);
+      setTrashDragIconHighlight(null);
+    }, TRASH_DRAG_VIEW_SWITCH_HOVER_MS);
+  }
+
+  // 현재 화면(Today/Calendar)에서 실제 포인터 아래의 "날짜 드롭 대상"을 찾는다. Daily는
+  // 항목이 없는 빈 공간도 #daily-list 전체를 오늘(state.selectedDate) 대상으로 인정하고,
+  // Weekly/Monthly Log는 기존 드래그 파이프라인이 이미 쓰는 것과 같은 선택자
+  // (.week-card ul[data-date]/.monthly-log-row[data-date])로 날짜를 읽는다.
+  function resolveTrashDropTarget(el) {
+    if (!el) return null;
+
+    // 휴지통은 Today 상단 안에 열리므로 Weekly와 미니 달력이 화면에 그대로 보인다.
+    // 따라서 사이드바 화면 전환을 거치지 않고도 현재 보이는 날짜 칸에 직접 놓을 수 있다.
+    if (state.currentView === 'today' || state.currentView === 'trash') {
+      var weekLi = el.closest('.week-card li[data-occurrence-date]');
+      if (weekLi) return { date: weekLi.dataset.occurrenceDate, el: weekLi };
+      var weekUl = el.closest('.week-card ul[data-date]');
+      if (weekUl) return { date: weekUl.dataset.date, el: weekUl };
+      var weekCard = el.closest('.week-card');
+      if (weekCard) {
+        var cardList = weekCard.querySelector('ul[data-date]');
+        if (cardList) return { date: cardList.dataset.date, el: weekCard };
+      }
+
+      var miniDate = el.closest('.calendar-card .date[data-date]');
+      if (miniDate) return { date: miniDate.dataset.date, el: miniDate };
+
+      if (state.currentView === 'today') {
+        var dailyRow = el.closest('#daily-list [data-occurrence-date]');
+        if (dailyRow) return { date: dailyRow.dataset.occurrenceDate, el: dailyRow };
+        var dailyPanel = el.closest('.daily');
+        if (dailyPanel) return { date: state.selectedDate, el: dailyPanel };
+      }
+    } else if (state.currentView === 'calendar') {
+      var mlRow = el.closest('.monthly-log-row[data-date]');
+      if (mlRow) return { date: mlRow.dataset.date, el: mlRow };
+    }
+    return null;
+  }
+
+  function clearTrashDropHighlight() {
+    if (trashDragState && trashDragState.dropEl) {
+      trashDragState.dropEl.classList.remove('is-trash-drop-target-date');
+    }
+    if (trashDragState) { trashDragState.dropEl = null; trashDragState.dropDate = null; }
+  }
+
+  function teardownTrashDrag() {
+    if (!trashDragState) return;
+    clearTrashDragHoverTimer();
+    setTrashDragIconHighlight(null);
+    clearTrashDropHighlight();
+    if (trashDragState.previewEl) trashDragState.previewEl.remove();
+    document.body.classList.remove('dnd-active');
+    document.removeEventListener('pointermove', onTrashRowDragPointerMove);
+    document.removeEventListener('pointerup', onTrashRowDragPointerUp);
+    document.removeEventListener('pointercancel', onTrashRowDragPointerCancel);
+    document.removeEventListener('keydown', onTrashDragKeydown, true);
+    trashDragState = null;
+  }
+
+  function onTrashRowDragPointerMove(e) {
+    if (!trashDragState || e.pointerId !== trashDragState.pointerId) return;
+    if (trashDragState.pending) {
+      var dx = e.clientX - trashDragState.startX;
+      var dy = e.clientY - trashDragState.startY;
+      if (Math.abs(dx) < DRAG_THRESHOLD && Math.abs(dy) < DRAG_THRESHOLD) return;
+      trashDragState.pending = false;
+      trashDragState.active = true;
+      var row = document.querySelector('.trash-row[data-item-id="' + trashDragState.anchorItemId + '"]');
+      if (row) {
+        var preview = row.cloneNode(true);
+        preview.classList.add('drag-preview');
+        preview.style.position = 'fixed';
+        preview.style.pointerEvents = 'none';
+        preview.style.width = row.getBoundingClientRect().width + 'px';
+        preview.style.zIndex = '60';
+        if (trashDragState.itemIds.length > 1) {
+          var countBadge = document.createElement('span');
+          countBadge.className = 'drag-preview-count';
+          countBadge.textContent = String(trashDragState.itemIds.length);
+          preview.appendChild(countBadge);
+        }
+        document.body.appendChild(preview);
+        trashDragState.previewEl = preview;
+      }
+      suppressNextItemGutterClickOnce();
+      document.body.classList.add('dnd-active');
+    }
+    if (!trashDragState.active) return;
+    e.preventDefault();
+    positionTrashDragPreview(e.clientX, e.clientY);
+    var el = document.elementFromPoint(e.clientX, e.clientY);
+    var overTodayIcon = !!(el && el.closest('.side-item.today'));
+    var overCalendarIcon = !!(el && el.closest('.side-item.calendar'));
+    if (overTodayIcon || overCalendarIcon) {
+      scheduleTrashDragViewSwitch(overTodayIcon ? 'today' : 'calendar');
+      clearTrashDropHighlight();
+      return;
+    }
+    clearTrashDragHoverTimer();
+    setTrashDragIconHighlight(null);
+    var resolved = resolveTrashDropTarget(el);
+    if (trashDragState.dropEl && (!resolved || trashDragState.dropEl !== resolved.el)) {
+      trashDragState.dropEl.classList.remove('is-trash-drop-target-date');
+      trashDragState.dropEl = null;
+      trashDragState.dropDate = null;
+    }
+    if (resolved) {
+      resolved.el.classList.add('is-trash-drop-target-date');
+      trashDragState.dropEl = resolved.el;
+      trashDragState.dropDate = resolved.date;
+    }
+  }
+
+  function onTrashRowDragPointerUp(e) {
+    if (!trashDragState || e.pointerId !== trashDragState.pointerId) return;
+    var ds = trashDragState;
+    var active = ds.active;
+    var dropDate = ds.dropDate;
+    var ids = ds.itemIds;
+    teardownTrashDrag();
+    if (active && dropDate) restoreItemsToDate(ids, dropDate);
+  }
+
+  function onTrashRowDragPointerCancel(e) {
+    if (!trashDragState || e.pointerId !== trashDragState.pointerId) return;
+    teardownTrashDrag();
+  }
+
+  function onTrashDragKeydown(e) {
+    if (!trashDragState) return;
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      e.stopPropagation();
+      teardownTrashDrag(); // 항목은 휴지통에 그대로 유지(요구사항 9).
+    }
+  }
+
+  function onTrashRowDragPointerDown(e, itemId) {
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    if (trashDragState) teardownTrashDrag();
+    var ids = (state.selectedItemIds.has(itemId) && state.selectedItemIds.size >= 2)
+      ? Array.from(state.selectedItemIds).filter(function (id) { return !findMonthlyItemById(id); })
+      : [itemId];
+    if (!ids.length) return;
+    trashDragState = {
+      pointerId: e.pointerId,
+      anchorItemId: itemId,
+      itemIds: ids,
+      startX: e.clientX,
+      startY: e.clientY,
+      pending: true,
+      active: false,
+      previewEl: null,
+      hoverIconView: null,
+      hoverTimer: null,
+      dropEl: null,
+      dropDate: null
+    };
+    document.addEventListener('pointermove', onTrashRowDragPointerMove);
+    document.addEventListener('pointerup', onTrashRowDragPointerUp);
+    document.addEventListener('pointercancel', onTrashRowDragPointerCancel);
+    document.addEventListener('keydown', onTrashDragKeydown, true);
+  }
+
+  // ---------------------------------------------------------------------
+  // 휴지통 "날짜 지정 복원" 팝업 -- 기존 날짜 이동 메뉴(openMoveDateMenu)와 같은
+  // .move-menu 외관/팝업 관례(positionPopup, 지연 등록된 outside-pointerdown/Escape,
+  // 포커스 복원)를 그대로 따르되, 대상이 삭제된 항목이라 moveItemsToDate를 그대로 쓸 수
+  // 없어 restoreItemsToDate를 호출하는 별도 인스턴스다. 시작/종료 날짜 휠 같은 복잡한
+  // 라이브 편집(wireMoveMenuDateInput)은 살아있는 단일 항목 전용이라 여기서는 재사용하지
+  // 않고, 다중 선택도 자연히 지원하는 단순 텍스트 입력 + 확정 버튼으로 충분히 만든다.
+  // ---------------------------------------------------------------------
+  var activeTrashRestoreMenu = null; // { el, itemIds, anchorItemId }
+
+  function closeTrashRestoreDateMenu(restoreFocus) {
+    if (!activeTrashRestoreMenu) return;
+    var anchorItemId = activeTrashRestoreMenu.anchorItemId;
+    activeTrashRestoreMenu.el.remove();
+    document.removeEventListener('pointerdown', onOutsideTrashRestoreMenuPointerDown, true);
+    document.removeEventListener('keydown', onTrashRestoreMenuKeydown, true);
+    activeTrashRestoreMenu = null;
+    var anchors = document.querySelectorAll('[data-action="trash-restore-date"][data-item-id="' + anchorItemId + '"], #trash-bulk-restore-date-btn');
+    anchors.forEach(function (a) { a.setAttribute('aria-expanded', 'false'); });
+    if (restoreFocus !== false && anchors[0]) anchors[0].focus();
+  }
+
+  function onOutsideTrashRestoreMenuPointerDown(e) {
+    if (!activeTrashRestoreMenu) return;
+    if (activeTrashRestoreMenu.el.contains(e.target)) return;
+    closeTrashRestoreDateMenu(false);
+  }
+
+  function onTrashRestoreMenuKeydown(e) {
+    if (!activeTrashRestoreMenu) return;
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      e.stopPropagation();
+      closeTrashRestoreDateMenu();
+    }
+  }
+
+  function openTrashRestoreDateMenu(itemIds, anchorEl) {
+    if (activeTrashRestoreMenu) closeTrashRestoreDateMenu(false);
+
+    var menu = document.createElement('div');
+    menu.className = 'move-menu';
+    menu.setAttribute('role', 'dialog');
+    menu.setAttribute('aria-label', '날짜 지정 복원');
+
+    function makeItemButton(labelText, onClick) {
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'move-menu-item';
+      btn.textContent = labelText;
+      btn.addEventListener('click', onClick);
+      return btn;
+    }
+
+    var todayBtn = makeItemButton('현재 Daily 날짜로 복원', function () {
+      restoreItemsToDate(itemIds, state.selectedDate);
+      closeTrashRestoreDateMenu(false);
+    });
+    menu.appendChild(todayBtn);
+
+    var customWrap = document.createElement('div');
+    customWrap.className = 'move-menu-range';
+    var title = document.createElement('span');
+    title.className = 'move-menu-range-title';
+    title.textContent = '날짜 지정(Weekly 날짜도 이 입력으로 복원됩니다)';
+    var fieldLabel = document.createElement('label');
+    fieldLabel.className = 'move-menu-range-field';
+    var fieldLabelText = document.createElement('span');
+    fieldLabelText.textContent = '날짜';
+    var dateInput = document.createElement('input');
+    dateInput.type = 'text';
+    dateInput.autocomplete = 'off';
+    dateInput.spellcheck = false;
+    dateInput.className = 'move-menu-date';
+    dateInput.placeholder = '연도-월-일';
+    dateInput.value = state.selectedDate;
+    fieldLabel.appendChild(fieldLabelText);
+    fieldLabel.appendChild(dateInput);
+    customWrap.appendChild(title);
+    customWrap.appendChild(fieldLabel);
+    menu.appendChild(customWrap);
+
+    var confirmBtn = makeItemButton('이 날짜로 복원', function () {
+      var v = dateInput.value.trim();
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(v)) { dateInput.focus(); return; }
+      var parsed = parseLocalDate(v);
+      if (!parsed || isNaN(parsed.getTime()) || formatLocalDate(parsed) !== v) { dateInput.focus(); return; }
+      restoreItemsToDate(itemIds, v);
+      closeTrashRestoreDateMenu(false);
+    });
+    menu.appendChild(confirmBtn);
+    dateInput.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') { e.preventDefault(); confirmBtn.click(); }
+    });
+
+    document.body.appendChild(menu);
+    positionPopup(menu, anchorEl);
+    anchorEl.setAttribute('aria-expanded', 'true');
+    activeTrashRestoreMenu = { el: menu, itemIds: itemIds, anchorItemId: anchorEl.dataset.itemId };
+    todayBtn.focus();
+
+    setTimeout(function () {
+      document.addEventListener('pointerdown', onOutsideTrashRestoreMenuPointerDown, true);
+      document.addEventListener('keydown', onTrashRestoreMenuKeydown, true);
+    }, 0);
   }
 
   function permanentDeleteItems(itemIds) {
@@ -10910,84 +15896,433 @@ function moveSingleScheduleToRange(
   // ---------------------------------------------------------------------
   // 7: 항목 복제(Ctrl/Cmd+C·V) — 앱 내부 클립보드. Ctrl/Cmd+C는 선택된 항목을 읽어서
   // 가벼운 스냅샷으로만 저장할 뿐 state.items를 바꾸지 않으므로 history/저장/렌더링
-  // 어느 것도 건드리지 않는다. id는 새 항목 id로 재사용하지 않고, 붙여넣을 때 "원본 바로
-  // 다음에 놓기" 위한 위치 찾기 용도로만 쓴다.
+  // 어느 것도 건드리지 않는다.
   // ---------------------------------------------------------------------
+  // 반복 붙여넣기(같은 클립보드로 Ctrl+V 여러 번)에서 "이번 복제 묶음을 어디 바로 다음에
+  // 붙일지" 기준이 되는 id 목록. 최초 붙여넣기는 이번에 복사된 원본들이 기준이고, 그
+  // 다음부터는 직전 붙여넣기로 만든 복제본들이 기준이 된다(그래야 두 번째 묶음이 첫
+  // 번째 묶음 위에 끼어들지 않고 그 아래로 계속 쌓인다). 새로 Ctrl+C하면 초기화한다.
+  var lastPasteResultIds = null;
+
+  // 4단계(공통 잘라내기): Ctrl/Cmd+X로 표시만 해 두고 실제 원본 제거는 다음 붙여넣기가
+  // 성공한 뒤에만 일어난다(pasteItemsFromClipboard 참고). 세션 한정.
+  var pendingCutIds = null;
+
+  function cutSelectedItemsToClipboard() {
+    copySelectedItemsToClipboard();
+    pendingCutIds = state.itemClipboard.items.length ? state.itemClipboard.items.map(function (it) { return it.id; }) : null;
+  }
+
   function copySelectedItemsToClipboard() {
     var ids = Array.from(state.selectedItemIds);
     if (!ids.length) return;
     var items = ids
       .map(function (id) { return findItemById(id); })
-      .filter(function (it) { return it && !it.deletedAt; })
-      .map(function (it) {
-        return {
-          id: it.id,
-          type: it.type,
-          text: it.text,
-          date: it.date,
-          endDate: it.endDate,
-          allDay: it.allDay,
-          startTime: it.startTime,
-          endTime: it.endTime
-        };
-      });
+      .filter(function (it) { return it && !it.deletedAt; });
     if (!items.length) return;
-    state.itemClipboard = { items: items, copiedAt: Date.now() };
+    // 6/7: Set 순회 순서(클릭한 순서)가 아니라 실제 화면 표시 순서(날짜 -> 그 날짜
+    // 안에서의 order)로 정렬해 저장한다 — 비연속 선택이어도 상대 순서가 유지된다.
+    items.sort(function (a, b) {
+      if (a.date !== b.date) return a.date < b.date ? -1 : 1;
+      return a.order - b.order;
+    });
+    var snapshots = items.map(function (it) {
+      return {
+        id: it.id,
+        type: it.type,
+        text: it.text,
+        date: it.date,
+        endDate: it.endDate,
+        allDay: it.allDay,
+        startTime: it.startTime,
+        endTime: it.endTime,
+        monthlyLogScheduleColumn: it.monthlyLogScheduleColumn,
+        monthlyLogScheduleColorIndex: it.monthlyLogScheduleColorIndex,
+        // 요구사항: 일반 복사 시 projectId를 유지한다.
+        projectId: it.projectId || null,
+        // description/상세 블록/하위 할 일도 사용자 데이터이므로 그대로 보존한다(deep
+        // clone이라 원본과 참조를 공유하지 않음). 아직 descriptionBlocks가 없는(레거시)
+        // 항목을 여기서 ensureDescriptionBlocks로 만들면 복사만으로 state.items가
+        // 바뀌어버리므로, 이미 배열인 경우만 읽고 아니면 빈 배열로 취급한다.
+        description: it.description || '',
+        descriptionBlocks: JSON.parse(JSON.stringify(Array.isArray(it.descriptionBlocks) ? it.descriptionBlocks : [])),
+        subtasks: JSON.parse(JSON.stringify(Array.isArray(it.subtasks) ? it.subtasks : []))
+      };
+    });
+    state.itemClipboard = { items: snapshots, copiedAt: Date.now() };
+    lastPasteResultIds = null;
+    pendingCutIds = null; // 새로 복사하면 이전에 예약돼 있던 잘라내기(있었다면)는 취소된다.
   }
 
-  // Ctrl/Cmd+V: 클립보드 항목을 실제 새 항목으로 만든다. 새 id/createdAt/updatedAt, completed
-  // = false(진행 중인 완료 표시 없음), originalDate = 자기 자신의 date(방금 만들어진 항목이라
-  // 이월 이력이 없음), migratedFrom = null. 날짜별로 묶어 각 복제본을 그 날짜 목록에서
-  // 원본 바로 다음 자리에 끼워 넣고(여러 개를 붙여넣어도 원래 상대 순서 유지), 한 번의
-  // history 트랜잭션·저장·렌더링으로 처리한 뒤 새로 만든 항목들을 선택 상태로 남긴다.
+  // 클립보드 스냅샷 하나를 실제 새 item으로 만든다 — 새 id/createdAt/updatedAt,
+  // originalDate/migratedFrom은 makeItem 기본값(자기 date/null)을 그대로 따르고(8: 새
+  // 항목이라 이월 이력 없음), completed는 기존 정책 그대로 항상 false(진행 중인 완료
+  // 표시 없음, 이미 정의돼 있던 정책이라 바꾸지 않는다). descriptionBlocks/subtasks
+  // 안의 자체 id도 원본과 충돌하지 않게 전부 새로 발급한다 — todo 블록이 참조하는
+  // subtaskId는 그 매핑을 따라 함께 갱신한다. attachmentId는 IndexedDB의 실제 Blob을
+  // 가리키는 참조라 재발급하면 파일이 깨지므로 그대로(원본과 공유) 둔다.
+  function makeClonedItem(src, now) {
+    var subtaskIdMap = {};
+    var clonedSubtasks = (src.subtasks || []).map(function (s) {
+      var clonedSub = JSON.parse(JSON.stringify(s));
+      var oldId = clonedSub.id;
+      clonedSub.id = uid();
+      subtaskIdMap[oldId] = clonedSub.id;
+      return clonedSub;
+    });
+    var clonedBlocks = (src.descriptionBlocks || []).map(function (b) {
+      var clonedBlock = JSON.parse(JSON.stringify(b));
+      clonedBlock.id = descBlockUid();
+      if (clonedBlock.type === 'todo' && clonedBlock.subtaskId && subtaskIdMap[clonedBlock.subtaskId]) {
+        clonedBlock.subtaskId = subtaskIdMap[clonedBlock.subtaskId];
+      }
+      if (Array.isArray(clonedBlock.items)) {
+        clonedBlock.items = clonedBlock.items.map(function (galleryItem) {
+          var clonedGalleryItem = JSON.parse(JSON.stringify(galleryItem));
+          clonedGalleryItem.id = 'mgi_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8);
+          return clonedGalleryItem;
+        });
+      }
+      return clonedBlock;
+    });
+    var clonedItem = makeItem({
+      type: src.type,
+      text: src.text,
+      date: src.date,
+      endDate: src.endDate,
+      allDay: src.allDay,
+      startTime: src.startTime,
+      endTime: src.endTime,
+      completed: false,
+      description: src.description || '',
+      descriptionBlocks: clonedBlocks,
+      subtasks: clonedSubtasks,
+      createdAt: now,
+      updatedAt: now,
+      projectId: src.projectId || null
+    });
+    if (src.monthlyLogScheduleColumn !== undefined && src.monthlyLogScheduleColumn !== null) clonedItem.monthlyLogScheduleColumn = clampMonthlyLogScheduleColumn(src.monthlyLogScheduleColumn);
+    if (src.monthlyLogScheduleColorIndex !== undefined && src.monthlyLogScheduleColorIndex !== null) clonedItem.monthlyLogScheduleColorIndex = Number(src.monthlyLogScheduleColorIndex);
+    return clonedItem;
+  }
+
+  // Ctrl/Cmd+V: 클립보드 항목을 실제 새 항목으로 만든다. 날짜별로 묶어(여러 날짜에 걸친
+  // 선택이면 날짜를 합치지 않고 각자 처리) 그 날짜의 "삽입 기준" 바로 다음에 복제 묶음
+  // 전체를 하나의 연속 블록으로 끼워 넣는다(원본 각각의 바로 아래에 흩어지지 않음).
+  // 삽입 기준은 최초 붙여넣기면 이번에 복사된 원본들 중 가장 아래(가장 큰 order),
+  // 반복 붙여넣기면 직전 붙여넣기로 만든 복제 묶음 중 가장 아래 — 그래야 세 번째 이후
+  // 붙여넣기도 항상 직전 묶음 바로 아래로만 계속 쌓인다. 기준 항목이 전부 사라졌으면
+  // (삭제 등) 안전하게 그 날짜의 맨 뒤에 붙인다. 원본 항목의 order는 건드리지 않고,
+  // 기준보다 아래에 있던 기존 항목들만 복제 묶음 크기만큼 뒤로 민다.
+  // 3단계(공통 붙여넣기): 복사 당시의 원래 날짜가 아니라 "지금 활성화된" 날짜를
+  // 기준으로 붙여넣는다(resolvePasteTargetDate). 여러 날짜에 걸친 선택을 한 번에
+  // 복사했었다면(비연속 다중 선택), 그 항목들 사이의 상대 날짜 간격은 그대로 유지한 채
+  // 전체를 새 기준 날짜로 평행이동한다 -- 복사분 중 가장 이른 날짜가 새 기준 날짜가
+  // 되고, 나머지는 원래 서로 떨어져 있던 일수만큼만 그 뒤로 나란히 배치된다. 다일
+  // 일정(endDate)의 기간 길이도 항목별로 그대로 보존한다.
+  function remapClipboardItemsToTargetDate(items, targetDate) {
+    if (!items.length) return items;
+    var minSrcDate = items.reduce(function (min, it) { return it.date < min ? it.date : min; }, items[0].date);
+    return items.map(function (src) {
+      var offsetDays = differenceInCalendarDays(minSrcDate, src.date);
+      var newDate = addCalendarDays(targetDate, offsetDays);
+      var newEndDate = src.endDate
+        ? addCalendarDays(newDate, differenceInCalendarDays(src.date, src.endDate))
+        : src.endDate;
+      var remapped = Object.assign({}, src, { date: newDate, endDate: newEndDate });
+      return remapped;
+    });
+  }
+
   function pasteItemsFromClipboard() {
     var clip = state.itemClipboard;
     if (!clip || !clip.items.length) return;
 
+    var targetDate = resolvePasteTargetDate();
+    var remappedItems = targetDate ? remapClipboardItemsToTargetDate(clip.items, targetDate) : clip.items;
+
+    var now = Date.now();
     var newIds = [];
     withHistoryTransaction(function () {
-      var byDate = {};
+      var groups = {};
       var dateOrder = [];
-      clip.items.forEach(function (src) {
-        if (!byDate[src.date]) { byDate[src.date] = []; dateOrder.push(src.date); }
-        byDate[src.date].push(src);
+      remappedItems.forEach(function (src) {
+        if (!groups[src.date]) { groups[src.date] = []; dateOrder.push(src.date); }
+        groups[src.date].push(src);
       });
+
       dateOrder.forEach(function (date) {
-        var list = getItemsForDate(date).slice().sort(function (a, b) { return a.order - b.order; });
-        // 클립보드에 담긴 순서가 아니라, 이 날짜에서 원본들이 "지금" 놓여 있는 순서를 기준으로
-        // 삼아야 여러 개를 복제했을 때 원래 상대 순서가 그대로 유지된다.
-        var entries = byDate[date].slice().sort(function (a, b) {
-          var ia = list.findIndex(function (it) { return it.id === a.id; });
-          var ib = list.findIndex(function (it) { return it.id === b.id; });
-          return ia - ib;
+        var srcList = groups[date];
+        var clones = srcList.map(function (src) { return makeClonedItem(src, now); });
+
+        var anchorIds = (lastPasteResultIds && lastPasteResultIds.length)
+          ? lastPasteResultIds
+          : srcList.map(function (s) { return s.id; });
+        var anchorMax = -1;
+        var anchorFound = false;
+        anchorIds.forEach(function (id) {
+          var it = findItemById(id);
+          if (!it || it.deletedAt || it.date !== date) return;
+          anchorFound = true;
+          if (it.order > anchorMax) anchorMax = it.order;
         });
-        entries.forEach(function (src) {
-          var dupe = makeItem({
-            type: src.type,
-            text: src.text,
-            date: src.date,
-            endDate: src.endDate,
-            allDay: src.allDay,
-            startTime: src.startTime,
-            endTime: src.endTime,
-            completed: false
+        if (!anchorFound) {
+          state.items.forEach(function (it) {
+            if (it.date === date && !it.deletedAt && it.order > anchorMax) anchorMax = it.order;
           });
-          state.items.push(dupe);
-          newIds.push(dupe.id);
-          var idx = list.findIndex(function (it) { return it.id === src.id; });
-          if (idx === -1) list.push(dupe); else list.splice(idx + 1, 0, dupe);
+        }
+
+        var shiftBy = clones.length;
+        state.items.forEach(function (it) {
+          if (it.date === date && !it.deletedAt && it.order > anchorMax) it.order += shiftBy;
         });
-        list.forEach(function (it, i) { it.order = i; });
+        clones.forEach(function (clone, idx) {
+          clone.order = anchorMax + 1 + idx;
+          state.items.push(clone);
+          newIds.push(clone.id);
+        });
       });
+
+      // 12: 잘라내기는 붙여넣기가 "성공한 뒤"에만 원본을 제거한다 -- 여기까지 왔다는 건
+      // 위에서 최소 1개 이상의 복제가 실제로 만들어졌다는 뜻이므로 안전하다. 휴지통을
+      // 거치지 않고 곧장 제거한다(개념상 삭제가 아니라 이동이므로 -- moveSingleItemToDate와
+      // 같은 취급). 붙여넣기 생성 + 원본 제거가 이 withHistoryTransaction 하나로 묶여
+      // Undo 한 번에 둘 다 되돌아간다.
+      if (newIds.length && pendingCutIds && pendingCutIds.length) {
+        var cutSet = {};
+        pendingCutIds.forEach(function (id) { cutSet[id] = true; });
+        state.items = state.items.filter(function (it) { return !cutSet[it.id]; });
+      }
     });
+    pendingCutIds = null;
     if (!newIds.length) return;
     saveItems();
+    lastPasteResultIds = newIds.slice();
     state.selectedItemIds = new Set(newIds);
     state.selectedOccurrenceById.clear();
     state.lastSelectedItemId = newIds[newIds.length - 1];
-    state.selectionAnchor = null;
+    var firstClone = findItemById(newIds[0]);
+    state.selectionAnchor = firstClone ? { itemId: newIds[0], context: 'daily', containerKey: firstClone.date } : null;
     renderApp();
     announce(newIds.length + '개 항목을 복제했습니다.');
+  }
+
+  // ---------------------------------------------------------------------
+  // 인스턴스 복제(Ctrl/Cmd+Alt+C·V) -- 일반 복사(Ctrl/Cmd+C·V, 위)와 완전히 별개의
+  // state.instanceClipboard를 쓴다. 스냅샷 모양/붙여넣기 배치 로직(날짜별 anchor 계산,
+  // 반복 붙여넣기 시 직전 붙여넣기 바로 아래로 쌓기)은 일반 복사와 동일하게
+  // remapClipboardItemsToTargetDate/makeClonedItem을 그대로 재사용하고, 유일한 차이는
+  // 붙여넣은 새 항목에 instanceGroupId를 부여/재사용한다는 점이다. 잘라내기(X)는 이
+  // 기능에 없다(요구사항에 없음 -- 일반 잘라내기와 섞이면 "이동" 의미가 모호해진다).
+  // ---------------------------------------------------------------------
+  var lastInstancePasteResultIds = null;
+
+  function findInstanceClipboardSource(src) {
+    if (!src) return null;
+    if (src.sourceCollection === 'monthlyItems') return findMonthlyItemById(src.id);
+    return findItemById(src.id);
+  }
+
+  function makeInstanceClipboardSnapshot(it, sourceCollection) {
+    return {
+      id: it.id,
+      sourceCollection: sourceCollection,
+      type: it.type,
+      text: it.text,
+      date: it.date || null,
+      endDate: it.endDate || null,
+      monthKey: it.monthKey || null,
+      allDay: it.allDay,
+      startTime: it.startTime,
+      endTime: it.endTime,
+      description: it.description || '',
+      descriptionBlocks: JSON.parse(JSON.stringify(Array.isArray(it.descriptionBlocks) ? it.descriptionBlocks : [])),
+      subtasks: JSON.parse(JSON.stringify(Array.isArray(it.subtasks) ? it.subtasks : [])),
+      detailBlocksMigrationVersion: it.detailBlocksMigrationVersion,
+      projectId: it.projectId || null
+    };
+  }
+
+  function copySelectedItemsForInstanceClipboard() {
+    var ids = Array.from(state.selectedItemIds);
+    if (!ids.length) return;
+    var targetsMonthly = state.selectionAnchor && state.selectionAnchor.context === 'monthly-inbox';
+    var items;
+    var collection;
+
+    if (targetsMonthly) {
+      collection = 'monthlyItems';
+      items = ids.map(findMonthlyItemById).filter(function (it) { return it && !it.deletedAt && it.type !== 'divider'; });
+      items.sort(function (a, b) { return a.order - b.order; });
+    } else {
+      collection = 'items';
+      items = ids.map(findItemById).filter(function (it) { return it && !it.deletedAt && it.type !== 'divider'; });
+      items.sort(function (a, b) {
+        if (a.date !== b.date) return a.date < b.date ? -1 : 1;
+        return a.order - b.order;
+      });
+    }
+
+    if (!items.length) return;
+    state.instanceClipboard = {
+      collection: collection,
+      items: items.map(function (it) { return makeInstanceClipboardSnapshot(it, collection); }),
+      copiedAt: Date.now()
+    };
+    lastInstancePasteResultIds = null;
+    announce(items.length + '개 항목을 인스턴스 클립보드에 복사했습니다.');
+  }
+
+  function pasteMonthlyInstanceItemsFromClipboard(clip) {
+    var targetMonthKey = resolveMonthlyPasteTargetMonthKey();
+    var now = Date.now();
+    var newIds = [];
+
+    withHistoryTransaction(function () {
+      var srcList = clip.items.slice();
+      var anchorIds = (lastInstancePasteResultIds && lastInstancePasteResultIds.length)
+        ? lastInstancePasteResultIds
+        : srcList.map(function (src) { return src.id; });
+      var anchorMax = -1;
+      var anchorFound = false;
+
+      anchorIds.forEach(function (id) {
+        var it = findMonthlyItemById(id);
+        if (!it || it.deletedAt || it.monthKey !== targetMonthKey) return;
+        anchorFound = true;
+        if (it.order > anchorMax) anchorMax = it.order;
+      });
+      if (!anchorFound) {
+        state.monthlyItems.forEach(function (it) {
+          if (!it.deletedAt && it.monthKey === targetMonthKey && it.order > anchorMax) anchorMax = it.order;
+        });
+      }
+
+      state.monthlyItems.forEach(function (it) {
+        if (!it.deletedAt && it.monthKey === targetMonthKey && it.order > anchorMax) {
+          it.order += srcList.length;
+        }
+      });
+
+      srcList.forEach(function (src, idx) {
+        var liveSource = findInstanceClipboardSource(src);
+        var groupId = liveSource && !liveSource.deletedAt ? liveSource.instanceGroupId : null;
+        if (liveSource && !liveSource.deletedAt && !groupId) {
+          groupId = uid();
+          liveSource.instanceGroupId = groupId;
+          liveSource.updatedAt = now;
+        }
+        var clone = makeMonthlyItem({
+          type: src.type,
+          text: src.text,
+          monthKey: targetMonthKey,
+          order: anchorMax + 1 + idx,
+          instanceGroupId: groupId,
+          description: src.description || '',
+          descriptionBlocks: JSON.parse(JSON.stringify(src.descriptionBlocks || [])),
+          subtasks: JSON.parse(JSON.stringify(src.subtasks || [])),
+          detailBlocksMigrationVersion: src.detailBlocksMigrationVersion,
+          // 연결 인스턴스끼리는 projectId를 공유한다 -- 살아있는 원본이 있으면 그 최신
+          // 값을, 없으면(원본이 삭제된 뒤 클립보드만 남은 경우) 복사 당시 스냅샷을 쓴다.
+          projectId: (liveSource ? liveSource.projectId : src.projectId) || null
+        });
+        state.monthlyItems.push(clone);
+        newIds.push(clone.id);
+      });
+    });
+
+    if (!newIds.length) return;
+    saveItems();
+    saveMonthlyItems();
+    lastInstancePasteResultIds = newIds.slice();
+    state.selectedItemIds = new Set(newIds);
+    state.selectedOccurrenceById.clear();
+    state.lastSelectedItemId = newIds[newIds.length - 1];
+    state.selectionAnchor = { itemId: newIds[0], context: 'monthly-inbox', containerKey: targetMonthKey };
+    renderApp();
+    announce(newIds.length + '개 월간 항목을 인스턴스로 복제했습니다.');
+  }
+
+  function pasteRegularInstanceItemsFromClipboard(clip) {
+    var targetDate = resolvePasteTargetDate();
+    var remappedItems = targetDate ? remapClipboardItemsToTargetDate(clip.items, targetDate) : clip.items;
+    var now = Date.now();
+    var newIds = [];
+
+    withHistoryTransaction(function () {
+      var groups = {};
+      var dateOrder = [];
+      remappedItems.forEach(function (src) {
+        if (!groups[src.date]) { groups[src.date] = []; dateOrder.push(src.date); }
+        groups[src.date].push(src);
+      });
+
+      dateOrder.forEach(function (date) {
+        var srcList = groups[date];
+        var clones = srcList.map(function (src) {
+          var clone = makeClonedItem(src, now);
+          var liveSource = findInstanceClipboardSource(src);
+          if (liveSource && !liveSource.deletedAt) {
+            if (!liveSource.instanceGroupId) {
+              liveSource.instanceGroupId = uid();
+              liveSource.updatedAt = now;
+            }
+            clone.instanceGroupId = liveSource.instanceGroupId;
+            // 연결 인스턴스끼리는 projectId를 공유한다 -- 살아있는 원본의 최신 값을 쓴다.
+            clone.projectId = liveSource.projectId || null;
+          }
+          return clone;
+        });
+
+        var anchorIds = (lastInstancePasteResultIds && lastInstancePasteResultIds.length)
+          ? lastInstancePasteResultIds
+          : srcList.map(function (src) { return src.id; });
+        var anchorMax = -1;
+        var anchorFound = false;
+        anchorIds.forEach(function (id) {
+          var it = findItemById(id);
+          if (!it || it.deletedAt || it.date !== date) return;
+          anchorFound = true;
+          if (it.order > anchorMax) anchorMax = it.order;
+        });
+        if (!anchorFound) {
+          state.items.forEach(function (it) {
+            if (it.date === date && !it.deletedAt && it.order > anchorMax) anchorMax = it.order;
+          });
+        }
+
+        state.items.forEach(function (it) {
+          if (it.date === date && !it.deletedAt && it.order > anchorMax) it.order += clones.length;
+        });
+        clones.forEach(function (clone, idx) {
+          clone.order = anchorMax + 1 + idx;
+          state.items.push(clone);
+          newIds.push(clone.id);
+        });
+      });
+    });
+
+    if (!newIds.length) return;
+    saveItems();
+    saveMonthlyItems();
+    lastInstancePasteResultIds = newIds.slice();
+    state.selectedItemIds = new Set(newIds);
+    state.selectedOccurrenceById.clear();
+    state.lastSelectedItemId = newIds[newIds.length - 1];
+    var first = findItemById(newIds[0]);
+    state.selectionAnchor = first ? { itemId: first.id, context: 'daily', containerKey: first.date } : null;
+    renderApp();
+    announce(newIds.length + '개 항목을 인스턴스로 복제했습니다.');
+  }
+
+  function pasteInstanceItemsFromClipboard() {
+    var clip = state.instanceClipboard;
+    if (!clip || !clip.items || !clip.items.length) return;
+    if (clip.collection === 'monthlyItems' || clip.items[0].sourceCollection === 'monthlyItems') {
+      pasteMonthlyInstanceItemsFromClipboard(clip);
+    } else {
+      pasteRegularInstanceItemsFromClipboard(clip);
+    }
   }
 
   // ---------------------------------------------------------------------
@@ -11020,13 +16355,36 @@ function moveSingleScheduleToRange(
 
   function onDragHandlePointerDown(e, itemId, context, sourceDate) {
     if (e.pointerType === 'mouse' && e.button !== 0) return;
-    if (!findItemById(itemId)) return;
+    var sourceItem =
+  context === 'monthly-inbox'
+    ? findMonthlyItemById(itemId)
+    : findItemById(itemId);
+
+if (!sourceItem) return;
+    if (context === 'monthly-log') {
+      clearMonthlyLogScheduleDraftSelection();
+      monthlyLogScheduleGridIsActive = true;
+    }
+    // 방어적 정리: 이전 드래그가 어떤 이유로든(예외 등) cleanupDragDom을 거치지 못하고
+    // dragState가 남아 있는 상태로 새 드래그가 시작되면, 이전 preview/placeholder가
+    // 화면에 남은 채 새 드래그의 것과 겹쳐 보이게 된다 -- 새 드래그를 시작하기 전에
+    // 항상 먼저 정리한다. 라운드5 F: 이 재진입 경로는 teardownDragListeners를 거치지
+    // 않고 abortDrag만 불러, 이전 handle에 등록된 pointermove/up/cancel 리스너와
+    // pointer capture가 그대로 남는 실제 누적 버그였다(재현 확인: 이전 dragState가
+    // 있을 때 남은 리스너가 계속 쌓임) -- onDragPointerCancel/cancelActiveDrag가 이미
+    // 하던 것과 같은 순서(teardown 먼저, abort 나중)로 맞춘다.
+    if (dragState) { teardownDragListeners(dragState); abortDrag(dragState); }
     // 아래 preventDefault()가 네이티브 blur까지 함께 막아버릴 수 있어, 편집 중이었다면
     // 여기서 명시적으로 먼저 저장해 둔다.
     if (activeTitleEdit) commitTitleEdit();
     if (activeDateWheel) closeDateWheelPopup(false);
     if (activeTimeWheel) closeTimeWheelPopup(false);
-    e.preventDefault(); // 네이티브 드래그 고스트/텍스트 선택 방지
+    // 라운드5 H: 터치에서 pointerdown 즉시 preventDefault하면, 사용자가 실제로는
+    // 스크롤하려던 제스처까지 막아 페이지가 먹통처럼 느껴진다(아직 드래그 의도인지
+    // 모르는 시점). 마우스/펜은 기존과 동일하게 즉시 preventDefault하되(네이티브 드래그
+    // 고스트/텍스트 선택 방지), 터치만 DRAG_THRESHOLD를 넘어 실제로 드래그가
+    // 확정되는 시점(onDragPointerMove의 activateDrag 직전)까지 미룬다.
+    if (e.pointerType !== 'touch') e.preventDefault();
 
     var anchorRow = e.currentTarget.closest('[data-item-id]');
     if (!anchorRow) return;
@@ -11036,9 +16394,23 @@ function moveSingleScheduleToRange(
     // 7A.2: Shift/Ctrl이 눌려 있으면 여기서 미리 단일 선택하지 않는다 — selectSingleItem이
     // state.selectionAnchor를 이 항목으로 덮어써서 Shift 범위 계산이 깨지기 때문이다. 실제
     // 모디파이어 인식 선택은(순수 클릭으로 끝나면) 아래 gutter click 리스너가 처리한다.
+    // 손잡이 즉시 드래그: 서로 다른 item.id가 2개 이상 선택된 경우뿐 아니라, 같은 다일
+    // 일정의 occurrence가 여러 날짜 칸에서 선택된 경우(item.id는 하나뿐이라
+    // selectedItemIds.size는 1)도 "다중 선택"으로 인정해야 한다 — 다중선택 완료 처리
+    // (toggleItemCompleted)와 동일한 판정 기준. 그렇지 않으면 여러 occurrence를 선택해 둔
+    // 채로 그중 하나의 손잡이를 눌렀을 때 selectSingleItem이 그 occurrence 선택을
+    // 지워버린다.
     var hasModifier = e.shiftKey || e.ctrlKey || e.metaKey;
     var ids = getSelectedItemsForAction(itemId);
-    if (!hasModifier && !(state.selectedItemIds.has(itemId) && state.selectedItemIds.size >= 2)) {
+    var occSetForHandle = state.selectedOccurrenceById.get(itemId);
+    var handleOccurrenceAlreadySelected = !!occSetForHandle && occSetForHandle.has(sourceDate);
+    var isPartOfExistingMultiSelection =
+      state.selectedItemIds.has(itemId) &&
+      (
+        state.selectedItemIds.size >= 2 ||
+        (!!occSetForHandle && occSetForHandle.size >= 2 && handleOccurrenceAlreadySelected)
+      );
+    if (!hasModifier && !isPartOfExistingMultiSelection) {
       selectSingleItem(itemId, context, sourceDate);
     }
 
@@ -11054,9 +16426,13 @@ function moveSingleScheduleToRange(
       lastClientY: e.clientY,
       rafScheduled: false,
       draggedItemIds: ids,
-      sourceContext: context,
-      sourceDate: sourceDate,
-      overContext: null,
+sourceContext: context,
+sourceCollection:
+  context === 'monthly-inbox'
+    ? 'monthlyItems'
+    : 'items',
+sourceDate: sourceDate,
+overContext: null,
       overDate: null,
       overItemId: null,
       dropPosition: null,
@@ -11082,14 +16458,41 @@ function moveSingleScheduleToRange(
     var rect = dragState.anchorRect;
     var preview = document.createElement('div');
     preview.className = 'drag-preview';
-    preview.style.width = rect.width + 'px';
-    preview.style.height = rect.height + 'px';
-
-    var clone = dragState.anchorRow.cloneNode(true);
-    clone.classList.remove('is-selected');
-    clone.removeAttribute('aria-selected');
-    preview.appendChild(clone);
-
+    var clone;
+    if (dragState.sourceContext === 'monthly-log' && dragState.anchorRow.classList.contains('monthly-log-schedule-segment')) {
+      var segments = Array.prototype.slice.call(document.querySelectorAll(
+        '#monthly-log-rows .monthly-log-schedule-segment[data-item-id="' + dragState.anchorRow.dataset.itemId + '"]'
+      )).sort(function (a, b) { return String(a.dataset.occurrenceDate).localeCompare(String(b.dataset.occurrenceDate)); });
+      var firstRect = segments.length ? segments[0].getBoundingClientRect() : rect;
+      var lastRect = segments.length ? segments[segments.length - 1].getBoundingClientRect() : rect;
+      preview.classList.add('drag-preview-monthly-schedule');
+      preview.style.width = firstRect.width + 'px';
+      preview.style.height = Math.max(firstRect.height, lastRect.bottom - firstRect.top) + 'px';
+      clone = dragState.anchorRow.cloneNode(true);
+      clone.classList.remove('is-selected', 'is-schedule-first', 'is-schedule-last', 'is-schedule-single', 'is-schedule-middle');
+      clone.classList.add('is-whole-schedule-preview');
+      clone.style.height = '100%';
+      clone.style.width = '100%';
+      clone.querySelectorAll('.monthly-log-drag').forEach(function (el) { el.remove(); });
+      var label = clone.querySelector('.monthly-log-schedule-label');
+      if (!label) {
+        label = document.createElement('span');
+        label.className = 'monthly-log-schedule-label';
+        label.textContent = dragState.anchorRow.dataset.scheduleTitle || '';
+        clone.appendChild(label);
+      }
+      label.style.top = '50%';
+      label.style.height = 'calc(100% - 8px)';
+      label.style.maxHeight = 'calc(100% - 8px)';
+      preview.appendChild(clone);
+    } else {
+      preview.style.width = rect.width + 'px';
+      preview.style.height = rect.height + 'px';
+      clone = dragState.anchorRow.cloneNode(true);
+      clone.classList.remove('is-selected');
+      clone.removeAttribute('aria-selected');
+      preview.appendChild(clone);
+    }
     if (dragState.draggedItemIds.length >= 2) {
       preview.classList.add('drag-preview-stack');
       var badge = document.createElement('span');
@@ -11097,7 +16500,6 @@ function moveSingleScheduleToRange(
       badge.textContent = String(dragState.draggedItemIds.length);
       preview.appendChild(badge);
     }
-
     document.body.appendChild(preview);
     dragState.previewEl = preview;
     positionDragPreview(dragState.startX, dragState.startY);
@@ -11107,9 +16509,62 @@ function moveSingleScheduleToRange(
   // top/left를 직접 바꿔 매 프레임 레이아웃을 유발하지 않는다.
   function positionDragPreview(x, y) {
     if (!dragState || !dragState.previewEl) return;
+
     var left = x - dragState.grabOffsetX;
     var top = y - dragState.grabOffsetY;
-    dragState.previewEl.style.transform = 'translate3d(' + left + 'px,' + top + 'px,0)';
+    var isMonthlySchedule =
+      dragState.sourceContext === 'monthly-log' &&
+      dragState.anchorRow &&
+      dragState.anchorRow.classList.contains('monthly-log-schedule-segment');
+
+    if (isMonthlySchedule) {
+      // Monthly Log 일정은 포인터를 자유롭게 따라다니지 않는다.
+      // 현재 포인터가 속한 날짜 행과 격자 열에만 즉시 고정해,
+      // 세로 구분선처럼 셀과 셀 사이를 계단식으로 이동시킨다.
+      dragState.previewEl.style.transition = 'none';
+      dragState.previewEl.style.pointerEvents = 'none';
+
+      var row = resolveMonthlyLogScheduleRowAtPoint(x, y);
+      if (row) {
+        dragState.monthlyScheduleSnappedRowEl = row;
+      } else {
+        row = dragState.monthlyScheduleSnappedRowEl || null;
+      }
+
+      if (!row && dragState.anchorRow && dragState.anchorRow.closest) {
+        row = dragState.anchorRow.closest('.monthly-log-row[data-date]');
+      }
+
+      var host = row && row.querySelector('.monthly-log-schedule-grid-host');
+      var grid = host && host.querySelector('.monthly-log-schedule-grid');
+      var column = host
+        ? resolveMonthlyLogScheduleSnappedColumnAtPoint(host, x, dragState.monthlyScheduleSnappedColumn)
+        : dragState.monthlyScheduleSnappedColumn;
+
+      if (column !== null && column !== undefined) {
+        column = clampMonthlyLogScheduleColumn(column);
+        dragState.monthlyScheduleSnappedColumn = column;
+      }
+
+      if (row && grid && column !== null && column !== undefined) {
+        var gridRect = grid.getBoundingClientRect();
+        var rowRect = row.getBoundingClientRect();
+        var cellWidth = gridRect.width / MONTHLY_LOG_SCHEDULE_GRID_COLUMNS;
+
+        left = gridRect.left + column * cellWidth;
+        top = rowRect.top;
+        dragState.previewEl.style.width = cellWidth + 'px';
+        dragState.previewEl.style.transform =
+          'translate3d(' + Math.round(left) + 'px,' + Math.round(top) + 'px,0)';
+      }
+
+      // 유효한 새 셀을 잠시 찾지 못해도 일반 자유 드래그 좌표로 내려가지 않는다.
+      // 마지막으로 확정된 셀 위치에 그대로 머문다.
+      return;
+    }
+
+    dragState.previewEl.style.transform =
+      'translate3d(' + left + 'px,' + top + 'px,0)';
   }
 
   // --- 원본 카드 숨김/복원 ---------------------------------------------------
@@ -11120,7 +16575,14 @@ function moveSingleScheduleToRange(
     // 있고, drag-preview 안의 복제본도 같은 data-item-id를 그대로 들고 있으므로,
     // 실제 목록(#daily-list, #rollover-list, .week-card ul) 안의 행 컨테이너만 정확히 골라 숨긴다.
     var rows = document.querySelectorAll(
-      '#daily-list > .task[data-item-id], #rollover-list > .task[data-item-id], .week-card ul[data-date] > li[data-item-id]');
+  '#daily-list > .task[data-item-id], ' +
+  '#rollover-list > .task[data-item-id], ' +
+  '.week-card ul[data-date] > li[data-item-id], ' +
+  '.monthly-log-row-items > .monthly-log-item[data-item-id], ' +
+  '.monthly-log-schedule-grid > .monthly-log-item[data-item-id], ' +
+  '#monthly-inbox-list > [data-item-id], ' +
+  '#today-monthly-list > [data-item-id]'
+);
     rows.forEach(function (row) {
       if (idSet[row.dataset.itemId]) {
         row.classList.add('drag-source-hidden');
@@ -11139,27 +16601,72 @@ function moveSingleScheduleToRange(
 
   // --- placeholder(카드 크기의 실제 빈 공간) --------------------------------
   function createPlaceholder() {
-    var placeholder;
-    if (dragState.sourceContext === 'daily') {
-      placeholder = document.createElement('div');
-      placeholder.className = 'drag-placeholder drag-placeholder-daily';
-    } else {
-      placeholder = document.createElement('li');
-      placeholder.className = 'drag-placeholder drag-placeholder-weekly';
-    }
-    placeholder.style.height = dragState.anchorRect.height + 'px';
-    dragState.anchorRow.parentNode.insertBefore(placeholder, dragState.anchorRow);
-    dragState.placeholderEl = placeholder;
-    dragState.overContext = dragState.sourceContext;
-    dragState.overDate = dragState.sourceDate;
-    dragState.overItemId = null;
-    dragState.dropPosition = 'end';
-    dragState.pointerCurrentlyValid = true;
+  var placeholder;
+
+  if (dragState.sourceContext === 'daily') {
+    placeholder = document.createElement('div');
+    placeholder.className =
+      'drag-placeholder drag-placeholder-daily';
+
+  } else if (dragState.sourceContext === 'monthly-log') {
+    placeholder = document.createElement('div');
+    placeholder.className =
+      'drag-placeholder drag-placeholder-monthly-log';
+
+    // Monthly Log의 여러 줄 칩 사이에서
+    // 원래 항목 폭만큼만 자리를 차지한다.
+    placeholder.style.width =
+      dragState.anchorRect.width + 'px';
+
+  } else if (dragState.sourceContext === 'monthly-inbox') {
+    placeholder = document.createElement('div');
+    placeholder.className =
+      'drag-placeholder drag-placeholder-monthly-inbox';
+
+    // 이번 달 할 일은 한 줄 전체 폭을 사용하는 목록이다.
+    placeholder.style.width = '100%';
+
+  } else {
+    placeholder = document.createElement('li');
+    placeholder.className =
+      'drag-placeholder drag-placeholder-weekly';
   }
 
+  placeholder.style.height =
+    dragState.anchorRect.height + 'px';
+
+  var initialParent = dragState.anchorRow.parentNode;
+  var initialBefore = dragState.anchorRow;
+  if (
+    dragState.sourceContext === 'monthly-log' &&
+    dragState.anchorRow.classList.contains('monthly-log-schedule-segment')
+  ) {
+    var sourceRow = dragState.anchorRow.closest('.monthly-log-row[data-date]');
+    var sourceLane = sourceRow && sourceRow.querySelector(
+      '.monthly-log-row-items[data-lane-index="' +
+      String(getMonthlyLogLaneAt(findItemById(dragState.anchorRow.dataset.itemId), dragState.sourceDate)) +
+      '"]'
+    );
+    if (sourceLane) {
+      initialParent = sourceLane;
+      initialBefore = sourceLane.firstElementChild;
+    }
+  }
+  if (initialBefore) initialParent.insertBefore(placeholder, initialBefore);
+  else initialParent.appendChild(placeholder);
+
+  dragState.placeholderEl = placeholder;
+  dragState.overContext = dragState.sourceContext;
+  dragState.overDate = dragState.sourceDate;
+  dragState.overItemId = null;
+  dragState.dropPosition = 'end';
+  dragState.pointerCurrentlyValid = true;
+}
+
   function clearColumnHighlight() {
-    document.querySelectorAll('.drop-target-column,.drop-target-list').forEach(function (el) {
-      el.classList.remove('drop-target-column', 'drop-target-list');
+    document.querySelectorAll('.drop-target-column,.drop-target-list,.drop-target-schedule-grid').forEach(function (el) {
+      el.classList.remove('drop-target-column', 'drop-target-list', 'drop-target-schedule-grid');
+      el.style.removeProperty('--schedule-drop-column');
     });
   }
 
@@ -11182,38 +16689,21 @@ function moveSingleScheduleToRange(
     calendarDropHighlightDate = null;
   }
 
-  // FLIP: placeholder를 새 위치로 옮기기 전/후의 형제 행 위치를 재서, 순간이동 대신
-  // 짧은 transform 트랜지션으로 자연스럽게 비켜나는 것처럼 보이게 한다.
-  function movePlaceholderWithFlip(targetList, insertBeforeEl) {
+  // 드래그 안정화(역방향 점프 버그 수정): placeholder를 옮길 때마다 형제 행에 FLIP
+  // transform-transition을 걸었더니, 그 transition이 아직 끝나지 않은 상태에서 다음
+  // rAF tick의 updateDropTarget이 getBoundingClientRect()로 그 행의 위치를 다시 재면
+  // "전환 중인(최종 위치가 아닌) 좌표"를 읽어버려 목적지 판정이 흔들리고, 항목이 최종
+  // 위치로 가기 전에 엉뚱한 자리로 먼저 튀는 것처럼 보이는 실제 원인이었다. 드래그
+  // "중"에는 placeholder를 애니메이션 없이 즉시 옮기기만 하고(요구사항 3/9: 드래그 중엔
+  // preview/placeholder/자동스크롤만 보여준다), 실제 순서가 커밋된 뒤(commitDrop의
+  // renderApp 직후) 딱 한 번만 FLIP을 재생한다(아래 captureFlipRects/playFlipFromRects).
+  function movePlaceholderInstant(targetList, insertBeforeEl) {
     var placeholder = dragState.placeholderEl;
-    var oldParent = placeholder.parentNode;
-    var affected = [];
-    if (oldParent) affected = affected.concat(Array.prototype.slice.call(
-      oldParent.querySelectorAll(':scope > [data-item-id]:not(.drag-source-hidden)')));
-    if (targetList !== oldParent) affected = affected.concat(Array.prototype.slice.call(
-      targetList.querySelectorAll(':scope > [data-item-id]:not(.drag-source-hidden)')));
-
-    var firstRects = new Map();
-    affected.forEach(function (el) { firstRects.set(el, el.getBoundingClientRect()); });
-
     if (insertBeforeEl) {
       targetList.insertBefore(placeholder, insertBeforeEl);
     } else {
       targetList.appendChild(placeholder);
     }
-
-    affected.forEach(function (el) {
-      var first = firstRects.get(el);
-      var last = el.getBoundingClientRect();
-      var dy = first.top - last.top;
-      if (Math.abs(dy) < 0.5) return;
-      el.style.transition = 'none';
-      el.style.transform = 'translateY(' + dy + 'px)';
-      el.getBoundingClientRect(); // 강제 리플로우 — 위 transform을 실제로 적용시킨다.
-      el.style.transition = 'transform ' + FLIP_DURATION + 'ms ease';
-      el.style.transform = '';
-      clearInlineTransformAfter(el, FLIP_DURATION + 40);
-    });
   }
 
   function clearInlineTransformAfter(el, delay) {
@@ -11223,23 +16713,111 @@ function moveSingleScheduleToRange(
     }, delay);
   }
 
+  // 커밋 직후 1회성 FLIP -- 드래그로 순서가 바뀔 수 있는 컨테이너(출발지/도착지)를
+  // commitDrop 시작 시점에 스냅샷하고, renderApp()으로 다시 그려진 뒤 같은 컨테이너
+  // 안에서 같은 itemId를 찾아 위치가 바뀐 행만 짧게 슬라이드시킨다. 컨테이너가
+  // replaceChildren로 통째로 새 DOM이 되므로 DOM 노드가 아니라 "컨테이너 셀렉터 +
+  // itemId" 조합으로 이전/이후를 매칭한다.
+  function getFlipAffectedContainerSelectors(ds) {
+    var sels = [];
+    function pushFor(context, date) {
+      if (context === 'daily') { sels.push('#daily-list'); sels.push('#rollover-list'); }
+      else if (context === 'weekly' && date) sels.push('.week-card ul[data-date="' + date + '"]');
+      else if (context === 'monthly-log' && date) sels.push('.monthly-log-row[data-date="' + date + '"] .monthly-log-row-items');
+    }
+    pushFor(ds.sourceContext, ds.sourceDate);
+    if (ds.overContext && ds.overContext !== 'calendar') pushFor(ds.overContext, ds.overDate);
+    var seen = {};
+    return sels.filter(function (s) { if (seen[s]) return false; seen[s] = true; return true; });
+  }
+
+  function captureFlipRects(selectors) {
+    var map = {};
+    selectors.forEach(function (sel) {
+      var container = document.querySelector(sel);
+      if (!container) return;
+      container.querySelectorAll(':scope > [data-item-id]').forEach(function (el) {
+        map[sel + '|' + el.dataset.itemId] = el.getBoundingClientRect();
+      });
+    });
+    return map;
+  }
+
+  function playFlipFromRects(selectors, beforeMap) {
+    selectors.forEach(function (sel) {
+      var container = document.querySelector(sel);
+      if (!container) return;
+      container.querySelectorAll(':scope > [data-item-id]').forEach(function (el) {
+        var before = beforeMap[sel + '|' + el.dataset.itemId];
+        if (!before) return; // 다른 날짜에서 새로 들어온 행 등 이전 좌표가 없으면 애니메이션하지 않는다.
+        var after = el.getBoundingClientRect();
+        var dy = before.top - after.top;
+        if (Math.abs(dy) < 0.5) return;
+        el.style.transition = 'none';
+        el.style.transform = 'translateY(' + dy + 'px)';
+        el.getBoundingClientRect(); // 강제 리플로우.
+        el.style.transition = 'transform ' + FLIP_DURATION + 'ms ease';
+        el.style.transform = '';
+        clearInlineTransformAfter(el, FLIP_DURATION + 40);
+      });
+    });
+  }
+
   // placeholder는 Daily(div)와 Weekly(li) 사이를 옮겨다닐 수 있으므로, 태그가 목표
   // 컨테이너와 안 맞으면(예: daily에서 집어 weekly 열 위로 이동) 같은 자리에서 올바른
   // 태그의 새 요소로 교체한다 — ul 안에 div가 들어가는 잘못된 마크업을 방지한다.
   function ensurePlaceholderTagForContext(context) {
-    var needsLi = context === 'weekly';
-    var current = dragState.placeholderEl;
-    var currentIsLi = current.tagName === 'LI';
-    if (needsLi === currentIsLi) return;
+  var needsLi = context === 'weekly';
+  var current = dragState.placeholderEl;
+  if (!current) return;
 
-    var next = document.createElement(needsLi ? 'li' : 'div');
-    next.className = needsLi ? 'drag-placeholder drag-placeholder-weekly' : 'drag-placeholder drag-placeholder-daily';
-    next.style.height = dragState.anchorRect.height + 'px';
+  var currentIsLi = current.tagName === 'LI';
+  var next = current;
+
+  // Weekly만 li를 사용하므로 태그가 다를 때 새 요소로 교체한다.
+  if (needsLi !== currentIsLi) {
+    next = document.createElement(needsLi ? 'li' : 'div');
+
     if (current.parentNode) {
       current.parentNode.replaceChild(next, current);
     }
+
     dragState.placeholderEl = next;
   }
+
+  // 태그가 같더라도 목적지에 맞는 클래스로 반드시 변경한다.
+  if (context === 'weekly') {
+    next.className =
+      'drag-placeholder drag-placeholder-weekly';
+
+  } else if (context === 'monthly-log') {
+    next.className =
+      'drag-placeholder drag-placeholder-monthly-log';
+
+  } else if (context === 'monthly-inbox') {
+    next.className =
+      'drag-placeholder drag-placeholder-monthly-inbox';
+
+  } else {
+    next.className =
+      'drag-placeholder drag-placeholder-daily';
+  }
+
+  next.style.height =
+    dragState.anchorRect.height + 'px';
+
+  // 목적지별 폭 초기화
+  if (context === 'monthly-log') {
+    next.style.width =
+      dragState.anchorRect.width + 'px';
+
+  } else if (context === 'monthly-inbox') {
+    next.style.width = '100%';
+
+  } else {
+    next.style.width = '';
+  }
+}
 
   // 4: #daily-list와 #rollover-list는 같은 날짜(state.selectedDate)의 하나의 order 공간을
   // 시각적으로만 나눈 것이라, 드래그 드롭 대상으로는 둘 다 "daily" 컨텍스트로 다룬다.
@@ -11307,15 +16885,69 @@ function moveSingleScheduleToRange(
     : null;
 }
 
+  function resolveMonthlyLogDropLaneAtPoint(el, x, y) {
+    if (state.currentView !== 'calendar') return null;
+    var row = el ? el.closest('.monthly-log-row[data-date]') : null;
+    if (!row) {
+      var rows = document.querySelectorAll('#monthly-log-rows .monthly-log-row[data-date]');
+      for (var i = 0; i < rows.length; i++) {
+        var rowRect = rows[i].getBoundingClientRect();
+        if (y >= rowRect.top && y <= rowRect.bottom) { row = rows[i]; break; }
+      }
+    }
+    if (!row) return null;
+    var scheduleHost = row.querySelector(':scope > .monthly-log-schedule-grid-host');
+    if (scheduleHost) {
+      return scheduleHost.querySelector(':scope > .monthly-log-schedule-drop-lane');
+    }
+    var laneEls = Array.prototype.slice.call(row.querySelectorAll(':scope > .monthly-log-row-lanes > .monthly-log-row-items'));
+    if (!laneEls.length) return null;
+    var nearest = null;
+    var nearestDistance = Infinity;
+    laneEls.forEach(function (laneEl) {
+      var rect = laneEl.getBoundingClientRect();
+      if (x >= rect.left && x <= rect.right) {
+        nearest = laneEl;
+        nearestDistance = -1;
+        return;
+      }
+      if (nearestDistance < 0) return;
+      var distance = x < rect.left ? rect.left - x : x - rect.right;
+      if (distance < nearestDistance) {
+        nearestDistance = distance;
+        nearest = laneEl;
+      }
+    });
+    return nearest;
+  }
+
   function updateDropTarget(x, y) {
     if (!dragState || !dragState.placeholderEl) return;
     var el = document.elementFromPoint(x, y);
     var dailyDropList = findDailyDropList(el, x, y);
     var weeklyUl = el ? el.closest('.week-card ul[data-date]') : null;
-    // 9/10: 드래그 프리뷰가 pointer-events:none이라 elementFromPoint는 항상 프리뷰
+    var monthlyInboxList = el
+  ? el.closest('#monthly-inbox-list, #today-monthly-list')
+  : null;
+    // Monthly Log 기능 복구: 이 드롭 대상은 드래그 출발지가 monthly-log일 때만 의미가
+    // 있다(Monthly Log <-> Daily/Weekly 간 드래그는 이번 단계 범위 밖) -- 다만 currentView가
+    // 서로 배타적이라(Today 화면일 땐 Monthly Log DOM이 숨김, 반대도 마찬가지) elementFromPoint가
+    // 애초에 다른 화면의 요소를 찾을 수 없으므로 별도 방어 없이도 자연히 분리된다.
+var monthlyLogRowItems =
+  (!dailyDropList && !weeklyUl && !monthlyInboxList)
+    ? resolveMonthlyLogDropLaneAtPoint(el, x, y)
+    : null;    // 9/10: 드래그 프리뷰가 pointer-events:none이라 elementFromPoint는 항상 프리뷰
     // 아래의 실제 달력 칸을 반환한다 — daily/weekly 목록이 아닐 때만 달력 칸인지 본다.
-    var calendarCell = (!dailyDropList && !weeklyUl && el) ? el.closest('.date[data-date]') : null;
-
+var calendarCell =
+  (
+    !dailyDropList &&
+    !weeklyUl &&
+    !monthlyInboxList &&
+    !monthlyLogRowItems &&
+    el
+  )
+    ? el.closest('.date[data-date]')
+    : null;
     if (calendarCell) {
       // 10/13: 달력 칸은 목록이 아니라 "이 날짜로 이동" 자체가 목적이라 placeholder를
       // 목록 안으로 옮기지 않는다(원래 자리에 그대로 둔 채 칸만 강조) — 인접 월 칸도
@@ -11332,10 +16964,34 @@ function moveSingleScheduleToRange(
     clearCalendarDropHighlight();
 
     var targetContext, targetDate, targetList;
+    dragState.overLane = null;
     if (dailyDropList) {
       targetContext = 'daily'; targetDate = state.selectedDate; targetList = dailyDropList;
     } else if (weeklyUl) {
       targetContext = 'weekly'; targetDate = weeklyUl.dataset.date; targetList = weeklyUl;
+    } else if (monthlyInboxList) {
+  targetContext = 'monthly-inbox';
+  targetDate =
+    monthlyInboxList.dataset.monthKey ||
+    currentTodayMonthKey();
+  targetList = monthlyInboxList;
+    } else if (monthlyLogRowItems) {
+      var monthlyLogRowEl = monthlyLogRowItems.closest('.monthly-log-row[data-date]');
+      if (!monthlyLogRowEl) { dragState.pointerCurrentlyValid = false; clearColumnHighlight(); return; }
+      targetContext = 'monthly-log'; targetDate = monthlyLogRowEl.dataset.date; targetList = monthlyLogRowItems;
+      dragState.overLane = Number(monthlyLogRowItems.dataset.laneIndex) || 0;
+      var scheduleGridHost = monthlyLogRowEl.querySelector('.monthly-log-schedule-grid-host');
+      var scheduleColumn = scheduleGridHost ? resolveMonthlyLogScheduleSnappedColumnAtPoint(
+        scheduleGridHost,
+        x,
+        dragState.monthlyScheduleSnappedColumn
+      ) : null;
+      if (scheduleColumn !== null) dragState.monthlyScheduleSnappedColumn = scheduleColumn;
+      dragState.overScheduleColumn = scheduleColumn;
+      if (scheduleGridHost && scheduleColumn !== null) {
+        scheduleGridHost.classList.add('drop-target-schedule-grid');
+        scheduleGridHost.style.setProperty('--schedule-drop-column', String(scheduleColumn));
+      }
     } else {
       // 12: 허용되지 않은 영역 위에서는 placeholder를 마지막 유효 위치에 그대로 둔다.
       dragState.pointerCurrentlyValid = false;
@@ -11360,15 +17016,40 @@ function moveSingleScheduleToRange(
     var rows = Array.prototype.slice.call(
       targetList.querySelectorAll(':scope > [data-item-id]:not(.drag-source-hidden)'));
     var insertBeforeEl = null;
-    for (var i = 0; i < rows.length; i++) {
-      var r = rows[i].getBoundingClientRect();
-      if (y < r.top + r.height / 2) { insertBeforeEl = rows[i]; break; }
+    if (targetContext === 'monthly-log') {
+      // Monthly Log는 세로 목록이 아니라 flex-wrap으로 좌->우, 줄바꿈되는 배치다 --
+      // Daily/Weekly의 "y좌표만으로 비교" 방식은 안 맞는다(같은 줄의 여러 항목이 같은
+      // y를 갖기 때문). 커서에 가장 가까운 항목을 찾은 뒤, 같은 줄이면 x좌표로, 다른
+      // 줄로 넘어갔으면 y좌표로 "그 항목의 앞/뒤"를 판정하는 근사치 휴리스틱을 쓴다
+      // (완벽한 텍스트 줄바꿈 인지는 아니지만 실사용에 충분하다 -- 최선의 안전한 확장).
+      var best = null, bestDist = Infinity;
+      for (var m = 0; m < rows.length; m++) {
+        var mr = rows[m].getBoundingClientRect();
+        var cx = mr.left + mr.width / 2, cy = mr.top + mr.height / 2;
+        var dist = Math.hypot(x - cx, y - cy);
+        if (dist < bestDist) { bestDist = dist; best = { el: rows[m], rect: mr, cx: cx, cy: cy }; }
+      }
+      if (best) {
+        var sameLine = Math.abs(y - best.cy) < best.rect.height * 0.75;
+        var before = sameLine ? (x < best.cx) : (y < best.cy);
+        if (before) {
+          insertBeforeEl = best.el;
+        } else {
+          var next = best.el.nextElementSibling;
+          insertBeforeEl = (next && next.dataset && next.dataset.itemId) ? next : null;
+        }
+      }
+    } else {
+      for (var i = 0; i < rows.length; i++) {
+        var r = rows[i].getBoundingClientRect();
+        if (y < r.top + r.height / 2) { insertBeforeEl = rows[i]; break; }
+      }
     }
 
     var alreadyThere = dragState.placeholderEl.parentNode === targetList &&
       dragState.placeholderEl.nextElementSibling === (insertBeforeEl || null);
     if (!alreadyThere) {
-      movePlaceholderWithFlip(targetList, insertBeforeEl);
+      movePlaceholderInstant(targetList, insertBeforeEl);
     }
 
     dragState.overContext = targetContext;
@@ -11421,56 +17102,59 @@ function moveSingleScheduleToRange(
 
   function computeAutoScroll(x, y) {
     if (!dragState || !dragState.active) return null;
+    var monthlyScheduleDrag = dragState.sourceContext === 'monthly-log' &&
+      dragState.anchorRow && dragState.anchorRow.classList.contains('monthly-log-schedule-segment');
     var el = document.elementFromPoint(x, y);
-    if (!el) return null;
-
-    var weeklyUl = el.closest('.week-card ul[data-date]');
-    var dailyDropList = findDailyDropList(el);
+    var weeklyUl = el && el.closest ? el.closest('.week-card ul[data-date]') : null;
+    var dailyDropList = el ? findDailyDropList(el) : null;
+    var monthlyLogRowItemsEl = state.currentView === 'calendar' && el && el.closest
+      ? el.closest('.monthly-log-row-items, .monthly-log-schedule-grid-host')
+      : null;
     var container;
-    if (weeklyUl) {
-      // 7: 개별 ul은 더 이상 스크롤 컨테이너가 아니다 — Weekly 전체가 공유하는
-      // .weekly-body를 스크롤해 7개 열이 함께 움직이게 한다.
-      container = weeklyUl.closest('.weekly-body');
+    if (monthlyScheduleDrag) {
+      container = getMonthlyLogScheduleBody();
+    } else if (weeklyUl) {
+      container = weeklyUl.closest('.week-row-scroll');
     } else if (dailyDropList) {
       container = findScrollableAncestor(dailyDropList);
+    } else if (monthlyLogRowItemsEl) {
+      container = findScrollableAncestor(monthlyLogRowItemsEl);
     } else {
       return null;
     }
     if (!container) return null;
 
     var rect = container.getBoundingClientRect();
-    var edge = AUTOSCROLL_EDGE;
-    var distTop = y - rect.top;
-    var distBottom = rect.bottom - y;
-
+    var edge = monthlyScheduleDrag ? 68 : AUTOSCROLL_EDGE;
+    var outerAllowance = monthlyScheduleDrag ? 90 : 0;
     var direction = 0;
     var proximity = 0;
-    if (distTop >= 0 && distTop < edge) {
+    if (y >= rect.top - outerAllowance && y < rect.top + edge) {
       direction = -1;
-      proximity = (edge - distTop) / edge;
-    } else if (distBottom >= 0 && distBottom < edge) {
+      proximity = Math.min(1, (rect.top + edge - y) / edge);
+    } else if (y <= rect.bottom + outerAllowance && y > rect.bottom - edge) {
       direction = 1;
-      proximity = (edge - distBottom) / edge;
+      proximity = Math.min(1, (y - (rect.bottom - edge)) / edge);
     } else {
-      return null; // 중앙 — 자동 스크롤 대상 아님
+      return null;
     }
-
-    var speed = Math.max(2, Math.round(AUTOSCROLL_MAX_SPEED * proximity));
-    return { container: container, direction: direction, speed: speed };
+    var speed = Math.max(2, Math.round((monthlyScheduleDrag ? 22 : AUTOSCROLL_MAX_SPEED) * proximity));
+    return { container: container, direction: direction, speed: speed, monthlyScheduleDrag: monthlyScheduleDrag, rect: rect };
   }
 
   function autoScrollTick() {
     autoScrollRAF = null;
-    if (!dragState || !dragState.active) return; // 드래그 종료/취소 시 다음 프레임을 예약하지 않아 즉시 멈춘다.
-
+    if (!dragState || !dragState.active) return;
     var info = computeAutoScroll(dragState.lastClientX, dragState.lastClientY);
-    if (!info) return; // 가장자리를 벗어났으면(중앙) 스스로 멈춘다 — 다시 가장자리에 들어오면 재시작됨.
-
+    if (!info) return;
     var before = info.container.scrollTop;
     info.container.scrollTop += info.direction * info.speed;
     if (info.container.scrollTop !== before) {
-      // 스크롤된 만큼 카드 위치가 바뀌므로 placeholder/열 강조를 새 레이아웃 기준으로 다시 계산한다.
-      updateDropTarget(dragState.lastClientX, dragState.lastClientY);
+      var targetY = dragState.lastClientY;
+      if (info.monthlyScheduleDrag) {
+        targetY = Math.max(info.rect.top + 2, Math.min(info.rect.bottom - 2, targetY));
+      }
+      updateDropTarget(dragState.lastClientX, targetY);
       positionDragPreview(dragState.lastClientX, dragState.lastClientY);
     }
     autoScrollRAF = requestAnimationFrame(autoScrollTick);
@@ -11497,6 +17181,9 @@ function moveSingleScheduleToRange(
       var dx = e.clientX - dragState.startX;
       var dy = e.clientY - dragState.startY;
       if (Math.hypot(dx, dy) < DRAG_THRESHOLD) return;
+      // 라운드5 H: pointerdown에서 미뤄둔 preventDefault를 여기서(임계값 초과 =
+      // 드래그로 확정되는 시점) 터치에 한해 한 번 호출해 이후 스크롤을 막는다.
+      if (e.pointerType === 'touch') e.preventDefault();
       activateDrag();
     }
     if (!dragState.rafScheduled) {
@@ -11534,9 +17221,11 @@ function moveSingleScheduleToRange(
   // 바뀐 항목의 updatedAt)만 갱신한다(스펙: "이동"과 "순서 변경"은 서로 다른 연산).
   // dropPosition은 placeholder 로직이 항상 "이 항목 앞" 또는 "끝"만 계산하므로
   // 'before' | 'end' 두 가지만 쓴다.
-  function reorderItemsWithinDate(itemIds, date, overItemId, dropPosition) {
-    var all = state.items.filter(function (it) { return it.date === date; })
-      .sort(function (a, b) { return a.order - b.order; });
+  function reorderItemsWithinDate(itemIds, date, overItemId, dropPosition, monthlyLogLane) {
+    var hasMonthlyLane = monthlyLogLane !== null && monthlyLogLane !== undefined;
+    var all = getItemsForDate(date).filter(function (it) {
+      return !hasMonthlyLane || getMonthlyLogLaneAt(it, date) === Number(monthlyLogLane);
+    }).sort(function (a, b) { return a.order - b.order; });
     var movingSet = {};
     itemIds.forEach(function (id) { movingSet[id] = true; });
     var moving = all.filter(function (it) { return movingSet[it.id]; });
@@ -11560,11 +17249,389 @@ function moveSingleScheduleToRange(
     });
     return changed;
   }
+// 같은 월의 "이번 달 할 일" 목록 안에서 순서만 변경한다.
+// 날짜 항목(state.items)은 건드리지 않는다.
+function reorderMonthlyItemsWithinMonth(
+  itemIds,
+  monthKey,
+  overItemId,
+  dropPosition
+) {
+  var all = state.monthlyItems
+    .filter(function (item) {
+      return (
+        item.monthKey === monthKey &&
+        !item.deletedAt
+      );
+    })
+    .sort(function (a, b) {
+      return a.order - b.order;
+    });
+
+  var movingSet = {};
+
+  itemIds.forEach(function (id) {
+    movingSet[id] = true;
+  });
+
+  var moving = all.filter(function (item) {
+    return movingSet[item.id];
+  });
+
+  var staying = all.filter(function (item) {
+    return !movingSet[item.id];
+  });
+
+  if (!moving.length) return false;
+
+  var insertAt = staying.length;
+
+  if (
+    dropPosition === 'before' &&
+    overItemId
+  ) {
+    var index = staying.findIndex(function (item) {
+      return item.id === overItemId;
+    });
+
+    if (index !== -1) {
+      insertAt = index;
+    }
+  }
+
+  var result = staying
+    .slice(0, insertAt)
+    .concat(
+      moving,
+      staying.slice(insertAt)
+    );
+
+  var changed = false;
+
+  result.forEach(function (item, index) {
+    if (item.order !== index) {
+      item.order = index;
+      item.updatedAt = Date.now();
+      changed = true;
+    }
+  });
+
+  return changed;
+}
+// Daily·Weekly의 일반 항목을 "이번 달 할 일"로 실제 이동한다.
+// 복사본을 만들지 않고 state.items에서 제거한 뒤
+// 같은 id를 유지한 monthlyItem으로 state.monthlyItems에 넣는다.
+//
+// 이 함수 안에서는 history/save/render를 실행하지 않는다.
+// commitDrop()의 한 트랜잭션 안에서 호출해야 한다.
+function moveRegularItemsToMonthlyInbox(itemIds, monthKey) {
+  if (!monthKey) return [];
+
+  var uniqueIds = Array.from(new Set(itemIds));
+
+  var sourceItems = uniqueIds
+    .map(function (id) {
+      return findItemById(id);
+    })
+    .filter(function (item) {
+  return (
+    item &&
+    !item.deletedAt
+  );
+})
+    .sort(function (a, b) {
+      if (a.date !== b.date) {
+        return a.date < b.date ? -1 : 1;
+      }
+
+      return a.order - b.order;
+    });
+
+  if (!sourceItems.length) return [];
+
+  var baseOrder = nextMonthlyOrder(monthKey);
+  var movingIds = {};
+  var movedMonthlyItems = [];
+
+  sourceItems.forEach(function (item, index) {
+    movingIds[item.id] = true;
+
+    var monthlyItem = makeMonthlyItem({
+      // 이동이므로 새 id를 만들지 않고 기존 id 유지
+      id: item.id,
+
+      type: item.type,
+      text: item.text,
+      monthKey: monthKey,
+
+      // 일반 항목의 전체 완료 상태를 월간 항목에 유지
+      completed: !!item.completed,
+
+      order: baseOrder + index,
+
+      createdAt: item.createdAt || Date.now(),
+      updatedAt: Date.now(),
+      deletedAt: null,
+
+// 월간 할 일로 이동해도 일반 인스턴스 연결 유지
+instanceGroupId: item.instanceGroupId || null,
+
+description: item.description || '',
+
+      descriptionBlocks:
+        Array.isArray(item.descriptionBlocks)
+          ? JSON.parse(
+              JSON.stringify(item.descriptionBlocks)
+            )
+          : undefined,
+
+      subtasks:
+        Array.isArray(item.subtasks)
+          ? JSON.parse(
+              JSON.stringify(item.subtasks)
+            )
+          : [],
+
+      detailBlocksMigrationVersion:
+        item.detailBlocksMigrationVersion
+    });
+
+    state.monthlyItems.push(monthlyItem);
+    movedMonthlyItems.push(monthlyItem);
+  });
+
+  // 휴지통으로 보내는 것이 아니라 컬렉션 사이의 실제 이동
+  state.items = state.items.filter(function (item) {
+    return !movingIds[item.id];
+  });
+
+  return movedMonthlyItems;
+}
+// "이번 달 할 일"을 Daily·Weekly의 일반 날짜 항목으로 실제 이동한다.
+// state.monthlyItems에서 제거하고 같은 id를 유지한 채 state.items로 옮긴다.
+//
+// 이 함수 안에서는 history/save/render를 실행하지 않는다.
+// commitDrop()의 한 트랜잭션 안에서 호출해야 한다.
+function moveMonthlyItemsToRegularItems(
+  monthlyItemIds,
+  targetDate
+) {
+  if (!targetDate) return [];
+
+  var uniqueIds = Array.from(
+    new Set(monthlyItemIds)
+  );
+
+  var masters = uniqueIds
+    .map(function (id) {
+      return findMonthlyItemById(id);
+    })
+    .filter(function (master) {
+      return master && !master.deletedAt;
+    })
+    .sort(function (a, b) {
+      return a.order - b.order;
+    });
+
+  if (!masters.length) return [];
+
+  var movedMasterIds = {};
+
+  masters.forEach(function (master) {
+    movedMasterIds[master.id] = true;
+  });
+
+  /*
+   * 과거 복사 방식으로 생성된 연결 항목이 남아 있다면
+   * 월간 원본이 제거된 뒤 끊어진 링크가 되지 않도록
+   * 독립된 일반 항목으로 정착시킨다.
+   */
+  state.items.forEach(function (item) {
+    if (
+      item.sourceMonthlyItemId &&
+      movedMasterIds[item.sourceMonthlyItemId]
+    ) {
+      item.sourceMonthlyItemId = null;
+      item.updatedAt = Date.now();
+    }
+  });
+
+  var baseOrder = nextOrder(targetDate);
+  var movedItems = [];
+
+  masters.forEach(function (master, index) {
+    var movedItem = makeItem({
+      // 이동이므로 기존 월간 항목 id 유지
+      id: master.id,
+
+      type: master.type,
+      text: master.text,
+
+      date: targetDate,
+      endDate: targetDate,
+
+      allDay: true,
+      startTime: null,
+      endTime: null,
+
+      completed: !!master.completed,
+      order: baseOrder + index,
+
+      createdAt:
+        master.createdAt || Date.now(),
+      updatedAt: Date.now(),
+      deletedAt: null,
+
+      originalDate: targetDate,
+      migratedFrom: null,
+      rolloverPending: false,
+
+      sourceMonthlyItemId: null,
+
+// 월간 할 일에 보관했던 인스턴스 연결 복원
+instanceGroupId: master.instanceGroupId || null,
+
+groupId: null,
+
+// 프로젝트는 날짜/월 경계와 무관한 전역 소속이라 이동 후에도 유지한다(groupId와 달리
+// 초기화하지 않음).
+projectId: master.projectId || null,
+
+      description:
+        master.description || '',
+
+      descriptionBlocks:
+        Array.isArray(master.descriptionBlocks)
+          ? JSON.parse(
+              JSON.stringify(
+                master.descriptionBlocks
+              )
+            )
+          : undefined,
+
+      subtasks:
+        Array.isArray(master.subtasks)
+          ? JSON.parse(
+              JSON.stringify(master.subtasks)
+            )
+          : [],
+
+      detailBlocksMigrationVersion:
+        master.detailBlocksMigrationVersion
+    });
+
+    state.items.push(movedItem);
+    movedItems.push(movedItem);
+  });
+
+  // 복사나 휴지통 이동이 아니라 컬렉션 사이의 실제 이동
+  state.monthlyItems =
+    state.monthlyItems.filter(function (master) {
+      return !movedMasterIds[master.id];
+    });
+
+  return movedItems;
+}
+  function resolveMonthlyLogDropBeforeItemId(ds) {
+    if (!ds || ds.overContext !== 'monthly-log' || !ds.placeholderEl || !ds.placeholderEl.parentElement) return ds ? ds.overItemId : null;
+    var node = ds.placeholderEl.nextElementSibling;
+    while (node) {
+      if (node.dataset && node.dataset.itemId) return node.dataset.itemId;
+      node = node.nextElementSibling;
+    }
+    return null;
+  }
+
+  // 최종 pointerup 좌표로 Monthly Log의 칸과 앞/뒤 위치를 다시 계산한다. 드래그 중
+  // placeholder가 마지막 프레임보다 한 박자 늦게 남아 있어 반대 순서로 커밋되는 문제를
+  // 막기 위해, 실제 저장 직전에는 DOM placeholder가 아니라 포인터 의도를 기준으로 한다.
+  function resolveMonthlyLogDropIntentAtPoint(ds) {
+    if (!ds || ds.overContext !== 'monthly-log') return null;
+    var x = Number(ds.lastClientX);
+    var y = Number(ds.lastClientY);
+    if (!isFinite(x) || !isFinite(y)) return null;
+    var el = document.elementFromPoint(x, y);
+    var laneEl = resolveMonthlyLogDropLaneAtPoint(el, x, y);
+    if (!laneEl) return null;
+    var movingSet = {};
+    (ds.draggedItemIds || []).forEach(function (id) { movingSet[id] = true; });
+    var rows = Array.prototype.slice.call(laneEl.querySelectorAll(':scope > [data-item-id]:not(.drag-source-hidden)'))
+      .filter(function (row) { return !movingSet[row.dataset.itemId]; });
+    var intent = {
+      lane: Number(laneEl.dataset.laneIndex) || 0,
+      scheduleColumn: ds.monthlyScheduleSnappedColumn !== null && ds.monthlyScheduleSnappedColumn !== undefined
+        ? clampMonthlyLogScheduleColumn(ds.monthlyScheduleSnappedColumn)
+        : resolveMonthlyLogScheduleColumnAtPoint(laneEl.closest('.monthly-log-schedule-grid-host') || laneEl, x),
+      overItemId: null,
+      dropPosition: 'end'
+    };
+    if (!rows.length) return intent;
+    var best = null;
+    var bestDist = Infinity;
+    rows.forEach(function (row) {
+      var rect = row.getBoundingClientRect();
+      var cx = rect.left + rect.width / 2;
+      var cy = rect.top + rect.height / 2;
+      var dist = Math.hypot(x - cx, y - cy);
+      if (dist < bestDist) { bestDist = dist; best = { row: row, rect: rect, cx: cx, cy: cy }; }
+    });
+    if (!best) return intent;
+    var sameLine = Math.abs(y - best.cy) < Math.max(12, best.rect.height * 0.75);
+    var before = sameLine ? x < best.cx : y < best.cy;
+    if (before) {
+      intent.overItemId = best.row.dataset.itemId;
+      intent.dropPosition = 'before';
+      return intent;
+    }
+    var bestIndex = rows.indexOf(best.row);
+    var nextRow = bestIndex >= 0 ? rows[bestIndex + 1] : null;
+    if (nextRow) {
+      intent.overItemId = nextRow.dataset.itemId;
+      intent.dropPosition = 'before';
+    }
+    return intent;
+  }
 
   function commitDrop(ds) {
+    // Monthly Log의 칸 이동은 선택한 항목에만 적용한다. 드롭 대상 날짜의 다른 항목은
+    // 커밋 전 칸을 스냅샷해 두고 마지막에 복원해, 반대쪽 카드가 대신 넘어가는 회귀를 막는다.
+    var monthlyLogLaneSnapshot = null;
+    if (ds && ds.overContext === 'monthly-log' && ds.overDate) {
+      var movingLaneIds = {};
+      (ds.draggedItemIds || []).forEach(function (id) { movingLaneIds[id] = true; });
+      monthlyLogLaneSnapshot = {};
+      getItemsForDate(ds.overDate).forEach(function (item) {
+        if (!movingLaneIds[item.id]) monthlyLogLaneSnapshot[item.id] = getMonthlyLogLaneAt(item, ds.overDate);
+      });
+    }
+    // Monthly Log는 최종 포인터 위치를 우선하고, 좌표 판정이 불가능한 예외에만
+    // placeholder의 실제 다음 항목을 fallback으로 사용한다.
+    if (ds && ds.overContext === 'monthly-log') {
+      var finalMonthlyIntent = resolveMonthlyLogDropIntentAtPoint(ds);
+      if (finalMonthlyIntent) {
+        ds.overLane = finalMonthlyIntent.lane;
+        ds.overScheduleColumn = finalMonthlyIntent.scheduleColumn;
+        ds.overItemId = finalMonthlyIntent.overItemId;
+        ds.dropPosition = finalMonthlyIntent.dropPosition;
+      } else {
+        ds.overItemId = resolveMonthlyLogDropBeforeItemId(ds);
+        ds.dropPosition = ds.overItemId ? 'before' : 'end';
+      }
+    }
+
   var ids = ds.draggedItemIds.filter(function (id) {
-    return !!findItemById(id);
-  });
+  if (ds.sourceCollection === 'monthlyItems') {
+    return !!findMonthlyItemById(id);
+  }
+
+  return !!findItemById(id);
+});
+
+  // 드래그 안정화: 실제 순서/날짜가 바뀌기 전, 영향받을 수 있는 컨테이너(출발지 +
+  // 도착지)의 "커밋 전" 좌표를 스냅샷해 둔다 -- renderApp() 이후 같은 자리에서 다시 재서
+  // 위치가 달라진 행에만 한 번 FLIP을 재생한다(요구사항: FLIP은 최종 커밋 이후에만).
+  var flipSelectors = getFlipAffectedContainerSelectors(ds);
+  var flipBefore = captureFlipRects(flipSelectors);
 
   var mutated = false;
   var sameDate = ds.sourceDate === ds.overDate;
@@ -11575,31 +17642,210 @@ function moveSingleScheduleToRange(
       ? ds.placeholderEl.parentElement.id
       : null;
 
-  if (ids.length) {
+  // 진단(재현 확인): 아래 데이터 반영 로직 중 어디서든(위 touched 버그처럼 앞으로 또 다른
+  // 예외가 생기더라도) cleanupDragDom/dragState 초기화/renderApp은 반드시 실행돼야 한다 --
+  // 그렇지 않으면 drag-preview·drag-placeholder·숨겨진 원본 행이 화면에 그대로 남고,
+  // dragState도 이전 드래그를 계속 가리켜 다음 드래그와 뒤섞인다(반복 드래그 시 카드가
+  // 겹쳐 보이는 신고 증상의 직접 원인). try/finally로 이 정리가 예외 발생 여부와
+  // 무관하게 항상 한 번 실행되도록 보장한다.
+  try {
+  // Daily·Weekly의 일반 항목을 이번 달 할 일로 이동
+    // 이번 달 할 일 → Daily / Weekly / Monthly Log 날짜로 이동
+  if (
+    ids.length &&
+    ds.sourceCollection === 'monthlyItems' &&
+    ds.overContext !== 'monthly-inbox'
+  ) {
+    var movedRegularItems = [];
+
+    withHistoryTransaction(function () {
+      movedRegularItems =
+        moveMonthlyItemsToRegularItems(
+          ids,
+          ds.overDate
+        );
+
+      if (!movedRegularItems.length) return;
+
+      if (ds.overContext === 'monthly-log') {
+        movedRegularItems.forEach(function (item) {
+          setMonthlyLogLaneAt(item, ds.overDate, Number(ds.overLane) || 0);
+          if (item.type === 'schedule' && ds.overScheduleColumn !== null && ds.overScheduleColumn !== undefined) {
+            setMonthlyLogScheduleColumn(item, ds.overScheduleColumn);
+          }
+        });
+      }
+      // placeholder가 보인 정확한 위치에 배치
+      reorderItemsWithinDate(
+        movedRegularItems.map(function (item) { return item.id; }),
+        ds.overDate,
+        ds.overItemId,
+        ds.dropPosition,
+        ds.overContext === 'monthly-log' ? (Number(ds.overLane) || 0) : null
+      );
+
+      mutated = true;
+    });
+
+    if (mutated) {
+      saveItems();
+      saveMonthlyItems();
+      saveGroups();
+
+      var movedRegularIds =
+        movedRegularItems.map(function (item) {
+          return item.id;
+        });
+
+      state.selectedItemIds =
+        new Set(movedRegularIds);
+
+      state.selectedOccurrenceById.clear();
+
+      movedRegularIds.forEach(function (id) {
+        addSelectedOccurrence(id, ds.overDate);
+      });
+
+      state.selectionAnchor = {
+        itemId: movedRegularIds[0],
+        context: ds.overContext,
+        containerKey: ds.overDate
+      };
+
+      state.lastActiveListDate = ds.overDate;
+    }
+
+  // 이번 달 할 일 목록 안에서 순서 변경
+  } else if (
+    ids.length &&
+    ds.sourceCollection === 'monthlyItems' &&
+    ds.overContext === 'monthly-inbox'
+  ) {
+    withHistoryTransaction(function () {
+      mutated =
+        reorderMonthlyItemsWithinMonth(
+          ids,
+          ds.overDate,
+          ds.overItemId,
+          ds.dropPosition
+        );
+    });
+
+    if (mutated) {
+      saveMonthlyItems();
+
+      state.selectedItemIds =
+        new Set(ids);
+
+      state.selectionAnchor = {
+        itemId: ids[0],
+        context: 'monthly-inbox',
+        containerKey: ds.overDate
+      };
+    }
+
+  // Daily·Weekly의 일반 항목 → 이번 달 할 일
+  } else if (
+    ids.length &&
+    ds.overContext === 'monthly-inbox'
+  ) {
+    var movedMonthlyItems = [];
+
+    withHistoryTransaction(function () {
+      movedMonthlyItems =
+        moveRegularItemsToMonthlyInbox(
+          ids,
+          ds.overDate
+        );
+
+      if (!movedMonthlyItems.length) return;
+
+      // placeholder가 표시된 정확한 위치에 삽입
+      reorderMonthlyItemsWithinMonth(
+        movedMonthlyItems.map(function (item) {
+          return item.id;
+        }),
+        ds.overDate,
+        ds.overItemId,
+        ds.dropPosition
+      );
+
+      mutated = true;
+    });
+
+    if (mutated) {
+      saveItems();
+      saveMonthlyItems();
+      saveGroups();
+
+      var movedIds = movedMonthlyItems.map(function (item) {
+        return item.id;
+      });
+
+      state.selectedItemIds = new Set(movedIds);
+      state.selectedOccurrenceById.clear();
+
+      movedIds.forEach(function (id) {
+        addSelectedOccurrence(id, ds.overDate);
+      });
+
+      state.selectionAnchor = {
+        itemId: movedIds[0],
+        context: 'monthly-inbox',
+        containerKey: ds.overDate
+      };
+    }
+
+  } else if (ids.length) {
     if (!sameDate) {
       var touched = [];
 
       withHistoryTransaction(function () {
+        // 최종 감사(2026-07-27) 8: 그룹 헤더를 드래그해 다른 날짜로 옮기는 경우, 이번에
+        // 함께 옮겨진 ids가 어떤 그룹의 "구성원 전부"와 정확히 일치하면 그룹 전체 이동으로
+        // 인정한다(구성원 하나만 다른 날짜로 빠져나가는 일반 이동과 구분하기 위해 "부분
+        // 일치"는 인정하지 않는다 -- 그 경우는 기존 정책대로 groupId가 해제된다).
+        // moveSingleItemToDate는 날짜가 바뀌면 무조건 groupId를 지우므로, 전체 이동으로
+        // 인정된 그룹의 구성원은 이동 직후 groupId를 되돌리고 group.date도 함께 갱신한다.
+        var wholeGroupIdsToPreserve = {};
+        var groupsTouchedByIds = {};
+        ids.forEach(function (id) {
+          var it = findItemById(id);
+          var gid = it ? getItemGroupIdAt(it, ds.sourceContext, ds.sourceDate) : null;
+          if (gid) groupsTouchedByIds[gid] = true;
+        });
+        Object.keys(groupsTouchedByIds).forEach(function (gid) {
+          var currentMembers = getGroupMembers(gid).map(function (m) { return m.id; });
+          var allIncluded = currentMembers.length > 0 && currentMembers.every(function (mid) { return ids.indexOf(mid) !== -1; });
+          if (allIncluded) wholeGroupIdsToPreserve[gid] = true;
+        });
+
         ids.forEach(function (id) {
           var item = findItemById(id);
           if (!item || item.deletedAt) return;
+          var originalGroupId = getItemGroupIdAt(item, ds.sourceContext, ds.sourceDate);
 
           if (moveSingleItemToDate(item, ds.overDate)) {
-  var isNormalDestination =
-    ds.overContext === 'calendar' ||
-    ds.overContext === 'weekly' ||
-    (
-      ds.overContext === 'daily' &&
-      targetListId === 'daily-list'
-    );
+            var isNormalDestination =
+              ds.overContext === 'calendar' ||
+              ds.overContext === 'weekly' ||
+              ds.overContext === 'monthly-log' ||
+              (ds.overContext === 'daily' && targetListId === 'daily-list');
 
-  if (isNormalDestination) {
-    item.originalDate = item.date;
-    item.migratedFrom = null;
-  }
+            if (isNormalDestination) {
+              item.originalDate = item.date;
+              item.migratedFrom = null;
+            }
+            if (originalGroupId && wholeGroupIdsToPreserve[originalGroupId]) {
+              setItemGroupIdAt(item, ds.overContext, ds.overDate, originalGroupId);
+            }
+            touched.push(item);
+          }
+        });
 
-  touched.push(item);
-}
+        Object.keys(wholeGroupIdsToPreserve).forEach(function (gid) {
+          var group = findGroupById(gid);
+          if (group) group.date = ds.overDate;
         });
 
         if (touched.length) {
@@ -11613,6 +17859,7 @@ function moveSingleScheduleToRange(
            */
           if (
   ds.overContext === 'weekly' ||
+  ds.overContext === 'monthly-log' ||
   (
     ds.overContext === 'daily' &&
     targetListId === 'daily-list'
@@ -11628,22 +17875,44 @@ function moveSingleScheduleToRange(
            * 달력 칸은 위치가 없는 날짜 이동이므로 재정렬하지 않는다.
            * Daily·Weekly 목록은 placeholder가 있던 위치를 실제 order에 반영한다.
            */
+          if (ds.overContext === 'monthly-log') {
+            touched.forEach(function (item) {
+              setMonthlyLogLaneAt(item, ds.overDate, Number(ds.overLane) || 0);
+              if (item.type === 'schedule' && ds.overScheduleColumn !== null && ds.overScheduleColumn !== undefined) {
+                setMonthlyLogScheduleColumn(item, ds.overScheduleColumn);
+              }
+            });
+          }
           if (ds.overContext !== 'calendar') {
             reorderItemsWithinDate(
               ids,
               ds.overDate,
               ds.overItemId,
-              ds.dropPosition
+              ds.dropPosition,
+              ds.overContext === 'monthly-log' ? (Number(ds.overLane) || 0) : null
             );
+            syncGroupMembershipAfterReorder(ids, ds.overDate);
           }
         }
       });
 
       mutated = touched.length > 0;
-      if (mutated) saveItems();
+      // 최종 감사(2026-07-27) 8: 그룹 전체가 다른 날짜로 이동하면 group.date도 갱신되므로
+      // (위 wholeGroupIdsToPreserve 처리), state.items뿐 아니라 state.groups도 저장해야
+      // 새로고침 후에도 그룹의 새 날짜가 유지된다.
+      if (mutated) { saveItems(); saveGroups(); }
     } else if (ds.overContext !== 'calendar') {
       withHistoryTransaction(function () {
         var classificationChanged = false;
+        // 진단(재현 확인): 같은 날짜 재정렬 분기는 날짜를 바꾸지 않으므로 위(다른 날짜
+        // 분기)의 moveSingleItemToDate 루프를 타지 않는다 -- 그런데 그 루프 안에서만
+        // 선언되는 touched를 아래에서 그대로 참조하고 있어 여기서는 초기화된 적 없는
+        // 변수였다(undefined.forEach로 예외 발생 -> commitDrop이 여기서 중단돼 뒤의
+        // cleanupDragDom/dragState 초기화/renderApp이 전부 실행되지 않고, preview·
+        // placeholder·숨겨진 원본 행이 화면에 그대로 남는 버그의 직접 원인). 이 분기의
+        // touched는 날짜 이동 여부와 무관하게 "이번에 실제로 드래그된 항목들"이면 되므로
+        // ids로부터 새로 만든다.
+        var touched = ids.map(function (id) { return findItemById(id); });
 
         /*
          * 이미 이월로 분류된 항목을 같은 날짜의 일반 Daily 목록에
@@ -11652,6 +17921,7 @@ function moveSingleScheduleToRange(
         if (
   ds.overContext === 'weekly' ||
   ds.overContext === 'calendar' ||
+  ds.overContext === 'monthly-log' ||
   (
     ds.overContext === 'daily' &&
     targetListId === 'daily-list'
@@ -11663,17 +17933,27 @@ function moveSingleScheduleToRange(
   });
 }
 
+        if (ds.overContext === 'monthly-log') {
+          touched.forEach(function (item) {
+            if (setMonthlyLogLaneAt(item, ds.overDate, Number(ds.overLane) || 0)) classificationChanged = true;
+            if (item && item.type === 'schedule' && ds.overScheduleColumn !== null && ds.overScheduleColumn !== undefined) {
+              if (setMonthlyLogScheduleColumn(item, ds.overScheduleColumn)) classificationChanged = true;
+            }
+          });
+        }
         var reordered = reorderItemsWithinDate(
           ids,
           ds.overDate,
           ds.overItemId,
-          ds.dropPosition
+          ds.dropPosition,
+          ds.overContext === 'monthly-log' ? (Number(ds.overLane) || 0) : null
         );
+        var groupMembershipChanged = syncGroupMembershipAfterReorder(ids, ds.overDate);
 
-        mutated = classificationChanged || reordered;
+        mutated = classificationChanged || reordered || groupMembershipChanged;
       });
 
-      if (mutated) saveItems();
+      if (mutated) { saveItems(); saveGroups(); }
     }
   }
 
@@ -11697,23 +17977,43 @@ function moveSingleScheduleToRange(
   ) {
     state.rolloverExpanded = true;
   }
-
-  cleanupDragDom(ds);
-  dragState = null;
-  renderApp();
+  } finally {
+    if (monthlyLogLaneSnapshot && ds && ds.overDate) {
+      var restoredMonthlyLogLane = false;
+      Object.keys(monthlyLogLaneSnapshot).forEach(function (id) {
+        var item = findItemById(id);
+        if (item && setMonthlyLogLaneAt(item, ds.overDate, monthlyLogLaneSnapshot[id])) restoredMonthlyLogLane = true;
+      });
+      if (restoredMonthlyLogLane) saveItems();
+    }
+    cleanupDragDom(ds);
+    dragState = null;
+    renderApp();
+    // renderApp()이 영향받은 컨테이너를 실제 최종 순서로 다시 그린 직후, 커밋 전
+    // 스냅샷과 비교해 위치가 바뀐 행만 한 번 슬라이드시킨다(라이브 드래그 중에는
+    // 이 애니메이션을 전혀 걸지 않았으므로 여기서 발생하는 게 유일한 FLIP이다).
+    if (mutated && !ds.skipPostCommitFlip) playFlipFromRects(flipSelectors, flipBefore);
+  }
 
   if (mutated) {
-    if (sameDate) {
-      announce('항목 순서를 변경했습니다.');
-    } else {
-      announce(
-        ids.length +
-          '개 항목을 ' +
-          formatAnnounceDate(ds.overDate) +
-          '로 이동했습니다.'
-      );
-    }
+  if (ds.overContext === 'monthly-inbox') {
+    announce(
+      ids.length +
+        '개 항목을 이번 달 할 일로 이동했습니다.'
+    );
+
+  } else if (sameDate) {
+    announce('항목 순서를 변경했습니다.');
+
+  } else {
+    announce(
+      ids.length +
+        '개 항목을 ' +
+        formatAnnounceDate(ds.overDate) +
+        '로 이동했습니다.'
+    );
   }
+}
 }
 
   function finishDrop(ds) {
@@ -11724,9 +18024,17 @@ function moveSingleScheduleToRange(
       return;
     }
 
-    if (ds.overContext === 'calendar') {
-      // 10: 달력 칸은 목록의 "자리"가 아니라 그냥 이동 대상 날짜일 뿐이라, placeholder
-      // 위치로 되돌아가는 FLIP 애니메이션 없이 바로 데이터를 반영한다.
+    var sameTodayListReorder = ds.sourceContext === 'daily' && ds.overContext === 'daily' && ds.sourceDate === ds.overDate;
+    if (
+      ds.overContext === 'calendar' ||
+      ds.overContext === 'monthly-log' ||
+      ds.sourceContext === 'monthly-log' ||
+      sameTodayListReorder
+    ) {
+      // 달력 칸과 Monthly Log는 placeholder 좌표가 최종 렌더 좌표와 다를 수 있다.
+      // 미리보기를 잘못 계산된 자리까지 날리지 않고 즉시 데이터를 확정한다.
+      if (ds.previewEl) ds.previewEl.style.transition = 'none';
+      ds.skipPostCommitFlip = true;
       commitDrop(ds);
       return;
     }
@@ -11859,14 +18167,18 @@ function moveSingleScheduleToRange(
     });
 
     input.addEventListener('keydown', onWeeklyInlineInputKeydown);
+    // 2단계 트리거 5: 이 날짜의 인라인 입력이 포커스될 때(plus 클릭으로 이미 4번에서
+    // 기록되지만, Tab 등 다른 경로로 포커스가 와도 놓치지 않게 별도로도 기록한다).
+    input.addEventListener('focus', function () { markLastActiveWeeklyDate(date); });
 
     li.appendChild(modesWrap);
     li.appendChild(input);
     ul.prepend(li); // 5: 입력 줄은 그 날짜 목록의 맨 위(첫 카드 자리)에 표시한다.
-    // 6: 개별 ul은 더 이상 스크롤 컨테이너가 아니므로 건드리지 않는다 — Weekly 전체가
-    // 공유하는 .weekly-body를 맨 위로 스크롤해 입력 줄이 바로 보이게 한다.
-    var weeklyBody = ul.closest('.weekly-body');
-    if (weeklyBody) weeklyBody.scrollTop = 0;
+    // 6: 개별 ul은 스크롤 컨테이너가 아니므로 건드리지 않는다 — 그 ul이 속한 행만
+    // 맨 위로 스크롤해 입력 줄이 바로 보이게 한다(위·아래 행은 서로 독립적이므로
+    // 반대쪽 행의 스크롤 위치는 건드리지 않는다).
+    var rowScroll = ul.closest('.week-row-scroll');
+    if (rowScroll) rowScroll.scrollTop = 0;
 
     activeWeeklyInlineAdd = { li: li, input: input, date: date, plusBtn: plusBtn, mode: mode };
     return activeWeeklyInlineAdd;
@@ -12021,19 +18333,59 @@ function moveSingleScheduleToRange(
     var span = document.createElement('span');
     span.className = 'date';
     var dateStr = formatLocalDate(dateObj);
+    var annotation = getCalendarAnnotations(dateStr);
+    var labelSuffix = '';
     if (otherMonthClass) {
       // 8: 인접 월 날짜는 흐린 회색 계열로만 표시 — 일·토 색상 규칙은 현재 월에만 적용해
       // 인접 월 주말이 강한 빨강/파랑으로 보이지 않게 한다.
       span.classList.add('other-month', otherMonthClass);
-      span.setAttribute('aria-label', formatAnnounceDate(dateStr) + ', ' + (otherMonthClass === 'previous-month' ? '이전 달' : '다음 달'));
+      labelSuffix = ', ' + (otherMonthClass === 'previous-month' ? '이전 달' : '다음 달');
+    } else if (annotation.isPublicHoliday) {
+      // 공휴일은 토요일이어도 파랑이 아니라 빨강(일요일과 같은 처리)이 우선한다.
+      span.classList.add('sun');
     } else {
       var dow = dateObj.getDay();
       if (dow === 0) span.classList.add('sun');
       else if (dow === 6) span.classList.add('sat');
     }
-    span.textContent = String(dateObj.getDate());
+    if (annotation.holidayName) labelSuffix += ', ' + annotation.holidayName;
+    // 5: 화면에 보이는 텍스트는 lunarVisible일 때만 그리지만, aria-label에는(음력이
+    // 켜져 있으면) 날짜마다 전체 음력 정보를 항상 포함해 스크린리더 사용자가 매번
+    // 확인할 수 있게 한다 -- 시각적 밀도와 접근성 정보량을 분리한다.
+    if (annotation.lunar) labelSuffix += ', ' + formatLunarShort(annotation.lunar);
+    var solarEl = document.createElement('span');
+    solarEl.className = 'date-solar';
+    solarEl.textContent = String(dateObj.getDate());
+    span.appendChild(solarEl);
     span.dataset.date = dateStr;
+    span.setAttribute('aria-label', formatAnnounceDate(dateStr) + labelSuffix);
+    if (annotation.lunarVisible) {
+      var lunarEl = document.createElement('span');
+      lunarEl.className = 'date-lunar';
+      lunarEl.setAttribute('aria-hidden', 'true');
+      lunarEl.textContent = formatLunarShort(annotation.lunar);
+      span.appendChild(lunarEl);
+    }
     return span;
+  }
+
+  // 미니 달력 요일 헤더 -- 주 시작 요일 설정에 따라 일~토 또는 월~일 순서로 다시 그린다.
+  // 실제 요일별 색상(일=빨강/토=파랑)은 항상 실제 요일 기준이라 순서가 바뀌어도 그대로다.
+  var WEEKDAY_EN = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  function renderCalendarWeekdayHeader() {
+    var el = document.querySelector('.weekdays');
+    if (!el) return;
+    var startsOn = state.calendarWeekStartsOn === 1 ? 1 : 0;
+    var frag = document.createDocumentFragment();
+    for (var i = 0; i < 7; i++) {
+      var dow = (startsOn + i) % 7;
+      var span = document.createElement('span');
+      if (dow === 0) span.className = 'sun';
+      else if (dow === 6) span.className = 'sat';
+      span.textContent = WEEKDAY_EN[dow];
+      frag.appendChild(span);
+    }
+    el.replaceChildren(frag);
   }
 
   // 달력 카드/행 크기(.calendar-card, .dates)는 그대로 두고, 매 렌더링마다 state.calendarViewDate가
@@ -12045,7 +18397,8 @@ function moveSingleScheduleToRange(
     if (!datesEl) return;
     var year = viewDate.getFullYear();
     var month = viewDate.getMonth();
-    var firstDow = new Date(year, month, 1).getDay();
+    var startsOn = state.calendarWeekStartsOn === 1 ? 1 : 0;
+    var firstDow = (new Date(year, month, 1).getDay() - startsOn + 7) % 7;
     var total = daysInMonthFromParts(year, month);
     var totalCells = 42;
     var trailing = totalCells - firstDow - total;
@@ -12067,6 +18420,9 @@ function moveSingleScheduleToRange(
   function renderCalendarTitle() {
     var el = document.querySelector('.cal-title');
     if (!el) return;
+    // 연·월 편집기가 이 타이틀에서 열려 있는 동안은 건드리지 않는다(입력 중인 input을
+    // 덮어쓰지 않기 위함) -- closeYearMonthEditor가 편집이 끝나는 시점에 직접 복원한다.
+    if (activeYearMonthWheel && activeYearMonthWheel.titleEl === el) return;
     var d = parseLocalDate(state.calendarViewDate);
     el.textContent = d.getFullYear() + '년 ' + (d.getMonth() + 1) + '월';
   }
@@ -12313,6 +18669,7 @@ function moveSingleScheduleToRange(
       // 단일 클릭 — selectedDate만 옮기고, 이전에 확정된 범위가 있었다면 함께 해제한다.
       clearCalendarRangePreview();
       state.selectedDate = ds.startDate;
+      markLastActiveListDate(ds.startDate); // 3단계: 미니 달력에서 날짜를 바꾸면 Daily가 다시 붙여넣기 대상이 된다.
       state.selectedDateRange = null;
       state.dateTimeDraft = null;
       state.endDateDraftActive = false;
@@ -12385,11 +18742,4717 @@ function moveSingleScheduleToRange(
     if (prevBtn) prevBtn.addEventListener('click', function () { navigateCalendarMonth(-1); });
     if (nextBtn) nextBtn.addEventListener('click', function () { navigateCalendarMonth(1); });
     if (todayBtn) todayBtn.addEventListener('click', navigateCalendarToToday);
+    wireCalendarSettingsMenuButton();
+    wireCalendarTitleWheel();
   }
 
   function wireCalendarDates() {
     var datesEl = document.querySelector('.dates');
     if (datesEl) datesEl.addEventListener('pointerdown', onCalendarDatePointerDown);
+  }
+
+  // ---------------------------------------------------------------------
+  // 달력 부가 정보(음력 표시 + 대한민국 공휴일) -- 미니 달력/Monthly Log/Weekly가 전부
+  // getCalendarAnnotations(dateStr) 이 한 함수만 통해서 음력·공휴일 정보를 얻는다
+  // (화면마다 따로 계산하지 않는다).
+  //
+  // 음력: 파일 상단에 번들된 korean-lunar-calendar(KASI 기준, MIT, 버전 0.4.0)를 그대로
+  // 쓴다. 라이브러리 로드 실패나 지원 범위(양력 1000-02-13~2050-12-31) 밖이면 조용히
+  // null을 반환한다 -- 정확도를 보장할 수 없는 임의 계산식으로 대체하지 않는다.
+  //
+  // 공휴일: "관공서의 공휴일에 관한 규정"(대통령령 제36290호, 2026.4.30. 일부개정,
+  // 2026.5.11. 시행) 제2조·제3조 원문을 그대로 코드로 옮긴 것이다(law.go.kr/LBOX
+  // 원문 대조 확인, 임의 계산식 아님). 핵심 규칙:
+  //  - 제2조: 1=일요일, 2=국경일(3·1절·광복절·개천절·한글날), 3=1/1, 4=설날 3일,
+  //    5=부처님오신날, 6=노동절(5/1, 이번 개정으로 신설 — 시행일이 2026-05-11이라
+  //    2026년 5/1은 아직 적용 전, 2027년부터 포함), 7=어린이날, 8=현충일, 9=추석 3일,
+  //    10=기독탄신일. (10의2 선거일·11 수시 지정일은 특정 연도 확정 데이터 없이는
+  //    만들 수 없어 포함하지 않는다 -- 추측 금지.)
+  //  - 제3조①1호: 2·5·6·7·10호가 토·일요일과 겹치면 대체.
+  //  - 제3조①2호: 4·9호(설날·추석)는 "일요일"과 겹칠 때만 대체(토요일은 트리거 아님).
+  //  - 제3조①3호: 2·4·5·6·7·9·10호가 평일에 다른 공휴일(2~10호)과 겹치면 대체.
+  //  - 1(신정)·8(현충일)호는 대체공휴일 대상이 전혀 아니다.
+  //  - "비공휴일"은 제2조 각 호에 해당하지 않는 날이라, 일요일은 애초에 정의상
+  //    제외된다(1호 자신이 일요일이므로) -- 대체일 탐색 시 토요일도 함께 건너뛰는 것은
+  //    제3조③(대체공휴일이 토요일이면 또 다음 날로 넘긴다)과 같은 결과를 낸다.
+  // 검증된 지원 연도: 2023~2036(2023-05-04 개정으로 부처님오신날·기독탄신일이
+  // 대체공휴일 대상에 포함된 시점부터). 범위 밖 연도는 공휴일 데이터를 표시하지 않는다.
+  // ---------------------------------------------------------------------
+  var _lunarLib = (typeof window !== 'undefined' && window.KoreanLunarCalendar) ? new window.KoreanLunarCalendar() : null;
+  var LUNAR_SOLAR_MIN = '1000-02-13';
+  var LUNAR_SOLAR_MAX = '2050-12-31';
+
+  function getLunarForSolarDate(dateStr) {
+    if (!_lunarLib) return null;
+    if (dateStr < LUNAR_SOLAR_MIN || dateStr > LUNAR_SOLAR_MAX) return null;
+    var d = parseLocalDate(dateStr);
+    var ok = _lunarLib.setSolarDate(d.getFullYear(), d.getMonth() + 1, d.getDate());
+    if (!ok) return null;
+    var lc = _lunarLib.getLunarCalendar();
+    return { year: lc.year, month: lc.month, day: lc.day, intercalation: !!lc.intercalation };
+  }
+
+  function getSolarForLunarDate(year, month, day) {
+    if (!_lunarLib) return null;
+    var ok = _lunarLib.setLunarDate(year, month, day, false);
+    if (!ok) return null;
+    var sc = _lunarLib.getSolarCalendar();
+    return formatLocalDate(new Date(sc.year, sc.month - 1, sc.day));
+  }
+
+  function formatLunarShort(lunar) {
+    return '음 ' + (lunar.intercalation ? '윤' : '') + lunar.month + '.' + lunar.day;
+  }
+
+  var HOLIDAY_SUPPORTED_MIN_YEAR = 2023;
+  var HOLIDAY_SUPPORTED_MAX_YEAR = 2036;
+  var HOLIDAY_LABOR_DAY_MIN_YEAR = 2027; // 시행일 2026-05-11 이후 첫 노동절부터.
+
+  function isHolidayYearSupported(year) {
+    return year >= HOLIDAY_SUPPORTED_MIN_YEAR && year <= HOLIDAY_SUPPORTED_MAX_YEAR;
+  }
+
+  var _holidayCache = {}; // 연도별 계산 결과 메모이즈(같은 해를 반복 계산하지 않는다).
+
+  function computeHolidaysForYear(year) {
+    if (_holidayCache[year]) return _holidayCache[year];
+    var y = String(year);
+    var base = [];
+    function add(dateStr, name, satSunSub, sundayOnlySub, overlapSub) {
+      if (!dateStr) return;
+      base.push({ date: dateStr, name: name, satSunSub: satSunSub, sundayOnlySub: sundayOnlySub, overlapSub: overlapSub });
+    }
+    add(y + '-01-01', '신정', false, false, false);
+    add(y + '-03-01', '삼일절', true, false, true);
+    add(y + '-08-15', '광복절', true, false, true);
+    add(y + '-10-03', '개천절', true, false, true);
+    add(y + '-10-09', '한글날', true, false, true);
+    add(y + '-06-06', '현충일', false, false, false);
+    add(y + '-05-05', '어린이날', true, false, true);
+    add(y + '-12-25', '기독탄신일', true, false, true);
+    if (year >= HOLIDAY_LABOR_DAY_MIN_YEAR) add(y + '-05-01', '노동절', true, false, true);
+
+    var seol = getSolarForLunarDate(year, 1, 1);
+    if (seol) {
+      add(addCalendarDays(seol, -1), '설날 연휴', false, true, true);
+      add(seol, '설날', false, true, true);
+      add(addCalendarDays(seol, 1), '설날 연휴', false, true, true);
+    }
+    var chu = getSolarForLunarDate(year, 8, 15);
+    if (chu) {
+      add(addCalendarDays(chu, -1), '추석 연휴', false, true, true);
+      add(chu, '추석', false, true, true);
+      add(addCalendarDays(chu, 1), '추석 연휴', false, true, true);
+    }
+    add(getSolarForLunarDate(year, 4, 8), '부처님오신날', true, false, true);
+
+    var occupied = {};
+    base.forEach(function (h) { occupied[h.date] = true; });
+
+    // 설날 3일/추석 3일은 한 그룹으로 함께 판정한다 -- 셋 중 하나라도 조건에 걸리면
+    // 그룹 전체에 대해 대체공휴일을 하나만 붙인다(제3조② 연쇄 겹침도 occupied로 처리).
+    var groups = [];
+    var groupByName = {};
+    base.forEach(function (h) {
+      var key = (h.name === '설날' || h.name === '설날 연휴') ? '설날'
+        : (h.name === '추석' || h.name === '추석 연휴') ? '추석'
+        : h.name;
+      if (!groupByName[key]) { groupByName[key] = { name: key, items: [] }; groups.push(groupByName[key]); }
+      groupByName[key].items.push(h);
+    });
+
+    var substitutes = [];
+    groups.forEach(function (g) {
+      var first = g.items[0];
+      if (!first.satSunSub && !first.sundayOnlySub && !first.overlapSub) return; // 신정·현충일: 대체 없음.
+      var triggered = g.items.some(function (h) {
+        var dow = parseLocalDate(h.date).getDay();
+        if (first.satSunSub && (dow === 0 || dow === 6)) return true;
+        if (first.sundayOnlySub && dow === 0) return true;
+        if (first.overlapSub && dow !== 0 && dow !== 6) {
+          if (base.some(function (o) { return o.date === h.date && o !== h; })) return true;
+        }
+        return false;
+      });
+      if (!triggered) return;
+      var lastDate = g.items.reduce(function (max, h) { return h.date > max ? h.date : max; }, g.items[0].date);
+      var probe = addCalendarDays(lastDate, 1);
+      var guard = 0;
+      while (guard < 14) {
+        var dow2 = parseLocalDate(probe).getDay();
+        if (dow2 !== 0 && dow2 !== 6 && !occupied[probe]) break;
+        probe = addCalendarDays(probe, 1);
+        guard++;
+      }
+      substitutes.push({ date: probe, name: g.name + ' 대체공휴일' });
+      occupied[probe] = true;
+    });
+
+    var all = base.map(function (h) { return { date: h.date, name: h.name }; }).concat(substitutes);
+    _holidayCache[year] = all;
+    return all;
+  }
+
+  function getHolidayForDate(dateStr) {
+    var year = Number(dateStr.slice(0, 4));
+    if (!isHolidayYearSupported(year)) return null;
+    var list = computeHolidaysForYear(year);
+    for (var i = 0; i < list.length; i++) {
+      if (list[i].date === dateStr) return list[i];
+    }
+    return null;
+  }
+
+  // 미니 달력/Monthly Log/Weekly가 공용으로 쓰는 단일 진입점.
+  // 6: 음력이 켜져 있어도 화면에 보이는 음력 텍스트는 "의미 있는 날짜"로만 좁힌다 --
+  // 매월 음력 초하루(1일, 윤달 포함)와 음력 기반 명절(설날/추석/부처님오신날)뿐이다.
+  // 그 외 날짜는 annotation.lunar 값 자체는 계속 갖고 있지만(aria-label 등에 쓸 수 있게)
+  // lunarVisible만 false라 두 화면 다 시각적으로 아무 것도 그리지 않는다. 라이브러리·
+  // 공휴일 provider 로직 자체는 건드리지 않는다(판정 규칙만 이 함수 하나에 추가).
+  var LUNAR_DISPLAY_HOLIDAY_NAMES = { '설날': true, '추석': true, '부처님오신날': true };
+
+  function shouldShowLunarDate(lunar, holiday) {
+    if (!lunar) return false;
+    if (lunar.day === 1) return true; // 초하루(윤달 포함) -- formatLunarShort가 "윤" 접두어를 붙인다.
+    return !!(holiday && LUNAR_DISPLAY_HOLIDAY_NAMES[holiday.name]);
+  }
+
+  function getCalendarAnnotations(dateStr) {
+    var lunar = state.lunarEnabled ? getLunarForSolarDate(dateStr) : null;
+    var holiday = getHolidayForDate(dateStr);
+    return {
+      lunar: lunar,
+      lunarVisible: shouldShowLunarDate(lunar, holiday),
+      holidayName: holiday ? holiday.name : null,
+      isPublicHoliday: !!holiday
+    };
+  }
+
+  // ---------------------------------------------------------------------
+  // 미니 달력 "..." 달력 설정 메뉴(주 시작 요일 / 음력 표시) -- 기존 .week-range-menu와
+  // 완전히 같은 상호작용 패턴(positionPopup, role="menu"/menuitemradio, 지연 등록된
+  // outside-pointerdown/keydown, 방향키 순환, 포커스 복원)을 그대로 재사용한다.
+  // ---------------------------------------------------------------------
+  var activeCalendarSettingsMenu = null; // { el }
+
+  function renderCalendarSettingsMenuState() {
+    if (!activeCalendarSettingsMenu) return;
+    activeCalendarSettingsMenu.el.querySelectorAll('[data-week-starts-on]').forEach(function (mi) {
+      var checked = String(state.calendarWeekStartsOn) === mi.dataset.weekStartsOn;
+      mi.setAttribute('aria-checked', String(checked));
+      mi.tabIndex = checked ? 0 : -1;
+    });
+    var lunarCheckbox = activeCalendarSettingsMenu.el.querySelector('[data-calendar-settings-action="lunar"]');
+    if (lunarCheckbox) lunarCheckbox.setAttribute('aria-checked', String(!!state.lunarEnabled));
+  }
+
+  function setCalendarWeekStartsOn(value) {
+    var next = value === 1 ? 1 : 0;
+    if (state.calendarWeekStartsOn === next) return;
+    state.calendarWeekStartsOn = next;
+    savePreferences();
+    renderCalendarWeekdayHeader();
+    renderCalendarMonthGrid(parseLocalDate(state.calendarViewDate));
+    // Weekly '이번 주 기준' 모드는 새 주 시작 요일로 즉시 재계산한다(자동 추적 여부와
+    // 무관 -- 기준 자체가 바뀌었으므로). 'rolling' 모드는 이 함수와 무관해 영향 없다.
+    if (state.weeklyRangeMode === 'week') {
+      state.weekStartDate = computeWeeklyRangeStartForMode('week');
+      afterWeekNavigate();
+    }
+    renderApp();
+    renderCalendarSettingsMenuState();
+  }
+
+  function setLunarEnabled(value) {
+    var next = !!value;
+    if (state.lunarEnabled === next) return;
+    state.lunarEnabled = next;
+    savePreferences();
+    renderCalendarMonthGrid(parseLocalDate(state.calendarViewDate));
+    renderApp();
+    renderCalendarSettingsMenuState();
+  }
+
+  function moveCalendarSettingsMenuFocus(items, target) {
+    items.forEach(function (it) { it.tabIndex = -1; });
+    target.tabIndex = 0;
+    target.focus();
+  }
+
+  function onCalendarSettingsMenuKeydown(e) {
+    if (!activeCalendarSettingsMenu) return;
+    var items = Array.prototype.slice.call(activeCalendarSettingsMenu.el.querySelectorAll('[role="menuitemradio"], [role="menuitemcheckbox"]'));
+    var currentIndex = items.indexOf(document.activeElement);
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      e.stopPropagation();
+      closeCalendarSettingsMenu(true);
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      moveCalendarSettingsMenuFocus(items, items[(currentIndex + 1 + items.length) % items.length]);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      moveCalendarSettingsMenuFocus(items, items[(currentIndex - 1 + items.length) % items.length]);
+    } else if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      if (currentIndex >= 0) items[currentIndex].click();
+    }
+  }
+
+  function onOutsideCalendarSettingsMenuPointerDown(e) {
+    if (!activeCalendarSettingsMenu) return;
+    if (activeCalendarSettingsMenu.el.contains(e.target)) return;
+    var btn = document.querySelector('.cal-settings-btn');
+    if (btn && btn.contains(e.target)) return;
+    closeCalendarSettingsMenu(false);
+  }
+
+  function closeCalendarSettingsMenu(restoreFocus) {
+    if (!activeCalendarSettingsMenu) return;
+    activeCalendarSettingsMenu.el.remove();
+    document.removeEventListener('pointerdown', onOutsideCalendarSettingsMenuPointerDown, true);
+    document.removeEventListener('keydown', onCalendarSettingsMenuKeydown, true);
+    activeCalendarSettingsMenu = null;
+    var btn = document.querySelector('.cal-settings-btn');
+    if (btn) {
+      btn.setAttribute('aria-expanded', 'false');
+      if (restoreFocus !== false) btn.focus();
+    }
+  }
+
+  function openCalendarSettingsMenu(anchorEl) {
+    if (activeCalendarSettingsMenu) {
+      closeCalendarSettingsMenu();
+      return;
+    }
+    if (activeTypeMenu) closeTypeMenu(false);
+    if (activeMoveMenu) closeMoveDateMenu(false);
+    if (activeWeekRangeMenu) closeWeekRangeMenu(false);
+
+    var menu = document.createElement('div');
+    menu.className = 'week-range-menu';
+    menu.id = 'cal-settings-menu';
+    menu.setAttribute('role', 'menu');
+    menu.setAttribute('aria-label', '달력 설정');
+
+    var weekLabel = document.createElement('div');
+    weekLabel.className = 'week-range-menu-label';
+    weekLabel.textContent = '주 시작 요일';
+    menu.appendChild(weekLabel);
+
+    [{ value: 0, label: '일요일 시작' }, { value: 1, label: '월요일 시작' }].forEach(function (opt) {
+      var checked = state.calendarWeekStartsOn === opt.value;
+      var mi = document.createElement('div');
+      mi.className = 'week-range-menu-item';
+      mi.setAttribute('role', 'menuitemradio');
+      mi.setAttribute('aria-checked', String(checked));
+      mi.dataset.weekStartsOn = String(opt.value);
+      mi.tabIndex = checked ? 0 : -1;
+      mi.textContent = opt.label;
+      mi.addEventListener('click', function () { setCalendarWeekStartsOn(opt.value); });
+      menu.appendChild(mi);
+    });
+
+    // 라운드2 2: "표시 켜기/표시 끄기" 2행 라디오 대신, Monthly Log와 같은 단일 checkbox
+    // 1개로 통일한다(요구사항 -- 체크박스/텍스트가 같은 줄에서 좌측 정렬되는 기존
+    // .monthly-log-menu-item 패턴을 그대로 재사용).
+    var lunarItem = document.createElement('div');
+    lunarItem.className = 'monthly-log-menu-item';
+    lunarItem.setAttribute('role', 'menuitemcheckbox');
+    lunarItem.setAttribute('aria-checked', String(!!state.lunarEnabled));
+    lunarItem.dataset.calendarSettingsAction = 'lunar';
+    lunarItem.tabIndex = 0;
+    var lunarCheck = document.createElement('span');
+    lunarCheck.className = 'monthly-log-menu-item-check';
+    var lunarLabel = document.createElement('span');
+    lunarLabel.textContent = '음력 표시';
+    lunarItem.appendChild(lunarCheck);
+    lunarItem.appendChild(lunarLabel);
+    lunarItem.addEventListener('click', function () { setLunarEnabled(!state.lunarEnabled); });
+    menu.appendChild(lunarItem);
+
+    document.body.appendChild(menu);
+    positionPopup(menu, anchorEl);
+    anchorEl.setAttribute('aria-expanded', 'true');
+    activeCalendarSettingsMenu = { el: menu };
+
+    var toFocus = menu.querySelector('[aria-checked="true"]') || menu.querySelector('[role="menuitemradio"]');
+    if (toFocus) toFocus.focus();
+
+    setTimeout(function () {
+      document.addEventListener('pointerdown', onOutsideCalendarSettingsMenuPointerDown, true);
+      document.addEventListener('keydown', onCalendarSettingsMenuKeydown, true);
+    }, 0);
+  }
+
+  function wireCalendarSettingsMenuButton() {
+    var btn = document.querySelector('.cal-settings-btn');
+    if (!btn || btn._calSettingsWired) return;
+    btn._calSettingsWired = true;
+    btn.addEventListener('click', function () { openCalendarSettingsMenu(btn); });
+  }
+
+  // ---------------------------------------------------------------------
+  // 라운드2 1/2/16: Today 우측 상단 "..." 메뉴 -- Monthly Log의 openMonthlyLogMenu와
+  // 완전히 같은 상호작용 패턴/CSS 클래스(.monthly-log-menu*)를 그대로 재사용해 두 메뉴의
+  // 시각 위계·체크박스 정렬을 통일한다(요구사항). 음력 표시(공유 state.lunarEnabled)와
+  // 완료한 할 일 정리하기 두 항목만 담는다.
+  // ---------------------------------------------------------------------
+  var activeTodayMenu = null; // { el }
+
+  function onOutsideTodayMenuPointerDown(e) {
+    if (!activeTodayMenu) return;
+    if (activeTodayMenu.el.contains(e.target)) return;
+    var btn = document.getElementById('today-menu-btn');
+    if (btn && btn.contains(e.target)) return;
+    closeTodayMenu(false);
+  }
+
+  function closeTodayMenu(restoreFocus) {
+    if (!activeTodayMenu) return;
+    activeTodayMenu.el.remove();
+    document.removeEventListener('pointerdown', onOutsideTodayMenuPointerDown, true);
+    document.removeEventListener('keydown', onTodayMenuKeydown, true);
+    activeTodayMenu = null;
+    var btn = document.getElementById('today-menu-btn');
+    if (btn) {
+      btn.setAttribute('aria-expanded', 'false');
+      if (restoreFocus !== false) btn.focus();
+    }
+  }
+
+  function toggleTodayLunarMenuItem() {
+    setLunarEnabled(!state.lunarEnabled);
+    var item = activeTodayMenu && activeTodayMenu.el.querySelector('[data-today-menu-action="lunar"]');
+    if (item) item.setAttribute('aria-checked', String(!!state.lunarEnabled));
+  }
+
+  function onTodayMenuKeydown(e) {
+    if (!activeTodayMenu) return;
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      e.stopPropagation();
+      closeTodayMenu(true);
+      return;
+    }
+    var items = Array.prototype.slice.call(activeTodayMenu.el.querySelectorAll('[role^="menuitem"]'));
+    var currentIndex = items.indexOf(document.activeElement);
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      items[(currentIndex + 1 + items.length) % items.length].focus();
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      items[(currentIndex - 1 + items.length) % items.length].focus();
+    } else if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      if (currentIndex >= 0) items[currentIndex].click();
+    }
+  }
+
+  function openTodayMenu(anchorEl) {
+  if (activeTodayMenu) {
+    closeTodayMenu();
+    return;
+  }
+
+  if (activeTypeMenu) closeTypeMenu(false);
+  if (activeMoveMenu) closeMoveDateMenu(false);
+
+  var menu = document.createElement('div');
+  menu.className = 'monthly-log-menu';
+  menu.id = 'today-menu';
+  menu.setAttribute('role', 'menu');
+  menu.setAttribute('aria-label', '오늘 할 일 정리');
+
+  // 1. 구분선 추가
+  var dividerItem = document.createElement('div');
+  dividerItem.className = 'monthly-log-menu-item';
+  dividerItem.setAttribute('role', 'menuitem');
+  dividerItem.dataset.todayMenuAction = 'add-divider';
+  dividerItem.tabIndex = 0;
+
+  var dividerLabel = document.createElement('span');
+  dividerLabel.textContent = '구분선 추가';
+  dividerItem.appendChild(dividerLabel);
+
+  dividerItem.addEventListener('click', function () {
+    var date = state.selectedDate;
+    var visibleIds = getVisibleIdsForContainer(date);
+
+    // 현재 Daily 날짜에서 선택된 항목 중 가장 아래 항목
+    var selectedInDate = visibleIds.filter(function (id) {
+      return state.selectedItemIds.has(id);
+    });
+
+    var afterItemId = selectedInDate.length
+      ? selectedInDate[selectedInDate.length - 1]
+      : null;
+
+    createDividerItem(date, afterItemId);
+    closeTodayMenu(true);
+  });
+
+  menu.appendChild(dividerItem);
+
+  // 2. 완료한 할 일 정리하기
+  var cleanupItem = document.createElement('div');
+  cleanupItem.className = 'monthly-log-menu-item menu-item-has-help';
+  cleanupItem.setAttribute('role', 'menuitem');
+  cleanupItem.dataset.todayMenuAction = 'cleanup-completed';
+  cleanupItem.dataset.help = '현재 선택한 날짜의 완료 항목을 완료 구분선 아래로 모읍니다.';
+  cleanupItem.title = cleanupItem.dataset.help;
+  cleanupItem.tabIndex = -1;
+
+  var cleanupLabel = document.createElement('span');
+  cleanupLabel.textContent = '완료한 할 일 정리하기';
+  cleanupItem.appendChild(cleanupLabel);
+
+  cleanupItem.addEventListener('click', function () {
+    cleanupCompletedItemsForDate(state.selectedDate);
+    closeTodayMenu(true);
+  });
+
+  menu.appendChild(cleanupItem);
+
+  var hideCompletedItem = document.createElement('div');
+  hideCompletedItem.className = 'monthly-log-menu-item menu-item-has-help';
+  hideCompletedItem.setAttribute('role', 'menuitemcheckbox');
+  hideCompletedItem.setAttribute('aria-checked', String(!!state.dailyHideCompleted));
+  hideCompletedItem.dataset.todayMenuAction = 'hide-completed';
+  hideCompletedItem.dataset.help = '현재 일간 목록에서 완료된 항목만 숨깁니다. 항목은 삭제되지 않습니다.';
+  hideCompletedItem.title = hideCompletedItem.dataset.help;
+  hideCompletedItem.tabIndex = -1;
+  var hideCheck = document.createElement('span');
+  hideCheck.className = 'monthly-log-menu-item-check';
+  var hideLabel = document.createElement('span');
+  hideLabel.textContent = '완료 항목 숨기기';
+  hideCompletedItem.appendChild(hideCheck);
+  hideCompletedItem.appendChild(hideLabel);
+  hideCompletedItem.addEventListener('click', function () {
+    state.dailyHideCompleted = !state.dailyHideCompleted;
+    savePreferences();
+    renderDailyList();
+    hideCompletedItem.setAttribute('aria-checked', String(!!state.dailyHideCompleted));
+  });
+  menu.appendChild(hideCompletedItem);
+
+  document.body.appendChild(menu);
+  positionPopup(menu, anchorEl);
+
+  anchorEl.setAttribute('aria-expanded', 'true');
+  activeTodayMenu = { el: menu };
+
+  dividerItem.focus();
+
+  setTimeout(function () {
+    document.addEventListener(
+      'pointerdown',
+      onOutsideTodayMenuPointerDown,
+      true
+    );
+    document.addEventListener(
+      'keydown',
+      onTodayMenuKeydown,
+      true
+    );
+  }, 0);
+}
+
+  function wireTodayMenuButton() {
+    var btn = document.getElementById('today-menu-btn');
+    if (!btn || btn._todayMenuWired) return;
+    btn._todayMenuWired = true;
+    btn.addEventListener('click', function (e) {
+      e.stopPropagation();
+      openTodayMenu(btn);
+    });
+  }
+
+  // ---------------------------------------------------------------------
+  // 빠른 연·월 이동 -- 미니 달력 타이틀과 Monthly Log 타이틀이 공유하는 연/월 휠 팝업.
+  // 날짜 휠(openDateWheelPopup)의 저수준 조각(buildWheelColumn/buildDateWheelItem/
+  // updateWheelColumnVisual/scrollColumnToValue/positionPopup/DATE_WHEEL_* 상수)은
+  // 그대로 재사용하지만, 상호작용 오케스트레이션은 이 팝업 전용의 별도 activeYearMonthWheel
+  // 상태로 관리한다 -- 날짜 휠의 wireWheelColumn/commitDateWheelSelection은 "일" 컬럼까지
+  // 포함한 activeDateWheel 3필드 구조에 강하게 결합돼 있어(item/schedule 날짜 필드 커밋
+  // 로직까지 함께 딸려 있음), 연·월 2컬럼짜리 이 팝업에 억지로 재사용하면 기존(이미 잘
+  // 동작 중인) 날짜 휠에 회귀를 일으킬 위험이 크기 때문이다. target={getCurrentMonth,
+  // applyMonth}로 호출부(미니 달력 vs Monthly Log)를 추상화해 로직 자체는 하나만 존재한다.
+  // ---------------------------------------------------------------------
+  var activeYearMonthWheel = null; // { el, titleEl, input, year, month, target, originalYear, originalMonth }
+
+  function formatYmEditValue(year, month) {
+    return year + '-' + String(month).padStart(2, '0');
+  }
+
+  function restoreYearMonthTitleDisplay(titleEl, year, month) {
+    titleEl.textContent = year + '년 ' + month + '월';
+  }
+
+  // "2026-13"·불완전한 연도 등은 null -- Enter 확정을 막는 유일한 판정 기준.
+  function parseYmEditValue(value) {
+    var text = String(value || '').trim();
+    var match = text.match(/^(\d{4})-(\d{1,2})$/);
+    if (!match) return null;
+    var year = Number(match[1]);
+    var month = Number(match[2]);
+    if (!Number.isInteger(month) || month < 1 || month > 12) return null;
+    if (!Number.isInteger(year) || year < 1000 || year > 9999) return null;
+    return { year: year, month: month };
+  }
+
+  // 고정 인덱스(0~4/5~7)가 아니라 실제 '-' 위치를 기준으로 세그먼트를 구한다 -- 입력
+  // 도중에는 연도 자리가 4자리보다 짧을 수 있어(예: "9-07") 고정 폭 가정이 깨지기 때문.
+  function ymSegmentRanges(value) {
+    var dash = value.indexOf('-');
+    if (dash === -1) return { year: [0, value.length], month: [value.length, value.length] };
+    return { year: [0, dash], month: [dash + 1, value.length] };
+  }
+
+  function findYmInputUnit(input) {
+    var ranges = ymSegmentRanges(input.value);
+    var pos = input.selectionStart;
+    if (typeof pos !== 'number') return 'year';
+    return pos <= ranges.year[1] ? 'year' : 'month';
+  }
+
+  function selectYmInputSegmentFromCursor(input) {
+    var ranges = ymSegmentRanges(input.value);
+    var pos = input.selectionStart;
+    if (typeof pos !== 'number') return;
+    if (pos <= ranges.year[1]) input.setSelectionRange(ranges.year[0], ranges.year[1]);
+    else input.setSelectionRange(ranges.month[0], ranges.month[1]);
+  }
+
+  // 입력값이 유효하면(정확히 YYYY-MM) 휠 컬럼 위치까지 조용히 맞추고 is-invalid를
+  // 지운다 -- applyNow가 true일 때만(Enter 확정) 실제 target.applyMonth까지 호출한다
+  // (휠 자체 조작은 항상 즉시 적용하는 기존 정책을 유지, 타이핑 중간값은 미리보기만).
+  function syncYmWheelFromInputIfValid(input, applyNow) {
+    var parsed = parseYmEditValue(input.value);
+    if (!parsed) {
+      input.classList.add('is-invalid');
+      input.setAttribute('aria-invalid', 'true');
+      return false;
+    }
+    input.classList.remove('is-invalid');
+    input.removeAttribute('aria-invalid');
+    if (!activeYearMonthWheel) return true;
+    ensureYearWheelColumnHasValue(parsed.year);
+    activeYearMonthWheel.year = parsed.year;
+    activeYearMonthWheel.month = parsed.month;
+    var yearCol = activeYearMonthWheel.el.querySelector('.date-wheel-col[data-unit="year"]');
+    var monthCol = activeYearMonthWheel.el.querySelector('.date-wheel-col[data-unit="month"]');
+    if (yearCol) scrollColumnToValue(yearCol, parsed.year, false);
+    if (monthCol) scrollColumnToValue(monthCol, parsed.month, false);
+    if (applyNow) activeYearMonthWheel.target.applyMonth(parsed.year, parsed.month);
+    return true;
+  }
+
+  // 입력으로 처음 만들어 둔 휠의 연도 목록(현재-5~+10) 밖의 값을 타이핑했을 때, 그
+  // 값을 중심으로 목록을 다시 만들어 휠과 입력이 항상 같은 값을 가리키게 한다.
+  function ensureYearWheelColumnHasValue(year) {
+    if (!activeYearMonthWheel) return;
+    var yearCol = activeYearMonthWheel.el.querySelector('.date-wheel-col[data-unit="year"]');
+    if (!yearCol || yearCol.querySelector('.date-wheel-item[data-value="' + year + '"]')) return;
+    var frag = document.createDocumentFragment();
+    for (var y = year - 5; y <= year + 10; y++) frag.appendChild(buildDateWheelItem(y, y + '년'));
+    yearCol.replaceChildren(frag);
+  }
+
+  function syncYmEditorInputFromWheel() {
+    if (!activeYearMonthWheel || !activeYearMonthWheel.input) return;
+    var input = activeYearMonthWheel.input;
+    input.value = formatYmEditValue(activeYearMonthWheel.year, activeYearMonthWheel.month);
+    input.classList.remove('is-invalid');
+    input.removeAttribute('aria-invalid');
+  }
+
+  // 세그먼트 안에서 숫자를 타이핑할 때마다 그 세그먼트만(다른 세그먼트는 그대로) 버퍼
+  // 문자로 교체한다 -- 연도 4자리/월 2자리를 넘는 자리는 버퍼가 밀어낸다(최근 입력 우선).
+  function applyYmDigit(input, digit) {
+    var unit = findYmInputUnit(input);
+    var maxLen = unit === 'year' ? 4 : 2;
+    if (input._ymBufferUnit !== unit) input._ymBuffer = '';
+    input._ymBufferUnit = unit;
+    input._ymBuffer = (input._ymBuffer + digit).slice(-maxLen);
+    if (input._ymBufferTimer) clearTimeout(input._ymBufferTimer);
+    input._ymBufferTimer = setTimeout(function () { input._ymBuffer = ''; input._ymBufferUnit = null; }, WHEEL_NUMBER_BUFFER_TIMEOUT);
+
+    var ranges = ymSegmentRanges(input.value);
+    var yearPart = input.value.slice(ranges.year[0], ranges.year[1]);
+    var monthPart = input.value.slice(ranges.month[0], ranges.month[1]);
+    if (unit === 'year') yearPart = input._ymBuffer; else monthPart = input._ymBuffer;
+    input.value = yearPart + '-' + monthPart;
+
+    var newRanges = ymSegmentRanges(input.value);
+    var sel = unit === 'year' ? newRanges.year : newRanges.month;
+    input.setSelectionRange(sel[0], sel[1]);
+    syncYmWheelFromInputIfValid(input, false);
+  }
+
+  function applyYmBackspace(input) {
+    var unit = findYmInputUnit(input);
+    input._ymBuffer = '';
+    input._ymBufferUnit = null;
+    var ranges = ymSegmentRanges(input.value);
+    var yearPart = input.value.slice(ranges.year[0], ranges.year[1]);
+    var monthPart = input.value.slice(ranges.month[0], ranges.month[1]);
+    if (unit === 'year') yearPart = yearPart.slice(0, -1); else monthPart = monthPart.slice(0, -1);
+    input.value = yearPart + '-' + monthPart;
+    var newRanges = ymSegmentRanges(input.value);
+    var sel = unit === 'year' ? newRanges.year : newRanges.month;
+    input.setSelectionRange(sel[0], sel[1]);
+    syncYmWheelFromInputIfValid(input, false);
+  }
+
+  function wireYmEditorInput(input) {
+    input.addEventListener('mouseup', function () {
+      setTimeout(function () { selectYmInputSegmentFromCursor(input); }, 0);
+    });
+    input.addEventListener('keydown', function (e) {
+      if (!activeYearMonthWheel) return;
+      // Enter/Escape가 titleEl 자신의 keydown 리스너(같은 이벤트가 부모로 버블링)까지
+      // 다시 도달하면, closeYearMonthEditor가 이미 activeYearMonthWheel을 비운 상태라
+      // titleEl의 "!activeYearMonthWheel" 조건이 참이 돼 즉시 재오픈되는 실제 버그가
+      // 있었다(요구사항 13이 명시적으로 금지하는 상황) -- 이 입력이 처리하는 모든 키는
+      // document/부모 리스너로 더 이상 전달하지 않는다.
+      if (e.key !== 'Tab') e.stopPropagation();
+      if (/^[0-9]$/.test(e.key)) {
+        e.preventDefault();
+        applyYmDigit(input, e.key);
+        return;
+      }
+      if (e.key === 'Backspace' || e.key === 'Delete') {
+        e.preventDefault();
+        applyYmBackspace(input);
+        return;
+      }
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+        e.preventDefault();
+        var ranges = ymSegmentRanges(input.value);
+        var seg = e.key === 'ArrowRight' ? ranges.month : ranges.year;
+        input.setSelectionRange(seg[0], seg[1]);
+        return;
+      }
+      if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+        e.preventDefault();
+        var unit = findYmInputUnit(input);
+        var col = activeYearMonthWheel.el.querySelector('.date-wheel-col[data-unit="' + unit + '"]');
+        if (!col) return;
+        var items = Array.prototype.slice.call(col.querySelectorAll('.date-wheel-item'));
+        var curVal = activeYearMonthWheel[unit];
+        var currentIdx = items.findIndex(function (it) { return Number(it.dataset.value) === curVal; });
+        if (currentIdx === -1) currentIdx = 0;
+        var dir = e.key === 'ArrowUp' ? -1 : 1;
+        var nextIdx = unit === 'month'
+          ? (currentIdx + dir + items.length) % items.length
+          : Math.max(0, Math.min(items.length - 1, currentIdx + dir));
+        selectYearMonthWheelIndex(col, unit, nextIdx, true);
+        input.focus();
+        var newRanges = ymSegmentRanges(input.value);
+        var sel = unit === 'year' ? newRanges.year : newRanges.month;
+        input.setSelectionRange(sel[0], sel[1]);
+        return;
+      }
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        if (syncYmWheelFromInputIfValid(input, true)) closeYearMonthEditor(true);
+        return;
+      }
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        closeYearMonthEditor(false);
+        return;
+      }
+      if (e.key === 'Tab') return; // 기본 포커스 이동은 그대로 둔다.
+      e.preventDefault(); // 그 외 문자 입력은 세그먼트 형식을 깨뜨리므로 막는다.
+    });
+  }
+
+  function closeYearMonthEditor(committed) {
+    if (!activeYearMonthWheel) return;
+    var ctx = activeYearMonthWheel;
+    ctx.el.remove();
+    document.removeEventListener('pointerdown', onOutsideYearMonthWheelPointerDown, true);
+    document.removeEventListener('keydown', onYearMonthWheelKeydown, true);
+    activeYearMonthWheel = null;
+    var year = committed ? ctx.year : ctx.originalYear;
+    var month = committed ? ctx.month : ctx.originalMonth;
+    // 13: Escape/취소 시 편집 중 휠 조작으로 이미 반영됐을 수 있는 값을 원래대로
+    // 되돌린다. 포커스는 원래 타이틀로 돌아가지만 클릭/Enter/Space를 누르기 전에는
+    // 절대 다시 열리지 않는다(focus() 자체는 팝업을 열지 않음).
+    if (!committed && (ctx.year !== ctx.originalYear || ctx.month !== ctx.originalMonth)) {
+      ctx.target.applyMonth(ctx.originalYear, ctx.originalMonth);
+    }
+    restoreYearMonthTitleDisplay(ctx.titleEl, year, month);
+    ctx.titleEl.setAttribute('aria-expanded', 'false');
+    ctx.titleEl.focus();
+  }
+
+  function onOutsideYearMonthWheelPointerDown(e) {
+    if (!activeYearMonthWheel) return;
+    if (activeYearMonthWheel.el.contains(e.target)) return;
+    if (activeYearMonthWheel.titleEl.contains(e.target)) return;
+    closeYearMonthEditor(true);
+  }
+
+  function onYearMonthWheelKeydown(e) {
+    if (!activeYearMonthWheel) return;
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      e.stopPropagation();
+      closeYearMonthEditor(false);
+    }
+  }
+
+  function commitYearMonthWheelSelection(closeAfter) {
+    if (!activeYearMonthWheel) return;
+    activeYearMonthWheel.target.applyMonth(activeYearMonthWheel.year, activeYearMonthWheel.month);
+    syncYmEditorInputFromWheel();
+    if (closeAfter) closeYearMonthEditor(true);
+  }
+
+  function selectYearMonthWheelIndex(col, unit, idx, smooth) {
+    var items = col.querySelectorAll('.date-wheel-item');
+    col.scrollTo({ top: idx * DATE_WHEEL_ITEM_HEIGHT, behavior: smooth ? 'smooth' : 'auto' });
+    updateWheelColumnVisual(col, idx);
+    activeYearMonthWheel[unit] = Number(items[idx].dataset.value);
+    commitYearMonthWheelSelection(false);
+  }
+
+  function wireYearMonthWheelColumn(col, unit) {
+    var settleTimer = null;
+    col.addEventListener('scroll', function () {
+      var idx = Math.round(col.scrollTop / DATE_WHEEL_ITEM_HEIGHT);
+      updateWheelColumnVisual(col, idx);
+      if (settleTimer) clearTimeout(settleTimer);
+      settleTimer = setTimeout(function () {
+        var items = Array.prototype.slice.call(col.querySelectorAll('.date-wheel-item'));
+        var clamped = Math.max(0, Math.min(items.length - 1, idx));
+        selectYearMonthWheelIndex(col, unit, clamped, false);
+      }, 130);
+    });
+
+    var wheelAccum = 0;
+    var wheelCooling = false;
+    col.addEventListener('wheel', function (e) {
+      e.preventDefault();
+      if (wheelCooling) return;
+      wheelAccum += e.deltaY;
+      if (Math.abs(wheelAccum) < WHEEL_DELTA_THRESHOLD) return;
+      var direction = wheelAccum > 0 ? 1 : -1;
+      wheelAccum = 0;
+      var items = Array.prototype.slice.call(col.querySelectorAll('.date-wheel-item'));
+      var currentIdx = Math.round(col.scrollTop / DATE_WHEEL_ITEM_HEIGHT);
+      var nextIdx = Math.max(0, Math.min(items.length - 1, currentIdx + direction));
+      selectYearMonthWheelIndex(col, unit, nextIdx, true);
+      wheelCooling = true;
+      setTimeout(function () { wheelCooling = false; }, WHEEL_STEP_COOLDOWN);
+    }, { passive: false });
+
+    col.addEventListener('click', function (e) {
+      var item = e.target.closest('.date-wheel-item');
+      if (!item) return;
+      var items = Array.prototype.slice.call(col.querySelectorAll('.date-wheel-item'));
+      var idx = items.indexOf(item);
+      selectYearMonthWheelIndex(col, unit, idx, true);
+      // 9: 월을 클릭하면 확정 후 팝업을 닫는다. 연을 클릭하면 팝업은 열린 채로 유지한다
+      // (요구사항: "월을 클릭하면 확정되고 창이 닫히지만, 연도만 클릭 시 닫히지 않는다").
+      if (unit === 'month') commitYearMonthWheelSelection(true);
+      else col.focus();
+    });
+
+    var numBuffer = '';
+    var numBufferTimer = null;
+    var maxLen = unit === 'year' ? 4 : 2;
+    function resetNumBuffer() { numBuffer = ''; if (numBufferTimer) { clearTimeout(numBufferTimer); numBufferTimer = null; } }
+    function scheduleBufferReset() { if (numBufferTimer) clearTimeout(numBufferTimer); numBufferTimer = numBuffer ? setTimeout(resetNumBuffer, WHEEL_NUMBER_BUFFER_TIMEOUT) : null; }
+
+    col.addEventListener('keydown', function (e) {
+      if (/^[0-9]$/.test(e.key)) {
+        e.preventDefault();
+        e.stopPropagation();
+        numBuffer = (numBuffer + e.key).slice(-maxLen);
+        scheduleBufferReset();
+        if (unit === 'year' && numBuffer.length < 4) return; // 4자리를 다 채웠을 때만 확정.
+        var num = Number(numBuffer);
+        var items = Array.prototype.slice.call(col.querySelectorAll('.date-wheel-item'));
+        var idx = items.findIndex(function (it) { return Number(it.dataset.value) === num; });
+        // 목록에 없는 값(지원 연도 범위 밖 등)은 조용히 무시한다 -- 구조적으로 존재하는
+        // 값만 선택 가능해, "2026-13" 같은 잘못된 월 자체가 애초에 만들어지지 않는다.
+        if (idx !== -1) selectYearMonthWheelIndex(col, unit, idx, true);
+        return;
+      }
+      if (e.key === 'Backspace') {
+        e.preventDefault();
+        e.stopPropagation();
+        numBuffer = numBuffer.slice(0, -1);
+        scheduleBufferReset();
+        return;
+      }
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        e.stopPropagation();
+        resetNumBuffer();
+        commitYearMonthWheelSelection(true);
+        return;
+      }
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+        e.preventDefault();
+        e.stopPropagation();
+        resetNumBuffer();
+        var otherUnit = unit === 'year' ? 'month' : 'year';
+        var otherCol = activeYearMonthWheel.el.querySelector('.date-wheel-col[data-unit="' + otherUnit + '"]');
+        if (otherCol) otherCol.focus();
+        return;
+      }
+      var items2 = Array.prototype.slice.call(col.querySelectorAll('.date-wheel-item'));
+      var currentIdx = Math.round(col.scrollTop / DATE_WHEEL_ITEM_HEIGHT);
+      var nextIdx = currentIdx;
+      if (e.key === 'ArrowDown') nextIdx = Math.min(items2.length - 1, currentIdx + 1);
+      else if (e.key === 'ArrowUp') nextIdx = Math.max(0, currentIdx - 1);
+      else return;
+      e.preventDefault();
+      resetNumBuffer();
+      selectYearMonthWheelIndex(col, unit, nextIdx, true);
+    });
+  }
+
+  // 제목을 누르면 (1) 표시 텍스트를 "YYYY-MM" 편집용 input으로 바꾸고 (2) 그 input에
+  // 앵커된 연·월 휠 팝업을 함께 연다 -- 이 함수 하나가 둘을 동시에 시작하는 단일 진입점.
+  function openYearMonthEditor(titleEl, target) {
+    if (activeYearMonthWheel && activeYearMonthWheel.titleEl === titleEl) {
+      closeYearMonthEditor(true);
+      return;
+    }
+    if (activeTitleEdit) commitTitleEdit();
+    if (activeMonthlyTitleEdit) commitMonthlyTitleEdit();
+    if (activeTypeMenu) closeTypeMenu(false);
+    if (activeWeekRangeMenu) closeWeekRangeMenu(false);
+    if (activeCalendarSettingsMenu) closeCalendarSettingsMenu(false);
+    if (activeDateWheel) closeDateWheelPopup(false);
+    if (activeYearMonthWheel) closeYearMonthEditor(true);
+
+    var current = target.getCurrentMonth();
+
+    var input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'year-month-edit-input';
+    input.autocomplete = 'off';
+    input.spellcheck = false;
+    input.setAttribute('inputmode', 'numeric');
+    input.setAttribute('aria-label', '연도-월 입력 (형식: YYYY-MM)');
+    input.value = formatYmEditValue(current.year, current.month);
+    titleEl.replaceChildren(input);
+    titleEl.setAttribute('aria-expanded', 'true');
+
+    var popup = document.createElement('div');
+    popup.className = 'date-wheel-popup year-month-wheel-popup';
+    popup.setAttribute('role', 'dialog');
+    popup.setAttribute('aria-label', '연도·월 선택');
+
+    var colsWrap = document.createElement('div');
+    colsWrap.className = 'date-wheel-cols';
+
+    var years = [];
+    for (var y = current.year - 5; y <= current.year + 10; y++) years.push(y);
+    var months = [];
+    for (var m = 1; m <= 12; m++) months.push(m);
+
+    var yearCol = buildWheelColumn('year', years, function (v) { return v + '년'; });
+    var monthCol = buildWheelColumn('month', months, function (v) { return v + '월'; });
+    colsWrap.appendChild(yearCol);
+    colsWrap.appendChild(monthCol);
+
+    var centerLine = document.createElement('div');
+    centerLine.className = 'date-wheel-center-line';
+    colsWrap.appendChild(centerLine);
+
+    popup.appendChild(colsWrap);
+    document.body.appendChild(popup);
+    positionPopup(popup, input);
+
+    activeYearMonthWheel = {
+      el: popup,
+      titleEl: titleEl,
+      input: input,
+      year: current.year,
+      month: current.month,
+      target: target,
+      originalYear: current.year,
+      originalMonth: current.month
+    };
+
+    wireYearMonthWheelColumn(yearCol, 'year');
+    wireYearMonthWheelColumn(monthCol, 'month');
+    wireYmEditorInput(input);
+    scrollColumnToValue(yearCol, current.year, false);
+    scrollColumnToValue(monthCol, current.month, false);
+
+    input.focus();
+    input.setSelectionRange(0, String(current.year).length);
+
+    setTimeout(function () {
+      document.addEventListener('pointerdown', onOutsideYearMonthWheelPointerDown, true);
+      document.addEventListener('keydown', onYearMonthWheelKeydown, true);
+    }, 0);
+  }
+
+  // 미니 달력 타이틀(.cal-title) -- 클릭/Enter/Space로 연월 편집기를 연다. 여기서 달만
+  // 바뀌고(calendarViewDate) selectedDate는 절대 바뀌지 않는다(실제 날짜 클릭만 selectedDate를
+  // 바꾼다는 기존 원칙을 그대로 지킨다).
+  function makeCalendarTitleWheelTarget() {
+    return {
+      getCurrentMonth: function () {
+        var d = parseLocalDate(state.calendarViewDate);
+        return { year: d.getFullYear(), month: d.getMonth() + 1 };
+      },
+      applyMonth: function (year, month) {
+        var next = new Date(year, month - 1, 1);
+        state.calendarViewDate = formatLocalDate(next);
+        savePreferences();
+        renderCalendarMonthGrid(next);
+        renderCalendarTitle();
+        renderApp();
+      }
+    };
+  }
+
+  function wireCalendarTitleWheel() {
+    var titleEl = document.querySelector('.cal-title');
+    if (!titleEl || titleEl._yearMonthWheelWired) return;
+    titleEl._yearMonthWheelWired = true;
+    titleEl.setAttribute('role', 'button');
+    titleEl.tabIndex = 0;
+    titleEl.setAttribute('aria-haspopup', 'dialog');
+    titleEl.setAttribute('aria-expanded', 'false');
+    titleEl.setAttribute('aria-label', '연도·월 선택');
+    // 편집 중(활성 상태)에는 클릭이 어디서 나든(연·월 세그먼트 클릭 포함, input이 titleEl의
+    // 자식이라 버블링돼 여기까지 올라온다) 다시 열지 않는다 -- 그렇지 않으면 입력창 안을
+    // 클릭할 때마다 편집기가 토글로 닫혀버리는 실제 버그가 있었다.
+    titleEl.addEventListener('click', function () {
+      if (activeYearMonthWheel && activeYearMonthWheel.titleEl === titleEl) return;
+      openYearMonthEditor(titleEl, makeCalendarTitleWheelTarget());
+    });
+    titleEl.addEventListener('keydown', function (e) {
+      if ((e.key === 'Enter' || e.key === ' ') && !activeYearMonthWheel) { e.preventDefault(); openYearMonthEditor(titleEl, makeCalendarTitleWheelTarget()); }
+    });
+  }
+
+  // Calendar Monthly Log 타이틀 -- 같은 공유 컴포넌트를 그대로 재사용한다.
+  function makeMonthlyLogTitleWheelTarget() {
+    return {
+      getCurrentMonth: function () {
+        var d = parseLocalDate(state.monthlyLogViewMonth);
+        return { year: d.getFullYear(), month: d.getMonth() + 1 };
+      },
+      applyMonth: function (year, month) {
+        var next = new Date(year, month - 1, 1);
+        state.monthlyLogViewMonth = formatLocalDate(next);
+        savePreferences();
+        renderMonthlyLog();
+        resetMonthlyLogScroll();
+      }
+    };
+  }
+
+  function wireMonthlyLogTitleWheel() {
+    var titleEl = document.getElementById('monthly-log-month-label');
+    if (!titleEl || titleEl._yearMonthWheelWired) return;
+    titleEl._yearMonthWheelWired = true;
+    titleEl.setAttribute('role', 'button');
+    titleEl.tabIndex = 0;
+    titleEl.setAttribute('aria-haspopup', 'dialog');
+    titleEl.setAttribute('aria-expanded', 'false');
+    titleEl.setAttribute('aria-label', '연도·월 선택');
+    titleEl.addEventListener('click', function () {
+      if (activeYearMonthWheel && activeYearMonthWheel.titleEl === titleEl) return;
+      openYearMonthEditor(titleEl, makeMonthlyLogTitleWheelTarget());
+    });
+    titleEl.addEventListener('keydown', function (e) {
+      if ((e.key === 'Enter' || e.key === ' ') && !activeYearMonthWheel) { e.preventDefault(); openYearMonthEditor(titleEl, makeMonthlyLogTitleWheelTarget()); }
+    });
+  }
+
+  // ---------------------------------------------------------------------
+  // Today 우측 월간 할일 패널 -- Calendar 패널과 완전히 같은 렌더/생성/편집/삭제 함수
+  // (renderMonthlyItemsInto/wireMonthlyItemsListDelegation/wireMonthlyQuickInput/
+  // createMonthlyItem 등, 모두 아래 monthlyItems 모듈에 정의됨)를 그대로 공유한다.
+  // 이 패널만의 고유 로직은 열림/닫힘 상태(세션 한정, localStorage 저장 안 함)와 그
+  // 상태에 따른 DOM 표시/backdrop/포커스 이동뿐이다. Calendar 화면에는 이 토글 자체가
+  // 없는데, 토글 버튼이 .daily(=.top의 자식) 안에 있고 .top 자체가 Calendar 화면에서는
+  // 이미 [hidden]이므로 별도 분기 없이 자연히 숨겨진다.
+  // ---------------------------------------------------------------------
+  function currentTodayMonthKey() {
+    return state.selectedDate.slice(0, 7);
+  }
+
+  function renderTodayMonthlyPanel() {
+    var titleEl = document.getElementById('today-monthly-panel-title');
+    var monthKey = currentTodayMonthKey();
+    if (titleEl) {
+      var d = parseLocalDate(monthKey + '-01');
+      titleEl.textContent = d.getFullYear() + '년 ' + (d.getMonth() + 1) + '월 할일';
+    }
+    renderMonthlyItemsInto(document.getElementById('today-monthly-list'), monthKey, '이번 달에 해둘 일을 적어보세요.');
+    renderTodayMonthlyOverdue(monthKey);
+  }
+
+  // Today 패널 dock 재설계(2차 교정): 이전 버전은 .artboard를 그대로 둔 채(스스로 가운데
+  // 정렬된 채) 그 오른쪽에 "우연히 남는 절반의 여백"만 패널 폭으로 썼다 -- .artboard가
+  // body{justify-content:center}로 혼자 중앙정렬되면 뷰포트 여유가 좌우로 균등하게
+  // 나뉘어서, 1920px에서 전체 여유(295px)의 절반인 147.5px만 오른쪽에 남고, 그 임계값을
+  // 억지로 140px까지 낮춰 도킹시켰더니 패널이 300px 미만으로 압축되어 제목·입력창·항목이
+  // 잘렸다. 이번 교정은 "메인(1625px 기본)+패널(300~360px)"을 하나의 결합 프레임으로 보고
+  // 그 프레임 전체를 뷰포트 안에서 가운데 정렬한다 -- 메인을 결합 프레임의 왼쪽 절반만큼
+  // 왼쪽으로 옮기면, 오른쪽에 패널이 들어갈 정상 폭(최소 300px)의 자리가 저절로 생긴다.
+  // 그래도 안 들어가는 좁은 구간(1625~1925px)에서만 메인 폭을 필요한 최소량만 줄이고,
+  // 그마저도 메인 최소 사용 폭(TODAY_MAIN_MIN_WIDTH) 밑으로 내려가야 한다면 도킹을
+  // 포기하고 오버레이로 전환한다(140px 같은 비정상 폭으로 억지 도킹하지 않는다).
+  // 300px은 실측상 제목·아이콘·항목은 안 잘리지만 빠른 입력창의 placeholder 전체 문구가
+  // 살짝 좁게 나온다 -- 사용자가 제시한 "최소 300px·권장 320~360px" 범위 중 권장값
+  // 하한(320px)을 실제 하한으로 써서 여유를 조금 더 둔다(여전히 300px 미만으로는 절대
+  // dock하지 않는다는 원칙은 그대로 유지).
+  var TODAY_PANEL_MIN_WIDTH = 320;
+  var TODAY_PANEL_MAX_WIDTH = 360; // 지나치게 넓어지지 않게 하는 상한.
+  var TODAY_MAIN_FULL_WIDTH = 1625; // .artboard 기본(축소 전) 폭 -- CSS max-width와 일치.
+  var TODAY_MAIN_MIN_WIDTH = 1200; // 기존 1200~1280px 반응형 구간에서 이미 정상 렌더가 확인된 메인 최소 사용 폭.
+
+  // Monthly Log 오른쪽 패널(applyMonthlyLogInboxDockDom)이 그대로 쓰는 기존 상수/함수 --
+  // 이번 Today 전용 교정과 완전히 분리하기 위해 이름/값 전부 그대로 둔다(수정 금지 대상).
+  var MONTHLY_PANEL_MIN_WIDTH = 300; // CSS .is-overlay의 clamp(300px, ...) 최소값과 일치.
+  var MONTHLY_PANEL_MAX_WIDTH = 380; // CSS .is-overlay의 clamp(...,380px) 최대값과 일치.
+
+  function getMonthlyPanelDockGap() {
+    var artboard = document.querySelector('.artboard');
+    if (!artboard) return 0;
+    var rect = artboard.getBoundingClientRect();
+    return window.innerWidth - rect.right;
+  }
+
+  // 메인+패널 결합 배치 계산. null이면 정상 폭(300px)으로는 도킹할 수 없다는 뜻(오버레이로
+  // 전환해야 함). 이 함수는 순수 계산만 하고 DOM은 건드리지 않는다(테스트하기 쉽게 분리).
+  function computeTodayPanelDockLayout(viewportWidth) {
+    if (viewportWidth < TODAY_MAIN_FULL_WIDTH) return null; // 메인이 이미 뷰포트 전체를 쓰는 중이라 나눌 여유가 없다.
+    var availableAtFullMain = viewportWidth - TODAY_MAIN_FULL_WIDTH;
+    var mainWidth, panelWidth;
+    if (availableAtFullMain >= TODAY_PANEL_MIN_WIDTH) {
+      mainWidth = TODAY_MAIN_FULL_WIDTH;
+      panelWidth = Math.min(availableAtFullMain, TODAY_PANEL_MAX_WIDTH);
+    } else {
+      mainWidth = viewportWidth - TODAY_PANEL_MIN_WIDTH;
+      panelWidth = TODAY_PANEL_MIN_WIDTH;
+      if (mainWidth < TODAY_MAIN_MIN_WIDTH) return null; // 메인 최소 폭까지 줄여도 패널 최소 폭이 안 나온다.
+    }
+    var combinedWidth = mainWidth + panelWidth;
+    var combinedLeft = Math.max(0, (viewportWidth - combinedWidth) / 2);
+    return { mainWidth: mainWidth, panelWidth: panelWidth, combinedLeft: combinedLeft };
+  }
+
+  // .top/.daily/.weekly 내부 grid/카드 구조는 이 함수에서 전혀 건드리지 않는다(패널 전후로
+  // 완전히 동일하게 유지된다) -- .artboard 전체를 하나의 강체(rigid block)로 보고
+  // margin-right로만 왼쪽으로 옮긴다(내부 상대 비율은 그대로 유지된 채 통째로 이동).
+  // transform은 일부러 쓰지 않는다 -- #today-monthly-panel이 .artboard의 자손이라, 만약
+  // .artboard에 transform을 주면 CSS 스펙상 그 순간부터 position:fixed 자손의 containing
+  // block이 뷰포트가 아니라 .artboard 자신으로 바뀌어(버그) 아래 좌표 계산이 전부
+  // 어긋난다 -- margin은 이 부작용이 없어 안전하다.
+  function applyArtboardDockShift(layout) {
+    var artboard = document.querySelector('.artboard');
+    if (!artboard) return;
+    if (!layout) {
+      artboard.style.maxWidth = '';
+      artboard.style.marginRight = '';
+      return;
+    }
+    artboard.style.maxWidth = layout.mainWidth + 'px';
+    // body{justify-content:center}가 이 폭의 artboard 혼자였다면 뒀을 자연 위치.
+    var naturalLeft = (window.innerWidth - layout.mainWidth) / 2;
+    var shift = naturalLeft - layout.combinedLeft; // 왼쪽으로 옮겨야 할 거리.
+    // margin-right를 늘리면 flex 중앙정렬 계산에 쓰이는 "outer box"가 넓어져, 그만큼
+    // 왼쪽으로 당겨진다(실측 검증됨: marginRight = shift*2일 때 정확히 combinedLeft에 맞음).
+    artboard.style.marginRight = shift > 0.5 ? Math.round(shift * 2) + 'px' : '';
+  }
+
+  // 도킹일 때 top/bottom은 .artboard(=메인 작업영역)의 실제 렌더 상/하단에 그대로 맞춰,
+  // 패널이 메인 작업영역과 나란한 별도의 열처럼 보이게 한다(겹쳐 뜨는 느낌 없음). 오버레이는
+  // 기존처럼 화면 전체 높이를 그대로 쓴다(메인 레이아웃 이동 없음).
+  function applyMonthlyPanelDom() {
+    var panel = document.getElementById('today-monthly-panel');
+    var backdrop = document.getElementById('today-monthly-backdrop');
+    var toggle = document.getElementById('monthly-panel-toggle');
+    var open = state.monthlyPanelOpen;
+    if (toggle) toggle.setAttribute('aria-pressed', String(open));
+    if (!panel) return;
+    panel.hidden = !open;
+    panel.setAttribute('aria-hidden', String(!open));
+    if (!open) {
+      if (backdrop) backdrop.hidden = true;
+      applyArtboardDockShift(null);
+      return;
+    }
+    var layout = computeTodayPanelDockLayout(window.innerWidth);
+    var dock = !!layout;
+    panel.classList.toggle('is-docked', dock);
+    panel.classList.toggle('is-overlay', !dock);
+    applyArtboardDockShift(dock ? layout : null);
+    if (dock) {
+      var artboard = document.querySelector('.artboard');
+      var rect = artboard.getBoundingClientRect(); // margin 적용 후 실측 -- 좌표 혼용 방지.
+      panel.style.right = 'auto';
+      panel.style.left = Math.round(rect.right) + 'px';
+      panel.style.width = Math.round(layout.panelWidth) + 'px';
+      panel.style.top = Math.round(rect.top) + 'px';
+      panel.style.bottom = Math.round(window.innerHeight - rect.bottom) + 'px';
+      panel.style.height = '';
+    } else {
+      panel.style.left = 'auto';
+      panel.style.right = '0px';
+      panel.style.width = ''; // CSS .is-overlay의 clamp(300px,30vw,380px)가 담당.
+      panel.style.top = '0px';
+      panel.style.bottom = '0px';
+      panel.style.height = ''; // 오버레이는 기존처럼 화면 전체 높이.
+    }
+    // 도킹 중에는 아무 것도 가리지 않으므로 backdrop이 필요 없다 -- 오버레이일
+    // 때만 배경 클릭으로 닫을 수 있게 보여준다.
+    if (backdrop) backdrop.hidden = dock;
+  }
+
+  function openMonthlyPanel() {
+    if (state.monthlyPanelOpen) return;
+    state.monthlyPanelOpen = true;
+    renderTodayMonthlyPanel();
+    applyMonthlyPanelDom();
+  }
+
+  function closeMonthlyPanel(restoreFocus) {
+    if (!state.monthlyPanelOpen) return;
+    state.monthlyPanelOpen = false;
+    applyMonthlyPanelDom();
+    if (restoreFocus !== false) {
+      var toggle = document.getElementById('monthly-panel-toggle');
+      if (toggle) toggle.focus();
+    }
+  }
+
+  function toggleMonthlyPanel() {
+    if (state.monthlyPanelOpen) closeMonthlyPanel(); else openMonthlyPanel();
+  }
+
+  // 커스텀 DOM 툴팁(title 속성이 아니다 -- role="tooltip", 호버/키보드 포커스에서 보이고
+  // 벗어나면 닫힌다). 기본은 버튼 위쪽에 작은 꼬리와 함께 표시하고, 위쪽 공간이 부족하면
+  // 아래로, 좌우로 넘치면 뷰포트 안으로 보정한다.
+  var activeMonthlyToggleTooltip = null;
+
+  function hideMonthlyToggleTooltip() {
+    if (!activeMonthlyToggleTooltip) return;
+    activeMonthlyToggleTooltip.remove();
+    activeMonthlyToggleTooltip = null;
+  }
+
+  function showMonthlyToggleTooltip(anchorEl) {
+    if (activeMonthlyToggleTooltip) return;
+    var tip = document.createElement('div');
+    tip.className = 'monthly-toggle-tooltip';
+    tip.setAttribute('role', 'tooltip');
+    tip.id = 'monthly-panel-tooltip';
+
+    var label = document.createElement('span');
+    label.className = 'monthly-toggle-tooltip-label';
+    label.textContent = '이번달 할 일';
+    var kbd = document.createElement('span');
+    kbd.className = 'monthly-toggle-tooltip-kbd';
+    kbd.textContent = 'Ctrl+Shift+/';
+    var tail = document.createElement('span');
+    tail.className = 'monthly-toggle-tooltip-tail';
+    tip.appendChild(label);
+    tip.appendChild(kbd);
+    tip.appendChild(tail);
+    document.body.appendChild(tip);
+
+    var rect = anchorEl.getBoundingClientRect();
+    var tipRect = tip.getBoundingClientRect();
+    var top = rect.top - tipRect.height - 10;
+    var placeBelow = top < 8;
+    if (placeBelow) top = rect.bottom + 10;
+    var left = rect.left + rect.width / 2 - tipRect.width / 2;
+    var vw = window.innerWidth;
+    if (left < 8) left = 8;
+    if (left + tipRect.width > vw - 8) left = vw - tipRect.width - 8;
+    tip.style.top = top + 'px';
+    tip.style.left = left + 'px';
+    tip.classList.toggle('is-below', placeBelow);
+    var tailLeft = Math.max(10, Math.min(tipRect.width - 10, (rect.left + rect.width / 2) - left));
+    tail.style.left = tailLeft + 'px';
+
+    activeMonthlyToggleTooltip = tip;
+  }
+
+  function wireMonthlyPanelToggle() {
+    var toggle = document.getElementById('monthly-panel-toggle');
+    if (toggle && !toggle._monthlyToggleWired) {
+      toggle._monthlyToggleWired = true;
+      toggle.addEventListener('click', function () { toggleMonthlyPanel(); hideMonthlyToggleTooltip(); });
+      toggle.addEventListener('mouseenter', function () { showMonthlyToggleTooltip(toggle); });
+      toggle.addEventListener('mouseleave', hideMonthlyToggleTooltip);
+      toggle.addEventListener('focus', function () { showMonthlyToggleTooltip(toggle); });
+      toggle.addEventListener('blur', hideMonthlyToggleTooltip);
+    }
+    var closeBtn = document.getElementById('today-monthly-panel-close');
+    if (closeBtn && !closeBtn._monthlyCloseWired) {
+      closeBtn._monthlyCloseWired = true;
+      closeBtn.addEventListener('click', function () { closeMonthlyPanel(); });
+    }
+    var backdrop = document.getElementById('today-monthly-backdrop');
+    if (backdrop && !backdrop._monthlyBackdropWired) {
+      backdrop._monthlyBackdropWired = true;
+      backdrop.addEventListener('click', function () { closeMonthlyPanel(); });
+    }
+    wireMonthlyItemsListDelegation(document.getElementById('today-monthly-list'));
+    wireMonthlyQuickInput(document.getElementById('today-monthly-quick'), currentTodayMonthKey);
+    if (!window._monthlyPanelResizeWired) {
+      window._monthlyPanelResizeWired = true;
+      // rAF로 묶어 resize 연속 발생 중 매번 동기 재계산(레이아웃 스래싱)하지 않게 한다.
+      var monthlyPanelResizeRaf = null;
+      window.addEventListener('resize', function () {
+        if (monthlyPanelResizeRaf) return;
+        monthlyPanelResizeRaf = requestAnimationFrame(function () {
+          monthlyPanelResizeRaf = null;
+          applyMonthlyPanelDom();
+        });
+      });
+    }
+    applyMonthlyPanelDom();
+  }
+
+  // ---------------------------------------------------------------------
+  // 월간 할일(monthlyItems) -- 날짜가 없는 "이 달 안에 할 일" 전용 CRUD. state.items와
+  // 완전히 분리된 배열(state.monthlyItems)만 다루며, Calendar 우측 패널과 Today 우측
+  // 패널이 아래 함수들을 그대로 공유한다(생성·완료·종류변경·삭제·목록 렌더링·제목 편집
+  // 전부 이 한 곳에만 구현 -- 두 화면에 중복 구현하지 않는다).
+  // ---------------------------------------------------------------------
+  function makeMonthlyItem(overrides) {
+    var now = Date.now();
+    var base = {
+      id: uid(),
+      type: 'task',
+      text: '',
+      monthKey: '',
+      completed: false,
+      order: 0,
+      createdAt: now,
+      updatedAt: now,
+      deletedAt: null,
+      // 이달의 할 일도 일간 항목과 같은 그룹 기능을 사용한다. 날짜 대신 monthKey 기준이다.
+      groupId: null,
+      instanceGroupId: null,
+      projectId: null,
+      // 이달의 할 일 원본(마스터)도 배치 인스턴스(state.items, sourceMonthlyItemId로 연결)와
+      // 같은 상세 필드 모양을 그대로 갖는다 -- 이렇게 하면 배치를 만들 때 이 필드들을 그대로
+      // 복사하기만 하면 기존 상세 drawer(state.items 전용)를 손대지 않고도 그대로 재사용할
+      // 수 있다. 마스터 자신은 상세 drawer를 직접 열지 않는다("상세 열기"는 배치가 있을 때만
+      // 그 배치의 drawer를 연다) -- descriptionBlocks 편집기 자체를 이중화하지 않기 위함.
+      description: '',
+      subtasks: [],
+      detailBlocksMigrationVersion: DETAIL_BLOCKS_MIGRATION_VERSION
+    };
+    return Object.assign(base, overrides);
+  }
+
+  function findMonthlyItemById(itemId) {
+    for (var i = 0; i < state.monthlyItems.length; i++) {
+      if (state.monthlyItems[i].id === itemId) return state.monthlyItems[i];
+    }
+    return null;
+  }
+
+  function getMonthlyItemsForMonth(monthKey) {
+    return state.monthlyItems
+      .filter(function (it) { return it.monthKey === monthKey && !it.deletedAt; })
+      .sort(function (a, b) { return a.order - b.order; });
+  }
+
+  function nextMonthlyOrder(monthKey) {
+    var existing = state.monthlyItems.filter(function (it) { return it.monthKey === monthKey && !it.deletedAt; });
+    if (!existing.length) return 0;
+    return Math.max.apply(null, existing.map(function (it) { return it.order; })) + 1;
+  }
+
+  function createMonthlyItem(opts) {
+    var item;
+    withHistoryTransaction(function () {
+      item = makeMonthlyItem({
+        type: opts.type,
+        text: opts.text,
+        monthKey: opts.monthKey,
+        order: nextMonthlyOrder(opts.monthKey)
+      });
+      state.monthlyItems.push(item);
+    });
+    saveMonthlyItems();
+    renderApp();
+    return item;
+  }
+
+  function toggleMonthlyItemCompleted(itemId) {
+  var item = findMonthlyItemById(itemId);
+
+  if (!item || item.deletedAt) return;
+
+  var targetCompleted = !item.completed;
+
+  withHistoryTransaction(function () {
+    item.completed = targetCompleted;
+    item.updatedAt = Date.now();
+
+    // 이달의 할 일에서 체크해도
+    // 날짜 카드의 같은 인스턴스까지 함께 변경
+    if (item.instanceGroupId) {
+      setInstanceGroupCompleted(
+        item.instanceGroupId,
+        targetCompleted
+      );
+    }
+  });
+
+  saveItems();
+  saveMonthlyItems();
+  renderApp();
+}
+
+  function changeMonthlyItemType(itemId, nextType) {
+    var item = findMonthlyItemById(itemId);
+    if (!item || item.deletedAt) { closeMonthlyTypeMenu(); return; }
+    if (item.type === nextType) { closeMonthlyTypeMenu(); return; }
+    withHistoryTransaction(function () {
+      item.type = nextType;
+      item.updatedAt = Date.now();
+      syncSharedMonthlyFields(item.id);
+      if (item.instanceGroupId) syncSharedInstanceGroupFields(item.instanceGroupId, item);
+    });
+    saveItems();
+    saveMonthlyItems();
+    renderApp();
+    closeMonthlyTypeMenu();
+  }
+
+  // ---------------------------------------------------------------------
+  // 원본(마스터)<->배치 인스턴스 공유 필드 동기화. 제목/종류/설명/하위 할일은 원본과
+  // 모든 배치가 공유하고, date/order/completed 등은 배치마다 독립이다(요구사항 3).
+  // editedEntity를 생략하면 "마스터 자신이 방금 바뀐 값의 근원"이라는 뜻으로 마스터의
+  // 현재 값을 그대로 모든 배치에 뿌린다. editedEntity에 배치 하나를 넘기면 그 배치의
+  // 새 값을 먼저 마스터에 반영한 뒤, 마스터 값을 그 배치를 제외한 나머지 배치에 뿌린다
+  // -- 이렇게 항상 마스터를 경유해 전파해야 "배치 A 편집 -> 배치 B에도 반영"이 성립한다.
+  // ---------------------------------------------------------------------
+  var MONTHLY_SHARED_FIELDS = ['text', 'type', 'description', 'descriptionBlocks', 'subtasks', 'detailBlocksMigrationVersion', 'projectId'];
+
+  function syncSharedMonthlyFields(monthlyItemId, editedEntity) {
+    var master = findMonthlyItemById(monthlyItemId);
+    if (!master) return;
+    if (editedEntity && editedEntity !== master) {
+      MONTHLY_SHARED_FIELDS.forEach(function (f) {
+        if (editedEntity[f] !== undefined) master[f] = editedEntity[f];
+      });
+      master.updatedAt = Date.now();
+    }
+    // 최종 감사(2026-07-27): 휴지통에 있는 배치본도 함께 동기화한다(이전엔 it.deletedAt로
+    // 건너뛰어, "배치 휴지통 이동 -> 원본/다른 배치 수정 -> 휴지통 배치 복원" 순서에서
+    // 복원된 배치가 낡은 제목/상세를 갖는 버그가 있었다). 이 동기화는 drawer를 "닫을 때"만
+    // 실행되는 무거운 연산이 아니라 필드 몇 개를 복사하는 가벼운 연산이라, 휴지통 항목까지
+    // 포함해도 매 타이핑마다 휴지통 목록을 다시 그리는 문제로 이어지지 않는다(drawer는
+    // 여전히 자신을 닫을 때 한 번만 이 함수를 부른다 -- 렌더 빈도 자체는 그대로다).
+    state.items.forEach(function (it) {
+      if (it.sourceMonthlyItemId !== monthlyItemId || it === editedEntity) return;
+      MONTHLY_SHARED_FIELDS.forEach(function (f) { it[f] = master[f]; });
+      it.updatedAt = Date.now();
+    });
+  }
+
+  // 인스턴스 복제(instanceGroupId) 전용 동기화 -- sourceMonthlyItemId 구조와 달리 "원본"
+  // 개념이 없는 대등한 N개 항목이라, editedEntity(방금 상세를 닫은 항목)를 그 순간의
+  // 기준으로 삼아 같은 instanceGroupId를 가진 나머지 전부에 공유 필드만 그대로 복사한다.
+  // 날짜/완료/순서/이월 등은 각자 다른 state.items 엔트리라 애초에 이 함수가 손대지
+  // 않아도 독립적으로 유지된다.
+  var INSTANCE_SHARED_FIELDS = ['text', 'type', 'description', 'descriptionBlocks', 'subtasks', 'detailBlocksMigrationVersion', 'projectId'];
+
+  function syncSharedInstanceGroupFields(groupId, editedEntity) {
+    if (!groupId || !editedEntity) return;
+    function syncOne(it) {
+      if (it.instanceGroupId !== groupId || it === editedEntity) return;
+      INSTANCE_SHARED_FIELDS.forEach(function (f) {
+        if (editedEntity[f] !== undefined) {
+          it[f] = JSON.parse(JSON.stringify(editedEntity[f]));
+        }
+      });
+      it.updatedAt = Date.now();
+    }
+    state.items.forEach(syncOne);
+    state.monthlyItems.forEach(syncOne);
+  }
+
+  // 라운드3 3: 연결된 원본(master) + 그 원본을 공유하는 모든 배치본을 한 번에 휴지통으로
+  // 보내는 공통 로직 -- 마스터 id 여러 개를 받아 한 번에 처리할 수 있어(사용자 확정
+  // 정책: 일반 Delete도 이제 이 로직을 그대로 쓴다) deleteEntireMonthlyInstance와
+  // deleteRegularItemsWithLinkedInstancePolicy가 함께 재사용한다.
+  function softDeleteConnectedInstanceSets(masterIds) {
+    var touchedCount = 0;
+    masterIds.forEach(function (masterId) {
+      var master = findMonthlyItemById(masterId);
+      if (master && !master.deletedAt) {
+        master.deletedAt = new Date().toISOString();
+        master.updatedAt = Date.now();
+        touchedCount++;
+      }
+      state.items.forEach(function (it) {
+        if (it.sourceMonthlyItemId !== masterId || it.deletedAt) return;
+        it.deletedAt = new Date().toISOString();
+        it.updatedAt = Date.now();
+        touchedCount++;
+      });
+    });
+    return touchedCount;
+  }
+
+  // "전체 인스턴스 삭제" -- 이 배치본이 연결된 원본(master)과, 그 원본에 연결된 모든
+  // 배치본(자기 자신 포함)을 한 번에 휴지통으로 보낸다(영구 삭제 아님, 휴지통에서
+  // 개별적으로 복원 가능). 이동 팝업의 명시적 메뉴 항목으로도 그대로 남는다(요구사항의
+  // "연결된 항목 전체 삭제" 안전 보조 메뉴).
+  function deleteEntireMonthlyInstance(itemId) {
+    var item = findItemById(itemId);
+    if (!item || !item.sourceMonthlyItemId) return;
+    var masterId = item.sourceMonthlyItemId;
+    var touchedCount = 0;
+    withHistoryTransaction(function () {
+      touchedCount = softDeleteConnectedInstanceSets([masterId]);
+    });
+    if (!touchedCount) return;
+    saveItems();
+    saveMonthlyItems();
+    state.selectedItemIds.clear();
+    state.selectedOccurrenceById.clear();
+    renderApp();
+    announce('연결된 원본과 배치 ' + touchedCount + '개를 휴지통으로 이동했습니다.');
+  }
+
+  // instanceGroupId로 묶인 그룹 전체를 휴지통으로 보낸다(요구사항 6: "연결된 인스턴스
+  // 하나를 실제 삭제하면 같은 instanceGroupId 항목 전체를 휴지통으로 이동"). 연결
+  // 해제된 항목은 instanceGroupId가 이미 null이라 애초에 이 함수가 대상으로 삼지
+  // 않는다(자동으로 "삭제 대상에서 제외" 요구사항을 만족).
+  function softDeleteInstanceGroups(groupIds) {
+    var touchedCount = 0;
+    var deletedAt = new Date().toISOString();
+    groupIds.forEach(function (groupId) {
+      [state.items, state.monthlyItems].forEach(function (collection) {
+        collection.forEach(function (it) {
+          if (it.instanceGroupId !== groupId || it.deletedAt) return;
+          it.deletedAt = deletedAt;
+          it.updatedAt = Date.now();
+          touchedCount++;
+        });
+      });
+    });
+    return touchedCount;
+  }
+
+  // 라운드3 3(+ 인스턴스 복제 확장): 사용자 확정 정책 -- 연결된(sourceMonthlyItemId 또는
+  // instanceGroupId가 있는) 항목에서 일반 Delete를 실행하면 "이 하나만" 제거가 아니라
+  // 연결 세트 전체를 기본값으로 함께 휴지통에 보낸다(영구 삭제 아님, Undo 한 단계로
+  // 전체 복원). 독립 항목은 기존과 동일하게 그 항목만 삭제한다. Ctrl/Cmd+X(잘라내기)+
+  // 붙여넣기는 이 함수를 전혀 거치지 않는 별도 경로(state.items 직접 filter)라
+  // 그룹 전체 삭제가 실행될 일이 없다(요구사항 6의 예외 조건이 구조적으로 보장됨).
+  function deleteRegularItemsWithLinkedInstancePolicy(regularIds) {
+    var linkedMasterIds = {};
+    var linkedInstanceGroupIds = {};
+    var independentIds = [];
+    regularIds.forEach(function (id) {
+      var it = findItemById(id);
+      if (!it) return;
+      if (it.sourceMonthlyItemId) linkedMasterIds[it.sourceMonthlyItemId] = true;
+      else if (it.instanceGroupId) linkedInstanceGroupIds[it.instanceGroupId] = true;
+      else independentIds.push(id);
+    });
+    var masterIds = Object.keys(linkedMasterIds);
+    var groupIds = Object.keys(linkedInstanceGroupIds);
+    var touchedCount = 0;
+    withHistoryTransaction(function () {
+      if (masterIds.length) touchedCount += softDeleteConnectedInstanceSets(masterIds);
+      if (groupIds.length) touchedCount += softDeleteInstanceGroups(groupIds);
+      independentIds.forEach(function (id) {
+        var it = findItemById(id);
+        if (!it || it.deletedAt) return;
+        it.deletedAt = new Date().toISOString();
+        it.updatedAt = Date.now();
+        touchedCount++;
+      });
+    });
+    if (!touchedCount) return 0;
+    saveItems();
+    if (masterIds.length || groupIds.length) saveMonthlyItems();
+    state.selectedItemIds.clear();
+    state.selectedOccurrenceById.clear();
+    state.lastSelectedItemId = null;
+    state.selectionAnchor = null;
+    renderApp();
+    announce(touchedCount + '개 항목을 휴지통으로 이동했습니다.');
+    return touchedCount;
+  }
+
+  // 라운드2 6: 배치본의 원본(master) 연결을 끊는다 -- 이후로는 원본/다른 배치와 전혀
+  // 동기화되지 않는 완전히 독립된 일반 항목이 된다. 이미 배치본 자신이 갖고 있던 제목/
+  // 설명/하위 할 일 등은 그대로 남는다(별도 복사 로직 불필요 -- 애초에 항목 자신의
+  // 필드에 저장돼 있었고 sourceMonthlyItemId만 그 값들을 계속 "동기화"시키는 링크였다).
+  function unlinkMonthlyInstances(itemIds) {
+    var touched = [];
+    withHistoryTransaction(function () {
+      itemIds.forEach(function (id) {
+        var item = findItemById(id);
+        if (!item || !item.sourceMonthlyItemId) return;
+        item.sourceMonthlyItemId = null;
+        item.updatedAt = Date.now();
+        touched.push(item);
+      });
+    });
+    if (touched.length) { saveItems(); renderApp(); }
+    return touched;
+  }
+
+  // 인스턴스 복제(instanceGroupId) 연결 해제 -- 요구사항 5: 선택한 항목만 그룹에서
+  // 빠지고 나머지는 계속 연결된 채로 남는다("A, A', A'' 중 A만 해제하면 A는 독립
+  // 항목이 되고 A', A''는 계속 연결"). 해제된 항목은 지금 갖고 있던 제목/설명/하위
+  // 할일 등 공유 필드 값을 그대로 유지한다(필드 자체를 지우는 게 아니라 연결 고리
+  // instanceGroupId만 끊으므로 자동으로 보장된다).
+  function unlinkInstanceGroupItems(itemIds) {
+    var touched = [];
+    withHistoryTransaction(function () {
+      itemIds.forEach(function (id) {
+        var item = findItemById(id) || findMonthlyItemById(id);
+        if (!item || !item.instanceGroupId) return;
+        item.instanceGroupId = null;
+        item.updatedAt = Date.now();
+        touched.push(item);
+      });
+    });
+    if (touched.length) { saveItems(); saveMonthlyItems(); renderApp(); }
+    return touched;
+  }
+
+  // 이달의 할 일 원본 여러 개를 한 목적 날짜에 "배치"한다(이동이 아니라 복사 -- 원본은
+  // 이달의 할 일에 그대로 남는다). 다중 선택 드래그도 이 함수 하나로 처리하며, 선택된
+  // 원본들의 상대 순서(order)를 그대로 보존해 목적 날짜 맨 뒤에 순서대로 이어붙인다.
+  // 이달의 할 일을 특정 날짜로 이동한다.
+// 이동 후 이달의 할 일 원본에서는 사라지고,
+// Daily / Weekly / Monthly Log의 일반 항목으로 바뀐다.
+// 이달의 할 일 원본을 targetDate에 "배치"한다 -- moveMonthlyItemsToRegularItems(드래그로
+// Daily/Weekly/Monthly Log에 놓았을 때 쓰는, 원본을 진짜로 옮겨 없애는 별개 기능)와
+// 반드시 구분해야 한다. 이 함수는 원본(master)을 state.monthlyItems에 그대로 남긴 채
+// 새 id를 가진 독립된 배치(placement)를 만들고 sourceMonthlyItemId로만 연결한다
+// (Ctrl/Cmd+Alt+I 및 이달의 할 일 패널의 명시적 "배치" 진입점 전용). 이전에 이 함수
+// 본문이 moveMonthlyItemsToRegularItems와 동일한 "이동" 로직으로 잘못 덮어써져 있던
+// 실제 회귀를 여기서 원래의 복사/배치 동작으로 되돌렸다(재현 확인: 수정 전에는 배치가
+// 전혀 생성되지 않고 원본만 조용히 사라지는 상태였다).
+function createPlacementsFromMonthlyItems(monthlyItemIds, targetDate) {
+  if (!targetDate) return [];
+
+  var uniqueIds = Array.from(new Set(monthlyItemIds));
+  var created = [];
+
+  withHistoryTransaction(function () {
+    var masters = uniqueIds
+      .map(findMonthlyItemById)
+      .filter(function (master) {
+        return master && !master.deletedAt;
+      })
+      .sort(function (a, b) {
+        return a.order - b.order;
+      });
+
+    if (!masters.length) return;
+
+    var baseOrder = nextOrder(targetDate);
+
+    masters.forEach(function (master, index) {
+      var placement = makeItem({
+        type: master.type,
+        text: master.text,
+        date: targetDate,
+        endDate: targetDate,
+        order: baseOrder + index,
+        description: master.description || '',
+        descriptionBlocks: Array.isArray(master.descriptionBlocks)
+          ? JSON.parse(JSON.stringify(master.descriptionBlocks))
+          : undefined,
+        subtasks: Array.isArray(master.subtasks)
+          ? JSON.parse(JSON.stringify(master.subtasks))
+          : [],
+        detailBlocksMigrationVersion: master.detailBlocksMigrationVersion,
+        sourceMonthlyItemId: master.id,
+        // Monthly 마스터와 배치본은 projectId를 공유한다.
+        projectId: master.projectId || null
+      });
+
+      state.items.push(placement);
+      created.push(placement);
+    });
+  });
+
+  if (created.length) saveItems();
+  return created;
+}
+
+  // Daily/Weekly 항목(일반 항목, 마스터 아님) 하나를 이달의 할 일에 "복사"한다(명시적
+  // 메뉴 명령 전용). 요구사항이 이 방향은 공유를 명시하지 않고 "원래 날짜 항목은
+  // 유지"만 요구하므로, 여기서는 원본 item에 역방향 링크를 만들지 않고 독립된 새
+  // monthlyItem을 만든다(추후 그 monthlyItem을 다시 배치하면 그때부터는 새 배치들끼리
+  // 공유가 시작된다).
+  function copyItemsToMonthlyInbox(itemIds, monthKey) {
+    var created = [];
+    withHistoryTransaction(function () {
+      var baseOrder = nextMonthlyOrder(monthKey);
+      itemIds.forEach(function (itemId) {
+        var item = findItemById(itemId);
+        if (!item) return;
+        var clone = makeMonthlyItem({
+          type: item.type,
+          text: item.text,
+          monthKey: monthKey,
+          order: baseOrder + created.length,
+          description: item.description || '',
+          descriptionBlocks: Array.isArray(item.descriptionBlocks) ? JSON.parse(JSON.stringify(item.descriptionBlocks)) : undefined,
+          subtasks: Array.isArray(item.subtasks) ? JSON.parse(JSON.stringify(item.subtasks)) : [],
+          detailBlocksMigrationVersion: item.detailBlocksMigrationVersion
+        });
+        state.monthlyItems.push(clone);
+        created.push(clone);
+      });
+    });
+    if (created.length) saveMonthlyItems();
+    return created;
+  }
+
+  // 소프트 삭제 -- deletedAt만 찍어 목록에서 제외한다(일반 휴지통과는 무관, 완전히
+  // 별도의 되돌리기 경로는 Undo(Ctrl+Z)로 충분하다는 요구사항에 따라 하드 삭제 UI는
+  // 만들지 않는다). item이 이미 삭제됐으면 아무 것도 하지 않아 중복 삭제를 막는다.
+  function deleteMonthlyItem(itemId) {
+    var item = findMonthlyItemById(itemId);
+    if (!item || item.deletedAt) return;
+    var touched = 0;
+    withHistoryTransaction(function () {
+      if (item.instanceGroupId) touched = softDeleteInstanceGroups([item.instanceGroupId]);
+      else {
+        item.deletedAt = new Date().toISOString();
+        item.updatedAt = Date.now();
+        touched = 1;
+      }
+    });
+    if (!touched) return;
+    saveItems();
+    saveMonthlyItems();
+    renderApp();
+  }
+
+  // 다중 선택 삭제(Delete 키 등) -- 여러 개를 한 번에 소프트 삭제하되 history는 한 단계로
+  // 묶는다(개별 deleteMonthlyItem을 반복 호출하면 트랜잭션도, 렌더도 여러 번 되어 버린다).
+  function deleteMonthlyItems(itemIds) {
+    var touched = false;
+    withHistoryTransaction(function () {
+      var groupIds = {};
+      itemIds.forEach(function (itemId) {
+        var item = findMonthlyItemById(itemId);
+        if (!item || item.deletedAt) return;
+        if (item.instanceGroupId) groupIds[item.instanceGroupId] = true;
+        else {
+          item.deletedAt = new Date().toISOString();
+          item.updatedAt = Date.now();
+          touched = true;
+        }
+      });
+      if (Object.keys(groupIds).length && softDeleteInstanceGroups(Object.keys(groupIds))) touched = true;
+    });
+    if (touched) { saveItems(); saveMonthlyItems(); }
+    return touched;
+  }
+
+  // 이달의 할 일 "지난달 미완료" 이월: 복사가 아니라 기존 monthlyItem의 monthKey만
+  // 현재 달로 바꾼다 -- id/제목/설명/하위 할 일/첨부/연결 정보(sourceMonthlyItemId로
+  // 이어진 배치본의 instanceGroupId 등)/createdAt은 전부 그대로 유지된다. 이미 만들어진
+  // Daily/Weekly 배치본(state.items)은 date가 독립 필드라 전혀 건드리지 않으므로 날짜도
+  // 그대로 남는다(요구사항). withHistoryTransaction으로 감싸 Undo/Redo를 그대로 지원한다.
+  function moveMonthlyItemsToMonth(itemIds, targetMonthKey) {
+    var touched = [];
+    withHistoryTransaction(function () {
+      var nextOrder = nextMonthlyOrder(targetMonthKey);
+      itemIds.forEach(function (itemId) {
+        var item = findMonthlyItemById(itemId);
+        if (!item || item.deletedAt) return;
+        // 이전 달 groupId가 현재 달 기준으로 유효하지 않으면(그룹 자체가 없거나 그
+        // 그룹의 monthKey가 이동 대상 달과 다르면) 소속을 해제해, 아래에서 부여하는
+        // 가장 큰 order값 덕분에 현재 달 미그룹 목록 맨 끝에 자연스럽게 놓이게 한다.
+        if (item.groupId) {
+          var group = findGroupById(item.groupId);
+          if (!group || group.monthKey !== targetMonthKey) item.groupId = null;
+        }
+        item.monthKey = targetMonthKey;
+        item.order = nextOrder;
+        nextOrder += 1;
+        item.updatedAt = Date.now();
+        touched.push(item);
+      });
+    });
+    if (touched.length) saveMonthlyItems();
+    return touched;
+  }
+
+  // "지난달 미완료" 패널의 개별 [이번 달] 버튼 -- 위 이동 로직을 이 항목 하나에만 적용한다.
+  function moveMonthlyOverdueItemToCurrentMonth(itemId, targetMonthKey) {
+    var touched = moveMonthlyItemsToMonth([itemId], targetMonthKey);
+    if (touched.length) renderApp();
+  }
+
+  // ---------------------------------------------------------------------
+  // 최종 감사(2026-07-27): 휴지통에서 이달의 할 일 원본 복원/영구 삭제. 복원은 deletedAt만
+  // 지우면 된다(monthKey/order는 삭제 때 전혀 건드리지 않았으므로 자동으로 원래 자리로
+  // 돌아간다). 영구 삭제는 남아있는 배치본이 있으면 그 sourceMonthlyItemId 연결만 끊어
+  // 독립 항목으로 정착시킨다 -- 배치본은 이미 자기 몫의 text/type/description/subtasks
+  // 사본을 갖고 있으므로(공유는 값 복사, 참조 공유가 아니다) 상세 데이터가 유실되지
+  // 않고, dangling sourceMonthlyItemId도 생기지 않는다.
+  // ---------------------------------------------------------------------
+  function restoreMonthlyItemsFromTrash(itemIds) {
+    var uniqueIds = Array.from(new Set(itemIds));
+    var touched = [];
+    var groupIds = {};
+    uniqueIds.forEach(function (id) {
+      var item = findMonthlyItemById(id);
+      if (item && item.instanceGroupId) groupIds[item.instanceGroupId] = true;
+    });
+    withHistoryTransaction(function () {
+      uniqueIds.forEach(function (id) {
+        var item = findMonthlyItemById(id);
+        if (!item || !item.deletedAt || item.instanceGroupId) return;
+        item.deletedAt = null;
+        item.updatedAt = Date.now();
+        touched.push(item);
+      });
+      Object.keys(groupIds).forEach(function (groupId) {
+        [state.items, state.monthlyItems].forEach(function (collection) {
+          collection.forEach(function (item) {
+            if (item.instanceGroupId !== groupId || !item.deletedAt) return;
+            item.deletedAt = null;
+            item.updatedAt = Date.now();
+            touched.push(item);
+          });
+        });
+      });
+    });
+    if (!touched.length) return touched;
+    saveItems();
+    saveMonthlyItems();
+    pruneTrashSelection(touched.map(function (it) { return it.id; }));
+    renderApp();
+    announce(touched.length + '개 연결 항목을 복원했습니다.');
+    return touched;
+  }
+
+  function permanentDeleteMonthlyMasters(itemIds) {
+    var idSet = {};
+    itemIds.forEach(function (id) { idSet[id] = true; });
+    var removedIds = [];
+    withHistoryTransaction(function () {
+      state.monthlyItems = state.monthlyItems.filter(function (it) {
+        if (idSet[it.id]) { removedIds.push(it.id); return false; }
+        return true;
+      });
+      removedIds.forEach(function (masterId) {
+        state.items.forEach(function (it) {
+          if (it.sourceMonthlyItemId === masterId) it.sourceMonthlyItemId = null;
+        });
+      });
+    });
+    if (!removedIds.length) return 0;
+    saveMonthlyItems();
+    saveItems();
+    pruneTrashSelection(removedIds);
+    renderApp();
+    announce(removedIds.length + '개 이달의 할 일 원본을 영구 삭제했습니다.');
+    return removedIds.length;
+  }
+
+  // ---------------------------------------------------------------------
+  // 이달의 할 일 전용 복사/잘라내기/붙여넣기. state.itemClipboard(Daily/Weekly/Monthly
+  // Log 공용)와 구조는 비슷하지만 monthlyItem은 날짜가 없어 remapClipboardItemsToTargetDate
+  // 같은 날짜 평행이동이 필요 없다 -- 그냥 목적 달의 order 맨 뒤에 상대 순서 그대로 붙인다.
+  // ---------------------------------------------------------------------
+  var monthlyPendingCutIds = null;
+
+  function copySelectedMonthlyItemsToClipboard() {
+    var ids = Array.from(state.selectedItemIds).filter(function (id) { return !!findMonthlyItemById(id); });
+    if (!ids.length) return;
+    var items = ids.map(findMonthlyItemById).filter(function (it) { return it && !it.deletedAt; });
+    if (!items.length) return;
+    items.sort(function (a, b) { return a.order - b.order; });
+    var snapshots = items.map(function (it) {
+      return {
+        type: it.type,
+        text: it.text,
+        description: it.description || '',
+        descriptionBlocks: JSON.parse(JSON.stringify(Array.isArray(it.descriptionBlocks) ? it.descriptionBlocks : [])),
+        subtasks: JSON.parse(JSON.stringify(Array.isArray(it.subtasks) ? it.subtasks : []))
+      };
+    });
+    state.monthlyItemClipboard = { items: snapshots, copiedAt: Date.now() };
+    monthlyPendingCutIds = null;
+  }
+
+  function cutSelectedMonthlyItemsToClipboard() {
+    var ids = Array.from(state.selectedItemIds).filter(function (id) { return !!findMonthlyItemById(id); });
+    copySelectedMonthlyItemsToClipboard();
+    monthlyPendingCutIds = ids.length ? ids : null;
+  }
+
+  function resolveMonthlyPasteTargetMonthKey() {
+    var anchor = state.selectionAnchor;
+    if (anchor && anchor.context === 'monthly-inbox' && anchor.containerKey) return anchor.containerKey;
+    if (state.currentView === 'calendar' && state.monthlyLogViewMonth) return state.monthlyLogViewMonth.slice(0, 7);
+    return currentTodayMonthKey();
+  }
+
+  function pasteMonthlyItemsFromClipboard() {
+    var clip = state.monthlyItemClipboard;
+    if (!clip || !clip.items.length) return;
+    var targetMonthKey = resolveMonthlyPasteTargetMonthKey();
+    var newIds = [];
+    withHistoryTransaction(function () {
+      var baseOrder = nextMonthlyOrder(targetMonthKey);
+      clip.items.forEach(function (src, idx) {
+        var clone = makeMonthlyItem({
+          type: src.type,
+          text: src.text,
+          monthKey: targetMonthKey,
+          order: baseOrder + idx,
+          description: src.description,
+          descriptionBlocks: JSON.parse(JSON.stringify(src.descriptionBlocks || [])),
+          subtasks: JSON.parse(JSON.stringify(src.subtasks || []))
+        });
+        state.monthlyItems.push(clone);
+        newIds.push(clone.id);
+      });
+      // 4단계(공통 잘라내기)와 같은 규칙: 붙여넣기가 실제로 성공한 뒤에만 원본을 제거하고,
+      // 같은 트랜잭션 안에서 처리해 붙여넣기+원본삭제가 하나의 Undo 단계로 묶인다.
+      if (newIds.length && monthlyPendingCutIds && monthlyPendingCutIds.length) {
+        var cutSet = {};
+        monthlyPendingCutIds.forEach(function (id) { cutSet[id] = true; });
+        state.monthlyItems.forEach(function (it) {
+          if (cutSet[it.id] && !it.deletedAt) { it.deletedAt = new Date().toISOString(); it.updatedAt = Date.now(); }
+        });
+      }
+    });
+    monthlyPendingCutIds = null;
+    if (!newIds.length) return;
+    saveMonthlyItems();
+    state.selectedItemIds = new Set(newIds);
+    state.selectedOccurrenceById.clear();
+    newIds.forEach(function (id) { addSelectedOccurrence(id, targetMonthKey); });
+    state.selectionAnchor = { itemId: newIds[0], context: 'monthly-inbox', containerKey: targetMonthKey };
+    renderApp();
+  }
+
+  // 제목 인라인 편집 -- 기존 item title-edit(startTitleEdit/commitTitleEdit)과 완전히
+  // 같은 상호작용 패턴(span->input 교체, Enter 커밋/Escape 취소, blur는 진행 중인 클릭
+  // 사이클이 먼저 끝나도록 한 틱 미뤄 커밋)이지만 대상 컬렉션이 달라 별도 상태로 관리한다.
+  var activeMonthlyTitleEdit = null; // { itemId, inputEl }
+var pendingMonthlyTitleClickTimer = null;
+  function startMonthlyTitleEdit(itemId, titleEl) {
+    var item = findMonthlyItemById(itemId);
+    if (!item || !titleEl) return;
+    if (activeMonthlyTitleEdit) {
+      if (activeMonthlyTitleEdit.itemId === itemId) { activeMonthlyTitleEdit.inputEl.focus(); return; }
+      commitMonthlyTitleEdit();
+    }
+    if (activeMonthlyTypeMenu) closeMonthlyTypeMenu(false);
+
+    var input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'title-edit-input';
+    input.value = item.text;
+    input.setAttribute('aria-label', '제목 편집');
+
+    titleEl.replaceWith(input);
+    input.focus();
+    input.select();
+
+    activeMonthlyTitleEdit = { itemId: itemId, inputEl: input };
+    input.addEventListener('input', function () {
+      var liveItem = findMonthlyItemById(itemId);
+      if (!liveItem) return;
+      previewInstanceTitleWhileTyping(liveItem, input.value);
+    });
+    input.addEventListener('keydown', onMonthlyTitleEditKeydown);
+    input.addEventListener('blur', onMonthlyTitleEditBlur);
+  }
+
+  function commitMonthlyTitleEdit() {
+    if (!activeMonthlyTitleEdit) return;
+    var edit = activeMonthlyTitleEdit;
+    activeMonthlyTitleEdit = null;
+
+    var item = findMonthlyItemById(edit.itemId);
+    var newText = edit.inputEl.value.trim();
+    if (item && newText && newText !== item.text) {
+      withHistoryTransaction(function () {
+        item.text = newText;
+        item.updatedAt = Date.now();
+        syncSharedMonthlyFields(item.id);
+        if (item.instanceGroupId) syncSharedInstanceGroupFields(item.instanceGroupId, item);
+      });
+      saveItems();
+      saveMonthlyItems();
+    }
+    renderApp();
+  }
+
+  function cancelMonthlyTitleEdit() {
+    if (!activeMonthlyTitleEdit) return;
+    activeMonthlyTitleEdit = null;
+    renderApp();
+  }
+
+  function onMonthlyTitleEditKeydown(e) {
+    if (e.key === 'Enter' && !e.isComposing) {
+      e.preventDefault();
+      e.stopPropagation();
+      commitMonthlyTitleEdit();
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      e.stopPropagation();
+      cancelMonthlyTitleEdit();
+    }
+  }
+
+  function onMonthlyTitleEditBlur() {
+    if (!activeMonthlyTitleEdit) return;
+    setTimeout(commitMonthlyTitleEdit, 0);
+  }
+
+  // 종류 변경 팝업 -- 기존 .type-menu(openTypeMenu)와 같은 상호작용 패턴(positionPopup
+  // 재사용, role="menu"/menuitemradio, 지연 등록된 outside-pointerdown/keydown, 방향키
+  // 순환, 포커스 복원)을 그대로 따르되 changeMonthlyItemType을 호출하는 별도 인스턴스다
+  // (findItemById/state.items를 직접 참조하는 기존 openTypeMenu는 건드리지 않는다).
+  var activeMonthlyTypeMenu = null; // { el, itemId }
+
+  function onMonthlyTypeMenuKeydown(e) {
+    if (!activeMonthlyTypeMenu) return;
+    var items = Array.prototype.slice.call(activeMonthlyTypeMenu.el.querySelectorAll('[role="menuitemradio"]'));
+    var currentIndex = items.indexOf(document.activeElement);
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      e.stopPropagation();
+      closeMonthlyTypeMenu();
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      moveTypeMenuFocus(items, items[(currentIndex + 1 + items.length) % items.length]);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      moveTypeMenuFocus(items, items[(currentIndex - 1 + items.length) % items.length]);
+    } else if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      if (currentIndex >= 0) {
+        changeMonthlyItemType(activeMonthlyTypeMenu.itemId, items[currentIndex].dataset.type);
+      }
+    }
+  }
+
+  function onOutsideMonthlyTypeMenuPointerDown(e) {
+    if (!activeMonthlyTypeMenu) return;
+    if (activeMonthlyTypeMenu.el.contains(e.target)) return;
+    var anchor = document.querySelector('[data-monthly-action="type-menu"][data-monthly-item-id="' + activeMonthlyTypeMenu.itemId + '"]');
+    if (anchor && anchor.contains(e.target)) return;
+    closeMonthlyTypeMenu();
+  }
+
+  function closeMonthlyTypeMenu(restoreFocus) {
+    if (!activeMonthlyTypeMenu) return;
+    var itemId = activeMonthlyTypeMenu.itemId;
+    activeMonthlyTypeMenu.el.remove();
+    document.removeEventListener('pointerdown', onOutsideMonthlyTypeMenuPointerDown, true);
+    document.removeEventListener('keydown', onMonthlyTypeMenuKeydown, true);
+    activeMonthlyTypeMenu = null;
+    var anchors = document.querySelectorAll('.monthly-item-row[data-monthly-item-id="' + itemId + '"] [data-monthly-action="type-menu"]');
+    anchors.forEach(function (a) { a.setAttribute('aria-expanded', 'false'); });
+    if (restoreFocus !== false && anchors[0]) anchors[0].focus();
+  }
+
+  function openMonthlyTypeMenu(itemId, anchorEl) {
+    if (activeMonthlyTypeMenu && activeMonthlyTypeMenu.itemId === itemId) {
+      closeMonthlyTypeMenu();
+      return;
+    }
+    var item = findMonthlyItemById(itemId);
+    if (!item) return;
+    if (activeMonthlyTypeMenu) closeMonthlyTypeMenu(false);
+    if (activeTypeMenu) closeTypeMenu(false);
+
+    var menu = document.createElement('div');
+    menu.className = 'type-menu';
+    menu.setAttribute('role', 'menu');
+
+    TYPE_OPTIONS.forEach(function (opt) {
+      var isCurrent = opt.type === item.type;
+      var mi = document.createElement('div');
+      mi.className = 'type-menu-item';
+      mi.setAttribute('role', 'menuitemradio');
+      mi.setAttribute('aria-checked', String(isCurrent));
+      mi.tabIndex = isCurrent ? 0 : -1;
+      mi.dataset.type = opt.type;
+
+      var icon = document.createElement('span');
+      icon.className = opt.icon;
+      var label = document.createElement('span');
+      label.textContent = typeLabel(opt.type);
+
+      mi.appendChild(icon);
+      mi.appendChild(label);
+      mi.addEventListener('click', function () {
+        changeMonthlyItemType(itemId, opt.type);
+      });
+      menu.appendChild(mi);
+    });
+
+    document.body.appendChild(menu);
+    positionPopup(menu, anchorEl);
+    anchorEl.setAttribute('aria-expanded', 'true');
+    activeMonthlyTypeMenu = { el: menu, itemId: itemId };
+
+    var toFocus = menu.querySelector('[aria-checked="true"]') || menu.firstElementChild;
+    if (toFocus) toFocus.focus();
+
+    setTimeout(function () {
+      document.addEventListener('pointerdown', onOutsideMonthlyTypeMenuPointerDown, true);
+      document.addEventListener('keydown', onMonthlyTypeMenuKeydown, true);
+    }, 0);
+  }
+
+  // 목록 행 하나 -- [체크박스] [종류 기호] [제목] [삭제]. Calendar/Today 패널이 공유한다.
+  // [드래그 핸들][체크박스][상태 기호][본문][상세 버튼] 슬롯 구조 -- 좁은 패널에서도
+  // 본문이 잘리지 않게 개별 margin-left 대신 .monthly-item-row 자체의 grid-template-columns
+  // (index.html 쪽 CSS)로 고정 슬롯 폭을 맞춘다. data-item-id를 data-monthly-item-id와
+  // 나란히 심어두는 이유: Daily/Weekly/Monthly Log가 공유하는 선택 모델(renderSelectionState/
+  // getVisibleIdsForContainer/onDragHandlePointerDown 등)이 전부 `[data-item-id]`
+  // 기준으로 행을 찾기 때문 -- 기존 monthly-item 전용 코드(startMonthlyTitleEdit 등)는
+  // data-monthly-item-id를 그대로 계속 쓰므로 이 필드도 남겨둔다(중복이지만 서로 다른
+  // 두 코드 경로가 각자 기대하는 속성이라 하나로 합치면 둘 중 하나가 깨진다).
+  // 이번 달 할 일 패널의 구분선 행.
+// 체크박스·종류 기호·제목·상세 버튼 없이
+// 드래그 손잡이와 가로선만 표시한다.
+function buildMonthlyInboxDividerRow(item) {
+  var row = document.createElement('div');
+
+  row.className =
+    'monthly-item-row divider-item-row';
+
+  row.dataset.monthlyItemId = item.id;
+  row.dataset.itemId = item.id;
+  row.dataset.monthKey = item.monthKey;
+
+  row.tabIndex = 0;
+  row.setAttribute('role', 'button');
+  row.setAttribute('aria-selected', 'false');
+  row.setAttribute('aria-label', '구분선');
+
+  var handle =
+    buildDotHandle('monthly-item-drag');
+
+  handle.addEventListener(
+    'pointerdown',
+    function (e) {
+      onDragHandlePointerDown(
+        e,
+        item.id,
+        'monthly-inbox',
+        item.monthKey
+      );
+    }
+  );
+
+  handle.addEventListener('click', function (e) {
+    if (suppressNextItemGutterClick) {
+      suppressNextItemGutterClick = false;
+      return;
+    }
+
+    handleItemPointerSelect(
+      e,
+      item.id,
+      'monthly-inbox',
+      item.monthKey,
+      undefined,
+      true
+    );
+  });
+
+  row.appendChild(handle);
+
+  var line = buildDividerLine();
+
+  line.addEventListener('click', function (e) {
+    handleItemPointerSelect(
+      e,
+      item.id,
+      'monthly-inbox',
+      item.monthKey,
+      undefined,
+      true
+    );
+  });
+
+  row.appendChild(line);
+
+  return row;
+}
+  function buildMonthlyItemRowEl(item) {
+     if (item.type === 'divider') {
+    return buildMonthlyInboxDividerRow(item);
+  }
+    var row = document.createElement('div');
+    row.className = 'monthly-item-row' + (item.completed ? ' is-done' : '');
+    row.dataset.monthlyItemId = item.id;
+    row.dataset.itemId = item.id;
+    row.dataset.monthKey = item.monthKey;
+    row.tabIndex = 0;
+    row.setAttribute('role', 'button');
+    row.setAttribute('aria-selected', 'false');
+
+    var handle = buildDotHandle('monthly-item-drag');
+
+    handle.addEventListener('pointerdown', function (e) {
+      onDragHandlePointerDown(e, item.id, 'monthly-inbox', item.monthKey);
+    });
+    row.appendChild(handle);
+
+    var cb = document.createElement('button');
+    cb.type = 'button';
+    cb.className = 'checkbox' + (item.completed ? ' checked' : '');
+    cb.dataset.monthlyAction = 'toggle-complete';
+    cb.setAttribute('role', 'checkbox');
+    cb.setAttribute('aria-checked', String(item.completed));
+    cb.setAttribute('aria-label', (item.completed ? '완료 취소: ' : '완료 처리: ') + item.text);
+    row.appendChild(cb);
+
+    var typeBtn = document.createElement('button');
+    typeBtn.type = 'button';
+    typeBtn.className = 'monthly-item-type-btn';
+    typeBtn.dataset.monthlyAction = 'type-menu';
+    typeBtn.setAttribute('aria-haspopup', 'menu');
+    typeBtn.setAttribute('aria-expanded', 'false');
+    typeBtn.setAttribute('aria-label', '종류 변경 (현재: ' + typeLabel(item.type) + ')');
+    var icon = document.createElement('span');
+    icon.className = item.type === 'task' ? 'ic-dot' : (item.type === 'memo' ? 'ic-dash' : 'ic-ring');
+    typeBtn.appendChild(icon);
+    row.appendChild(typeBtn);
+
+    var title = document.createElement('span');
+    title.className = 'monthly-item-title';
+    if (item.instanceGroupId) title.classList.add('is-instance-linked');
+    title.textContent = item.text;
+    title.title = item.text;
+   
+    row.appendChild(title);
+
+    // 상세 열기 -- 이 원본에 실제 배치(placement)가 하나라도 있으면 그 배치의 기존 상세
+    // drawer를 그대로 연다(원본 전용 drawer를 새로 만들지 않고 기존 걸 재사용 -- description
+    // 편집기 자체를 이중화하지 않기 위한 의도적 선택). 최종 감사(2026-07-27): 배치가
+    // 없어도 원본 자체의 상세를 열 수 있으므로(openMonthlyItemDetail이 이 경우
+    // entityType='monthly-master'로 연다) 더 이상 비활성화하지 않는다.
+    
+
+    var delBtn = document.createElement('button');
+    delBtn.type = 'button';
+    delBtn.className = 'monthly-item-delete';
+    delBtn.dataset.monthlyAction = 'delete';
+    delBtn.setAttribute('aria-label', '삭제: ' + item.text);
+    delBtn.textContent = '×';
+    row.appendChild(delBtn);
+
+    applyProjectAccent(row, item);
+    return row;
+  }
+
+  // "지난달 미완료" 패널 전용 행 -- 드래그/체크박스/종류변경은 없고(이 패널은 순수 안내용),
+  // 항목마다 [이번 달]/[삭제] 두 버튼만 둔다. 버튼 자체는 Daily 이월 카드의 개별 '오늘'/
+  // '삭제'와 똑같은 .rollover-item-actions/.rollover-item-action-btn을 재사용한다.
+  function buildMonthlyOverdueItemActions(item, targetMonthKey) {
+    var wrap = document.createElement('span');
+    wrap.className = 'rollover-item-actions';
+
+    var monthBtn = document.createElement('button');
+    monthBtn.type = 'button';
+    monthBtn.className = 'rollover-item-action-btn';
+    monthBtn.setAttribute('aria-label', '이번 달로 이동: ' + item.text);
+    monthBtn.textContent = '이번 달';
+    monthBtn.addEventListener('click', function (e) {
+      e.stopPropagation();
+      moveMonthlyOverdueItemToCurrentMonth(item.id, targetMonthKey);
+    });
+    wrap.appendChild(monthBtn);
+
+    var deleteBtn = document.createElement('button');
+    deleteBtn.type = 'button';
+    deleteBtn.className = 'rollover-item-action-btn danger';
+    deleteBtn.setAttribute('aria-label', '삭제: ' + item.text);
+    deleteBtn.textContent = '삭제';
+    deleteBtn.addEventListener('click', function (e) {
+      e.stopPropagation();
+      deleteMonthlyItem(item.id);
+    });
+    wrap.appendChild(deleteBtn);
+
+    return wrap;
+  }
+
+  function buildMonthlyOverdueRowEl(item, targetMonthKey) {
+    var row = document.createElement('div');
+    row.className = 'monthly-item-row monthly-overdue-row';
+    row.dataset.monthlyItemId = item.id;
+
+    var typeIconWrap = document.createElement('span');
+    typeIconWrap.className = 'monthly-item-type-btn';
+    var dot = document.createElement('span');
+    dot.className = item.type === 'task' ? 'ic-dot' : (item.type === 'memo' ? 'ic-dash' : 'ic-ring');
+    typeIconWrap.appendChild(dot);
+    row.appendChild(typeIconWrap);
+
+    var title = document.createElement('span');
+    title.className = 'monthly-item-title';
+    title.textContent = item.text;
+    title.title = item.text;
+    row.appendChild(title);
+
+    row.appendChild(buildMonthlyOverdueItemActions(item, targetMonthKey));
+    return row;
+  }
+
+  // Calendar의 #monthly-inbox-overdue*와 Today의 #today-monthly-overdue*가 함께 부르는
+  // 단일 렌더 함수 -- renderMonthlyItemsInto와 같은 관례(컨테이너 3개 + monthKey만 다름).
+  function renderMonthlyOverdueInto(sectionEl, listEl, dividerEl, monthKey) {
+    if (!sectionEl || !listEl) return;
+    var ids = getOverdueMonthlyItemIdsForMonth(monthKey);
+    var count = ids.length;
+    // 미완료가 없으면 영역 자체를 표시하지 않는다(요구사항) -- 마지막 항목을 이동/삭제한
+    // 직후에도 이 함수가 다시 호출되므로 영역이 즉시 사라진다.
+    sectionEl.hidden = count === 0;
+    var countEl = sectionEl.querySelector('.rollover-count');
+    if (countEl) countEl.textContent = '지난달 미완료 ' + count + '개';
+    var toggle = sectionEl.querySelector('.rollover-toggle');
+    if (toggle) toggle.setAttribute('aria-expanded', String(state.monthlyOverdueExpanded));
+    var tri = sectionEl.querySelector('.tri');
+    if (tri) tri.classList.toggle('open', state.monthlyOverdueExpanded);
+    listEl.hidden = count === 0;
+    listEl.classList.toggle('rollover-open', state.monthlyOverdueExpanded && count > 0);
+    if (dividerEl) dividerEl.hidden = !(state.monthlyOverdueExpanded && count > 0);
+    if (count > 0) {
+      listEl.replaceChildren.apply(listEl, ids.map(function (id) {
+        return buildMonthlyOverdueRowEl(findMonthlyItemById(id), monthKey);
+      }));
+    } else {
+      listEl.replaceChildren();
+    }
+  }
+
+  function renderMonthlyInboxOverdue(monthKey) {
+    renderMonthlyOverdueInto(
+      document.getElementById('monthly-inbox-overdue'),
+      document.getElementById('monthly-inbox-overdue-list'),
+      document.getElementById('monthly-inbox-overdue-divider'),
+      monthKey
+    );
+  }
+
+  function renderTodayMonthlyOverdue(monthKey) {
+    renderMonthlyOverdueInto(
+      document.getElementById('today-monthly-overdue'),
+      document.getElementById('today-monthly-overdue-list'),
+      document.getElementById('today-monthly-overdue-divider'),
+      monthKey
+    );
+  }
+
+  function toggleMonthlyOverdueExpanded() {
+    state.monthlyOverdueExpanded = !state.monthlyOverdueExpanded;
+    renderMonthlyInboxOverdue(state.monthlyLogViewMonth.slice(0, 7));
+    renderTodayMonthlyOverdue(currentTodayMonthKey());
+  }
+
+  // 독립 Monthly Log와 Today 두 패널의 토글 버튼을 한 번에 잡아 같은 핸들러를 단다
+  // (wireRolloverControls와 같은 관례 -- 정적 HTML 버튼에 init() 시점 1회만 배선).
+  function wireMonthlyOverdueControls() {
+    document.querySelectorAll('.monthly-overdue .rollover-toggle').forEach(function (toggle) {
+      toggle.addEventListener('click', toggleMonthlyOverdueExpanded);
+    });
+  }
+
+  // 원본의 "상세 열기" -- 가장 먼저 만들어진(order가 아니라 시간순) 배치를 연다. 여러
+  // 배치가 있어도 상세 내용(description/subtasks)은 전부 공유라 어느 배치를 열어도
+  // 내용은 같고, 날짜/완료처럼 배치별 독립 필드만 그 배치 기준으로 보인다.
+  // 최종 감사(2026-07-27): 배치가 있으면 기존처럼 그 배치의 상세를 열고(내용은 공유라
+  // 어느 배치를 열어도 같다), 배치가 하나도 없어도 더 이상 막지 않고 원본 자체의
+  // 상세를 연다(entityType='monthly-master') -- "배치가 없으면 상세 버튼 비활성화"였던
+  // 이전 정책을 폐지한다.
+  function openMonthlyItemDetail(monthlyItemId) {
+    var placements = state.items
+      .filter(function (it) { return it.sourceMonthlyItemId === monthlyItemId && !it.deletedAt; })
+      .sort(function (a, b) { return a.createdAt - b.createdAt; });
+    if (placements.length) {
+      openDetailDrawer(placements[0].id, placements[0].date);
+      return;
+    }
+    openDetailDrawer(monthlyItemId, null, 'monthly-master');
+  }
+
+  // ---------------------------------------------------------------------
+  // 이달의 할 일 -> Daily/Weekly/Monthly Log 드래그(배치 생성, "복사"). 기존 dragState
+  // 파이프라인(이동 전용, FLIP/placeholder/multi-list reorder까지 갖춘 정교한 구조)은
+  // 이번 세션에 막 안정화한 코드라 위험 부담 없이 재사용하기 어렵고, 애초에 의미도
+  // 다르다(이동이 아니라 복사 + 원본 유지) -- 그래서 완전히 독립된 가벼운 드래그를 새로
+  // 만든다. 미리보기는 기존 .drag-preview 클래스를 그대로 재사용해(행을 통째로 복제)
+  // "실제 카드 preview"를 만들되, 목적지 판정/커밋 로직은 이 블록 안에서만 완결된다.
+  // ---------------------------------------------------------------------
+  var monthlyInboxDragState = null;
+
+  function onMonthlyInboxDragHandlePointerDown(e, monthlyItemId) {
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    var master = findMonthlyItemById(monthlyItemId);
+    if (!master) return;
+    if (monthlyInboxDragState) abortMonthlyInboxDrag();
+    if (activeMonthlyTitleEdit) commitMonthlyTitleEdit();
+    // 라운드5 H: onDragHandlePointerDown과 동일한 이유로, 터치는 여기서 즉시
+    // preventDefault하지 않고 실제 드래그 확정 시점(onMonthlyInboxDragPointerMove)까지 미룬다.
+    if (e.pointerType !== 'touch') e.preventDefault();
+
+    var anchorRow = e.currentTarget.closest('[data-item-id]');
+    if (!anchorRow) return;
+
+    var hasModifier = e.shiftKey || e.ctrlKey || e.metaKey;
+    var isPartOfExistingMultiSelection = state.selectedItemIds.has(monthlyItemId) && state.selectedItemIds.size >= 2;
+    if (!hasModifier && !isPartOfExistingMultiSelection) {
+      selectSingleItem(monthlyItemId, 'monthly-inbox', master.monthKey);
+    }
+    var ids = getSelectedItemsForAction(monthlyItemId).filter(function (id) { return !!findMonthlyItemById(id); });
+
+    var anchorRect = anchorRow.getBoundingClientRect();
+    monthlyInboxDragState = {
+      pointerId: e.pointerId,
+      monthlyItemIds: ids,
+      anchorRow: anchorRow,
+      anchorRect: anchorRect,
+      grabOffsetX: e.clientX - anchorRect.left,
+      grabOffsetY: e.clientY - anchorRect.top,
+      startX: e.clientX,
+      startY: e.clientY,
+      pending: true,
+      active: false,
+      previewEl: null,
+      highlightEl: null,
+      lastTarget: null
+    };
+    document.addEventListener('pointermove', onMonthlyInboxDragPointerMove);
+    document.addEventListener('pointerup', onMonthlyInboxDragPointerUp);
+    document.addEventListener('pointercancel', onMonthlyInboxDragPointerCancel);
+    document.addEventListener('keydown', onMonthlyInboxDragKeydown, true);
+  }
+
+  function activateMonthlyInboxDrag(ds) {
+    ds.pending = false;
+    ds.active = true;
+    var preview = document.createElement('div');
+    preview.className = 'drag-preview';
+    preview.style.width = ds.anchorRect.width + 'px';
+    preview.style.height = ds.anchorRect.height + 'px';
+    var clone = ds.anchorRow.cloneNode(true);
+    clone.classList.remove('is-selected');
+    clone.removeAttribute('aria-selected');
+    preview.appendChild(clone);
+    if (ds.monthlyItemIds.length >= 2) {
+      preview.classList.add('drag-preview-stack');
+      var badge = document.createElement('span');
+      badge.className = 'drag-count-badge';
+      badge.textContent = String(ds.monthlyItemIds.length);
+      preview.appendChild(badge);
+    }
+    document.body.appendChild(preview);
+    ds.previewEl = preview;
+    positionMonthlyInboxDragPreview(ds, ds.startX, ds.startY);
+  }
+
+  function positionMonthlyInboxDragPreview(ds, x, y) {
+    if (!ds.previewEl) return;
+    var left = x - ds.grabOffsetX;
+    var top = y - ds.grabOffsetY;
+    ds.previewEl.style.transform = 'translate3d(' + left + 'px,' + top + 'px,0)';
+  }
+
+  // 커서 아래 요소를 보고 목적지를 판정한다 -- Weekly 열/Monthly Log 행/Daily
+  // 목록/미니 달력 날짜 칸까지, 기존 메인 드래그 파이프라인의 targetContext 판정과 같은
+  // 우선순위를 따르되 이 함수 안에서 완결된 별도 구현이다.
+  function resolveMonthlyInboxDropTarget(x, y) {
+    var el = document.elementFromPoint(x, y);
+    if (!el) return null;
+    var weeklyUl = el.closest('.week-card ul[data-date]');
+    if (weeklyUl) return { context: 'weekly', date: weeklyUl.dataset.date, el: weeklyUl };
+    var monthlyLogRowItems = el.closest('.monthly-log-row-items');
+    if (monthlyLogRowItems) {
+      var rowFromItems = monthlyLogRowItems.closest('.monthly-log-row[data-date]');
+      if (rowFromItems) return { context: 'monthly-log', date: rowFromItems.dataset.date, el: rowFromItems };
+    }
+    var monthlyLogRow = el.closest('.monthly-log-row[data-date]');
+    if (monthlyLogRow) return { context: 'monthly-log', date: monthlyLogRow.dataset.date, el: monthlyLogRow };
+    var dailyList = el.closest('#daily-list, #rollover-list');
+    if (dailyList) return { context: 'daily', date: state.selectedDate, el: dailyList };
+    var calendarCell = el.closest('.date[data-date]');
+    if (calendarCell) return { context: 'daily', date: calendarCell.dataset.date, el: calendarCell };
+    return null;
+  }
+
+  function clearMonthlyInboxDropHighlight(ds) {
+    if (ds.highlightEl) {
+      ds.highlightEl.classList.remove('drop-target-list', 'drop-target-column');
+      ds.highlightEl = null;
+    }
+  }
+
+  function onMonthlyInboxDragPointerMove(e) {
+    var ds = monthlyInboxDragState;
+    if (!ds || e.pointerId !== ds.pointerId) return;
+    if (ds.pending) {
+      var dx = e.clientX - ds.startX, dy = e.clientY - ds.startY;
+      if (Math.abs(dx) < DRAG_THRESHOLD && Math.abs(dy) < DRAG_THRESHOLD) return;
+      // 라운드5 H: 터치에서 pointerdown 시 미뤄둔 preventDefault를 드래그 확정 시점에 호출.
+      if (e.pointerType === 'touch') e.preventDefault();
+      activateMonthlyInboxDrag(ds);
+    }
+    if (!ds.active) return;
+    positionMonthlyInboxDragPreview(ds, e.clientX, e.clientY);
+    var target = resolveMonthlyInboxDropTarget(e.clientX, e.clientY);
+    clearMonthlyInboxDropHighlight(ds);
+    ds.lastTarget = target;
+    if (target) {
+      target.el.classList.add(target.context === 'weekly' ? 'drop-target-column' : 'drop-target-list');
+      ds.highlightEl = target.el;
+    }
+  }
+
+  function cleanupMonthlyInboxDragDom(ds) {
+    if (ds.previewEl && ds.previewEl.isConnected) ds.previewEl.remove();
+    clearMonthlyInboxDropHighlight(ds);
+    document.removeEventListener('pointermove', onMonthlyInboxDragPointerMove);
+    document.removeEventListener('pointerup', onMonthlyInboxDragPointerUp);
+    document.removeEventListener('pointercancel', onMonthlyInboxDragPointerCancel);
+    document.removeEventListener('keydown', onMonthlyInboxDragKeydown, true);
+  }
+
+  function abortMonthlyInboxDrag() {
+    var ds = monthlyInboxDragState;
+    if (!ds) return;
+    monthlyInboxDragState = null;
+    cleanupMonthlyInboxDragDom(ds); // 11: 취소 시 아무 배치도 만들지 않는다.
+  }
+
+  function onMonthlyInboxDragPointerCancel(e) {
+    var ds = monthlyInboxDragState;
+    if (!ds || e.pointerId !== ds.pointerId) return;
+    abortMonthlyInboxDrag();
+  }
+
+  function onMonthlyInboxDragKeydown(e) {
+    if (e.key === 'Escape' && monthlyInboxDragState) {
+      e.preventDefault();
+      e.stopPropagation();
+      abortMonthlyInboxDrag();
+    }
+  }
+
+  function onMonthlyInboxDragPointerUp(e) {
+    var ds = monthlyInboxDragState;
+    if (!ds || e.pointerId !== ds.pointerId) return;
+    monthlyInboxDragState = null;
+    if (!ds.active) { cleanupMonthlyInboxDragDom(ds); return; } // 임계값을 못 넘긴 순수 클릭 -- 클릭 리스너가 선택을 처리한다.
+    var target = ds.lastTarget;
+    cleanupMonthlyInboxDragDom(ds);
+    if (!target) return; // 유효하지 않은 위치에서 놓으면 아무 배치도 만들지 않는다(요구사항 11).
+
+    var created = createPlacementsFromMonthlyItems(ds.monthlyItemIds, target.date);
+    if (created.length) {
+      // 새로 만든 배치들을 한 그룹으로 선택 상태로 남긴다(다중 선택 이동과 같은 마무리 관례).
+      state.selectedItemIds = new Set(created.map(function (it) { return it.id; }));
+      state.selectedOccurrenceById.clear();
+      var occContainerKey = target.context === 'monthly-log' ? monthlyLogContainerKey(target.date) : target.date;
+      created.forEach(function (it) { addSelectedOccurrence(it.id, occContainerKey); });
+      state.selectionAnchor = { itemId: created[0].id, context: target.context, containerKey: occContainerKey };
+    }
+    renderApp();
+  }
+
+  // Calendar 우측 패널의 #monthly-inbox-list와 Today 우측 패널의 목록 컨테이너가 함께
+  // 부르는 단일 렌더 함수 -- monthKey 하나만 다르고 나머지 로직은 완전히 같다.
+  // 라운드2 8: 완료 항목 숨기기 -- 데이터(state.monthlyItems)는 그대로 두고 목록 표시에서만
+  // 뺀다. Today/Calendar 두 진입점이 같은 renderMonthlyItemsInto를 호출하므로 한 곳만
+  // 고치면 자동으로 공유된다.
+  function setMonthlyInboxHideCompleted(value) {
+    var next = !!value;
+    if (state.monthlyInboxHideCompleted === next) return;
+    state.monthlyInboxHideCompleted = next;
+    savePreferences();
+    renderApp();
+  }
+
+  function renderMonthlyItemsInto(containerEl, monthKey, emptyHtml) {
+    if (!containerEl) return;
+    containerEl.dataset.monthKey = monthKey;
+    var list = getMonthlyItemsForMonth(monthKey);
+    if (state.monthlyInboxHideCompleted) list = list.filter(function (it) { return !it.completed; });
+    containerEl.classList.toggle('is-empty', !list.length);
+    if (!list.length) {
+      var empty = document.createElement('p');
+      empty.className = 'monthly-inbox-empty';
+      empty.innerHTML = emptyHtml;
+      containerEl.replaceChildren(empty);
+      return;
+    }
+    var frag = document.createDocumentFragment();
+    arrangeRowsWithGroups(list, buildMonthlyItemRowEl, 'monthly-inbox', monthKey).forEach(function (node) { frag.appendChild(node); });
+    containerEl.replaceChildren(frag);
+  }
+
+  function handleMonthlyItemsListClick(e) {
+  // 그룹 헤더는 buildGroupHeaderEl의 자체 클릭/드래그 처리만 사용한다.
+  // 월간 목록의 위임 click이 뒤에서 선택을 지우지 않게 즉시 종료한다.
+  if (e.target.closest('.group-header')) return;
+
+  // 빈 공간 marquee 드래그 직후 브라우저가 합성하는 click이 방금 만든 선택을
+  // 지우지 않도록 한 번 무시한다. Daily/Weekly와 같은 공용 억제 플래그를 쓴다.
+  if (suppressNextItemGutterClick) {
+    suppressNextItemGutterClick = false;
+    e.preventDefault();
+    e.stopPropagation();
+    return;
+  }
+
+  // 제목 수정 입력창 자체를 누른 경우 다른 동작을 실행하지 않는다.
+  if (e.target.closest('.title-edit-input')) return;
+
+  // 점 6개는 선택·드래그만 실행하고 상세페이지를 열지 않는다.
+var dragHandle = e.target.closest(
+  '.monthly-item-drag'
+);
+
+if (dragHandle) {
+  if (pendingMonthlyTitleClickTimer) {
+    clearTimeout(pendingMonthlyTitleClickTimer);
+    pendingMonthlyTitleClickTimer = null;
+  }
+
+  e.stopPropagation();
+  return;
+}
+
+// 체크박스는 완료 처리만 실행
+var cb = e.target.closest(
+  '[data-monthly-action="toggle-complete"]'
+);
+
+if (cb) {
+  if (pendingMonthlyTitleClickTimer) {
+    clearTimeout(pendingMonthlyTitleClickTimer);
+    pendingMonthlyTitleClickTimer = null;
+  }
+
+  e.stopPropagation();
+
+  toggleMonthlyItemCompleted(
+    cb.closest('[data-monthly-item-id]')
+      .dataset.monthlyItemId
+  );
+
+  return;
+}
+
+// 종류 기호는 종류 메뉴만 실행
+var typeBtn = e.target.closest(
+  '[data-monthly-action="type-menu"]'
+);
+
+if (typeBtn) {
+  if (pendingMonthlyTitleClickTimer) {
+    clearTimeout(pendingMonthlyTitleClickTimer);
+    pendingMonthlyTitleClickTimer = null;
+  }
+
+  e.stopPropagation();
+
+  openMonthlyTypeMenu(
+    typeBtn.closest('[data-monthly-item-id]')
+      .dataset.monthlyItemId,
+    typeBtn
+  );
+
+  return;
+}
+  var delBtn = e.target.closest(
+    '[data-monthly-action="delete"]'
+  );
+
+  if (delBtn) {
+    deleteMonthlyItem(
+      delBtn.closest('[data-monthly-item-id]')
+        .dataset.monthlyItemId
+    );
+    return;
+  }
+
+  var row = e.target.closest(
+    '[data-monthly-item-id]'
+  );
+
+  /*
+   * 항목이 없는 목록 빈 공간 클릭:
+   * - 제목 수정 저장·종료
+   * - 보라색 선택 해제
+   */
+  if (!row) {
+    if (activeMonthlyTitleEdit) {
+      commitMonthlyTitleEdit();
+    }
+
+    clearItemSelection();
+    return;
+  }
+
+  var itemId = row.dataset.monthlyItemId;
+  var monthKey = row.dataset.monthKey;
+  var item = findMonthlyItemById(itemId);
+
+  if (!item) return;
+
+  // 구분선은 상세페이지가 없으므로 선택만 처리
+  if (item.type === 'divider') {
+    handleItemPointerSelect(
+      e,
+      itemId,
+      'monthly-inbox',
+      monthKey,
+      undefined,
+      true
+    );
+    return;
+  }
+
+  // Ctrl/Cmd·Shift 클릭은 상세페이지를 열지 않고 기존 공용 선택 모델만 실행한다.
+  if (e.ctrlKey || e.metaKey || e.shiftKey) {
+    handleItemPointerSelect(
+      e,
+      itemId,
+      'monthly-inbox',
+      monthKey,
+      undefined,
+      true
+    );
+    return;
+  }
+
+  var titleEl = e.target.closest(
+    '.monthly-item-title'
+  );
+
+  /*
+   * 제목은 한 번 클릭과 더블클릭을 구분한다.
+   *
+   * 한 번 클릭: 230ms 뒤 상세페이지
+   * 더블클릭: 예약 취소 후 제목 수정
+   */
+  if (titleEl) {
+    if (e.detail > 1) {
+      if (pendingMonthlyTitleClickTimer) {
+        clearTimeout(
+          pendingMonthlyTitleClickTimer
+        );
+
+        pendingMonthlyTitleClickTimer = null;
+      }
+
+      return;
+    }
+
+    handleItemPointerSelect(
+      e,
+      itemId,
+      'monthly-inbox',
+      monthKey,
+      undefined,
+      true
+    );
+
+    if (pendingMonthlyTitleClickTimer) {
+      clearTimeout(
+        pendingMonthlyTitleClickTimer
+      );
+    }
+
+    pendingMonthlyTitleClickTimer =
+      setTimeout(function () {
+        pendingMonthlyTitleClickTimer = null;
+        openMonthlyItemDetail(itemId);
+      }, 230);
+
+    return;
+  }
+
+  /*
+   * 제목이 아닌 카드 여백:
+   * 한 번 클릭하면 즉시 상세페이지를 연다.
+   */
+  handleItemPointerSelect(
+    e,
+    itemId,
+    'monthly-inbox',
+    monthKey,
+    undefined,
+    true
+  );
+
+  openMonthlyItemDetail(itemId);
+}
+
+ function handleMonthlyItemsListDblClick(e) {
+  var titleEl = e.target.closest(
+    '.monthly-item-title'
+  );
+
+  if (!titleEl) return;
+
+  var row = titleEl.closest(
+    '[data-monthly-item-id]'
+  );
+
+  if (!row) return;
+
+  if (pendingMonthlyTitleClickTimer) {
+    clearTimeout(
+      pendingMonthlyTitleClickTimer
+    );
+
+    pendingMonthlyTitleClickTimer = null;
+  }
+
+  e.preventDefault();
+  e.stopPropagation();
+
+  startMonthlyTitleEdit(
+    row.dataset.monthlyItemId,
+    titleEl
+  );
+}
+  // 목록 컨테이너 하나에 한 번만 위임 등록(행마다 개별 리스너를 달지 않는다).
+  function wireMonthlyItemsListDelegation(containerEl) {
+    if (!containerEl || containerEl._monthlyListWired) return;
+    containerEl._monthlyListWired = true;
+    containerEl.addEventListener('click', handleMonthlyItemsListClick);
+    containerEl.addEventListener('dblclick', handleMonthlyItemsListDblClick);
+    wireItemListMarqueeDelegation(containerEl);
+  }
+
+  // 월간 할일 전용 빠른 입력 -- Calendar 패널 상단과 Today 패널 상단이 이 한 함수로
+  // 각자의 입력창을 연결한다(각 wrapEl은 서로 다른 DOM 인스턴스이므로 현재 선택된
+  // 종류는 전역이 아니라 wrapEl.dataset.mode에 각자 보관한다). getMonthKey()는 호출 시점의
+  // "현재 표시 중인 달"을 돌려주는 콜백이라 Calendar는 monthlyLogViewMonth를, Today는
+  // selectedDate가 속한 달을 각각 넘긴다.
+  function wireMonthlyQuickInput(wrapEl, getMonthKey) {
+    if (!wrapEl || wrapEl._monthlyQuickWired) return;
+    wrapEl._monthlyQuickWired = true;
+    wrapEl.dataset.mode = 'task';
+    var modeButtons = Array.prototype.slice.call(wrapEl.querySelectorAll('.monthly-quick-mode'));
+    var input = wrapEl.querySelector('.monthly-quick-input');
+    if (!input) return;
+
+    function setActiveVisual(active) {
+      wrapEl.classList.toggle('is-inactive', !active && !input.value.trim());
+    }
+    setActiveVisual(false);
+
+    modeButtons.forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        wrapEl.dataset.mode = btn.dataset.type;
+        modeButtons.forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.type === btn.dataset.type)); });
+        input.placeholder = MODE_PLACEHOLDER[btn.dataset.type];
+        input.focus();
+      });
+    });
+
+    input.addEventListener('focus', function () { setActiveVisual(true); });
+    input.addEventListener('blur', function () { setActiveVisual(false); });
+
+    input.addEventListener('keydown', function (e) {
+      if (e.key !== 'Enter' || e.isComposing) return;
+      e.preventDefault();
+      var text = input.value.trim();
+      if (!text) return;
+      createMonthlyItem({ type: wrapEl.dataset.mode || 'task', text: text, monthKey: getMonthKey() });
+      input.value = '';
+      setActiveVisual(true);
+    });
+  }
+
+  // ---------------------------------------------------------------------
+  // Monthly Log(달력 전체 화면) -- 사이드바 '달력'에서 진입하는 월간 조망 화면.
+  // 기존 state.items/getItemsForDate/iconForType/openDetailDrawer를 그대로 재사용한다.
+  // 날짜당 표시 개수 제한은 없다(모든 항목을 표시, 아래 buildMonthlyLogRow 참고).
+  // ---------------------------------------------------------------------
+
+  // Monthly Log 전용 구분선 행. 그룹 카운트에서는 제외되지만, 드래그와 칸 이동은
+  // 일반 항목과 같은 occurrence 기준으로 동작한다.
+  function buildMonthlyLogDividerRow(item, dateStr) {
+    var el = document.createElement('div');
+    el.className = 'monthly-log-item divider-item-row';
+    el.dataset.itemId = item.id;
+    el.dataset.occurrenceDate = dateStr;
+    el.dataset.monthlyLogLane = String(getMonthlyLogLaneAt(item, dateStr));
+    el.setAttribute('aria-selected', 'false');
+    el.appendChild(createMonthlyLogDragHandle(item, dateStr));
+    el.appendChild(buildDividerLine());
+    return el;
+  }
+
+  // Monthly Log 일정 전용 눈금 그리드. 날짜는 세로축, 일정은 가로 눈금의 한 열을
+  // 차지하는 세로 색상 블록으로 표현한다. 다일 일정은 날짜별로 같은 제목을 반복하지
+  // 않고, 전체 기간의 중앙에 세로 제목을 딱 한 번만 표시한다. 일반 할 일/메모/구분선은
+  // 이 달력 영역에 렌더하지 않고 오른쪽 "이번 달 할 일"과 Today/Weekly에서 관리한다.
+  var MONTHLY_LOG_SCHEDULE_GRID_COLUMNS = 18;
+  var monthlyLogScheduleGridPlan = null;
+  var monthlyLogPendingScheduleColumnByDate = {};
+  var monthlyLogScheduleCellSelection = null; // { startDate, endDate, column }
+  var monthlyLogScheduleGridIsActive = false;
+  var monthlyLogScheduleAutoScrollState = null;
+  var monthlyLogSchedulePlanSaveTimer = null;
+  var MONTHLY_LOG_SCHEDULE_PALETTE = [
+    { bg:'#e2ebf7', border:'#a2b8d5', text:'#3f5f86', hue:212 },
+    { bg:'#f2e1e9', border:'#d6a9bc', text:'#87506a', hue:336 },
+    { bg:'#dfeee8', border:'#9bc8b7', text:'#356f5d', hue:158 },
+    { bg:'#f2e6db', border:'#d6b79d', text:'#7f5b40', hue:28 },
+    { bg:'#e9e3f3', border:'#b8a8d3', text:'#655184', hue:264 },
+    { bg:'#f1edda', border:'#d2c689', text:'#716824', hue:54 },
+    { bg:'#dfedf0', border:'#98c1c7', text:'#356b71', hue:186 },
+    { bg:'#f2e2df', border:'#d5aaa2', text:'#84534b', hue:8 },
+    { bg:'#e7eddc', border:'#bacb94', text:'#5b7138', hue:86 },
+    { bg:'#e5e8f3', border:'#abb3d2', text:'#555f86', hue:230 },
+    { bg:'#efe3ed', border:'#cdb0c8', text:'#7b5577', hue:306 },
+    { bg:'#ebe5df', border:'#c3b09d', text:'#6e5b49', hue:31 },
+    { bg:'#e3ede5', border:'#a6c7ae', text:'#42714e', hue:132 },
+    { bg:'#f2e8d5', border:'#d5bc86', text:'#79622f', hue:39 },
+    { bg:'#e4eaf0', border:'#a8bac8', text:'#4b6679', hue:205 },
+    { bg:'#efe3df', border:'#cdaea5', text:'#76564f', hue:14 }
+  ];
+
+  function isMonthlyLogSchedule(item) {
+    return !!item && !item.deletedAt && item.type === 'schedule' && !!item.date;
+  }
+
+  function isMonthlyLogMultiDaySchedule(item) {
+    return isMonthlyLogSchedule(item) && !!item.endDate && item.endDate > item.date;
+  }
+
+  function getMonthlyLogVisibleMonthBounds() {
+    var monthDate = parseLocalDate(state.monthlyLogViewMonth);
+    var year = monthDate.getFullYear();
+    var month = monthDate.getMonth();
+    return {
+      start: formatLocalDate(new Date(year, month, 1)),
+      end: formatLocalDate(new Date(year, month, daysInMonthFromParts(year, month)))
+    };
+  }
+
+  function getMonthlyLogScheduleColorSeed(item) {
+    var source = String((item && item.id) || (item && item.text) || 'schedule');
+    var hash = 0;
+    for (var i = 0; i < source.length; i++) hash = ((hash << 5) - hash + source.charCodeAt(i)) | 0;
+    return Math.abs(hash) % 360;
+  }
+
+  function buildMonthlyLogScheduleColor(hue) {
+    return 'hsl(' + Math.round(hue) + ' 62% 48%)';
+  }
+
+  function schedulePaletteDistance(a, b) {
+    var d = Math.abs(a - b) % 360;
+    return Math.min(d, 360 - d);
+  }
+
+  function monthlyLogSchedulesAreAdjacent(a, b) {
+    if (!a || !b || a.column < 0 || b.column < 0) return false;
+    var verticalOverlapOrTouch =
+      addMonthlyLogScheduleDays(a.visibleEnd, 1) >= b.visibleStart &&
+      addMonthlyLogScheduleDays(b.visibleEnd, 1) >= a.visibleStart;
+    var horizontalNeighbor = Math.abs(a.column - b.column) <= 1;
+    var sameColumnNear = a.column === b.column && verticalOverlapOrTouch;
+    return (horizontalNeighbor && verticalOverlapOrTouch) || sameColumnNear;
+  }
+
+  function getMonthlyLogScheduleLinkKey(item) {
+    if (!item) return null;
+    if (item.instanceGroupId) return 'instance:' + item.instanceGroupId;
+    if (item.sourceMonthlyItemId) return 'monthly:' + item.sourceMonthlyItemId;
+    return null;
+  }
+
+  function scheduleColorConflicts(index, entry, assignedEntries) {
+    var candidate = MONTHLY_LOG_SCHEDULE_PALETTE[index];
+    var entryLinkKey = getMonthlyLogScheduleLinkKey(entry.item);
+    return assignedEntries.some(function (other) {
+      if (other.paletteIndex == null || !monthlyLogSchedulesAreAdjacent(entry, other)) return false;
+      var otherLinkKey = getMonthlyLogScheduleLinkKey(other.item);
+      if (entryLinkKey && entryLinkKey === otherLinkKey) return false;
+      var otherPalette = MONTHLY_LOG_SCHEDULE_PALETTE[other.paletteIndex];
+      return index === other.paletteIndex || schedulePaletteDistance(candidate.hue, otherPalette.hue) < 72;
+    });
+  }
+
+  function scheduleMonthlyLogPlanSave() {
+    if (monthlyLogSchedulePlanSaveTimer) return;
+    monthlyLogSchedulePlanSaveTimer = setTimeout(function () {
+      monthlyLogSchedulePlanSaveTimer = null;
+      saveItems();
+    }, 0);
+  }
+
+  function isMonthlyLogScheduleRangeFree(startDate, endDate, column, exceptItemId) {
+    var start = startDate <= endDate ? startDate : endDate;
+    var end = startDate <= endDate ? endDate : startDate;
+    if (!monthlyLogScheduleGridPlan) return true;
+    return !monthlyLogScheduleGridPlan.entries.some(function (entry) {
+      if (entry.column !== column || entry.item.id === exceptItemId) return false;
+      return entry.visibleStart <= end && entry.visibleEnd >= start;
+    });
+  }
+
+  // 그리드 드래그가 가로/세로/대각선 어느 방향이든 "직사각형 범위"로 취급되게 하기 위한
+  // 판정 -- 시작 셀과 현재 호버 셀이 만드는 사각형(여러 컬럼에 걸칠 수 있음) 안에 기존
+  // 일정이 하나라도 있으면 true(마퀴=기존 항목 선택 의도), 전부 비어 있으면 false(새
+  // 일정 만들기 의도)를 돌려준다.
+  function monthlyLogScheduleRectOverlapsExisting(startDate, hoverDate, startColumn, hoverColumn) {
+    if (!monthlyLogScheduleGridPlan) return false;
+    var start = startDate <= hoverDate ? startDate : hoverDate;
+    var end = startDate <= hoverDate ? hoverDate : startDate;
+    var colA = startColumn == null ? 0 : startColumn;
+    var colB = hoverColumn == null ? colA : hoverColumn;
+    var minCol = Math.min(colA, colB);
+    var maxCol = Math.max(colA, colB);
+    return monthlyLogScheduleGridPlan.entries.some(function (entry) {
+      if (entry.column < minCol || entry.column > maxCol) return false;
+      return entry.visibleStart <= end && entry.visibleEnd >= start;
+    });
+  }
+
+  function clearMonthlyLogScheduleDraftSelection(options) {
+    options = options || {};
+    monthlyLogScheduleCellSelection = null;
+    var rows = document.getElementById('monthly-log-rows');
+    if (rows) rows.classList.remove('has-schedule-cell-selection');
+    document.querySelectorAll('#monthly-log-rows .monthly-log-schedule-draft-selection').forEach(function (el) { el.remove(); });
+    document.querySelectorAll('#monthly-log-rows .monthly-log-schedule-grid-host.is-schedule-input-active').forEach(function (host) {
+      host.classList.remove('is-schedule-input-active');
+      var wrap = host.querySelector('.monthly-log-schedule-inline-add');
+      if (wrap) wrap.classList.remove('is-active');
+    });
+    if (!options.keepDraft) {
+      state.dateTimeDraft = null;
+      state.selectedDateRange = null;
+    }
+  }
+
+  function getOffsetWithinAncestor(el, ancestor, axis) {
+    var total = 0;
+    var node = el;
+    var prop = axis === 'x' ? 'offsetLeft' : 'offsetTop';
+    while (node && node !== ancestor) {
+      total += Number(node[prop]) || 0;
+      node = node.offsetParent;
+    }
+    return total;
+  }
+
+  function createMonthlyLogScheduleSelectionOverlay(className, startDate, endDate, column) {
+    var start = startDate <= endDate ? startDate : endDate;
+    var end = startDate <= endDate ? endDate : startDate;
+    var rows = document.getElementById('monthly-log-rows');
+    var startRow = rows && rows.querySelector('.monthly-log-row[data-date="' + start + '"]');
+    var endRow = rows && rows.querySelector('.monthly-log-row[data-date="' + end + '"]');
+    var startGrid = startRow && startRow.querySelector('.monthly-log-schedule-grid');
+    if (!rows || !startRow || !endRow || !startGrid) return null;
+    var gridRect = startGrid.getBoundingClientRect();
+    var width = gridRect.width / MONTHLY_LOG_SCHEDULE_GRID_COLUMNS;
+    var overlay = document.createElement('div');
+    overlay.className = className;
+    overlay.setAttribute('aria-hidden', 'true');
+    overlay.style.left = (getOffsetWithinAncestor(startGrid, rows, 'x') + clampMonthlyLogScheduleColumn(column) * width) + 'px';
+    overlay.style.top = getOffsetWithinAncestor(startRow, rows, 'y') + 'px';
+    overlay.style.width = width + 'px';
+    overlay.style.height = Math.max(1, getOffsetWithinAncestor(endRow, rows, 'y') + endRow.offsetHeight - getOffsetWithinAncestor(startRow, rows, 'y')) + 'px';
+    rows.appendChild(overlay);
+    return overlay;
+  }
+
+  function renderMonthlyLogScheduleDraftSelection(focusInput) {
+    var rows = document.getElementById('monthly-log-rows');
+    document.querySelectorAll('#monthly-log-rows .monthly-log-schedule-draft-selection').forEach(function (el) { el.remove(); });
+    document.querySelectorAll('#monthly-log-rows .monthly-log-schedule-grid-host.is-schedule-input-active').forEach(function (host) {
+      host.classList.remove('is-schedule-input-active');
+      var oldWrap = host.querySelector('.monthly-log-schedule-inline-add');
+      if (oldWrap) oldWrap.classList.remove('is-active');
+    });
+    var selection = monthlyLogScheduleCellSelection;
+    if (rows) rows.classList.toggle('has-schedule-cell-selection', !!selection);
+    if (!selection) return;
+    createMonthlyLogScheduleSelectionOverlay(
+      'monthly-log-schedule-draft-selection',
+      selection.startDate,
+      selection.endDate,
+      selection.column
+    );
+    // 입력창은 선택 막대 위가 아니라 마지막 날짜의 오른쪽 아래에 붙인다.
+    // 그래서 단일/다일 선택 모두 선택한 칸을 가리지 않는다.
+    var row = document.querySelector('.monthly-log-row[data-date="' + selection.endDate + '"]');
+    var host = row && row.querySelector('.monthly-log-schedule-grid-host');
+    if (!host) return;
+    host.classList.add('is-schedule-input-active');
+    var wrap = host.querySelector('.monthly-log-schedule-inline-add');
+    var input = wrap && wrap.querySelector('.monthly-log-row-input');
+    if (wrap) {
+      var inputColumn = Math.min(MONTHLY_LOG_SCHEDULE_GRID_COLUMNS - 1, selection.column + 1);
+      if (inputColumn === selection.column && selection.column > 0) inputColumn = selection.column - 1;
+      var inputSelection = { startDate: selection.endDate, endDate: selection.endDate, column: inputColumn };
+      wrap.classList.add('is-active');
+      wrap.style.setProperty('--schedule-input-column', String(inputColumn));
+      wrap.style.setProperty('--schedule-input-span', String(resolveMonthlyLogScheduleInputSpan(inputSelection)));
+      wrap.dataset.anchorPosition = 'bottom-right';
+    }
+    if (focusInput && input) setTimeout(function () { input.focus(); input.select(); }, 0);
+  }
+
+  function activateMonthlyLogScheduleCellSelection(startDate, endDate, column, focusInput) {
+    var start = startDate <= endDate ? startDate : endDate;
+    var end = startDate <= endDate ? endDate : startDate;
+    clearItemSelection();
+    clearMonthlyLogRangePreview();
+    clearMonthlyLogConfirmedRangeClasses();
+    state.selectedDateRange = null;
+    state.dateTimeDraft = { startDate: start, endDate: end };
+    monthlyLogPendingScheduleColumnByDate[start] = clampMonthlyLogScheduleColumn(column);
+    monthlyLogScheduleCellSelection = { startDate: start, endDate: end, column: clampMonthlyLogScheduleColumn(column) };
+    monthlyLogScheduleGridIsActive = true;
+    markLastActiveListDate(start);
+    renderDateFields();
+    renderMonthlyLogScheduleDraftSelection(focusInput);
+  }
+
+  function getMonthlyLogScheduleBody() {
+    return document.getElementById('monthly-log-body') || document.querySelector('.monthly-log-body');
+  }
+
+  function stopMonthlyLogScheduleAutoScroll() {
+    if (!monthlyLogScheduleAutoScrollState) return;
+    if (monthlyLogScheduleAutoScrollState.raf) cancelAnimationFrame(monthlyLogScheduleAutoScrollState.raf);
+    monthlyLogScheduleAutoScrollState = null;
+  }
+
+  function monthlyLogScheduleAutoScrollTick() {
+    var s = monthlyLogScheduleAutoScrollState;
+    if (!s) return;
+    var body = getMonthlyLogScheduleBody();
+    if (!body) { stopMonthlyLogScheduleAutoScroll(); return; }
+    var rect = body.getBoundingClientRect();
+    var edge = 74;
+    var speed = 0;
+    if (s.clientY < rect.top + edge) speed = -Math.max(4, Math.min(22, (rect.top + edge - s.clientY) * .34));
+    else if (s.clientY > rect.bottom - edge) speed = Math.max(4, Math.min(22, (s.clientY - (rect.bottom - edge)) * .34));
+    if (speed) {
+      body.scrollTop += speed;
+      if (monthlyLogScheduleGridDragState) {
+        var row = resolveMonthlyLogScheduleRowAtPoint(monthlyLogScheduleGridDragState.lastX, monthlyLogScheduleGridDragState.lastY);
+        if (row) monthlyLogScheduleGridDragState.hoverDate = row.dataset.date;
+        if (monthlyLogScheduleGridDragState.mode === 'range') {
+          showMonthlyLogScheduleGridPreview(
+            monthlyLogScheduleGridDragState.startDate,
+            monthlyLogScheduleGridDragState.hoverDate,
+            monthlyLogScheduleGridDragState.column,
+            !isMonthlyLogScheduleRangeFree(
+              monthlyLogScheduleGridDragState.startDate,
+              monthlyLogScheduleGridDragState.hoverDate,
+              monthlyLogScheduleGridDragState.column
+            )
+          );
+        } else if (monthlyLogScheduleGridDragState.mode === 'marquee') {
+          updateMonthlyLogScheduleMarquee(monthlyLogScheduleGridDragState);
+        }
+      }
+    }
+    s.raf = requestAnimationFrame(monthlyLogScheduleAutoScrollTick);
+  }
+
+  function updateMonthlyLogScheduleAutoScroll(clientY) {
+    if (!monthlyLogScheduleAutoScrollState) {
+      monthlyLogScheduleAutoScrollState = { clientY: clientY, raf: requestAnimationFrame(monthlyLogScheduleAutoScrollTick) };
+    } else monthlyLogScheduleAutoScrollState.clientY = clientY;
+  }
+
+
+  function resolveMonthlyLogScheduleRowAtPoint(clientX, clientY) {
+    var body = getMonthlyLogScheduleBody();
+    var x = clientX;
+    var y = clientY;
+    if (body) {
+      var rect = body.getBoundingClientRect();
+      x = Math.max(rect.left + 2, Math.min(rect.right - 2, x));
+      y = Math.max(rect.top + 2, Math.min(rect.bottom - 2, y));
+    }
+    var el = document.elementFromPoint(x, y);
+    return el && el.closest ? el.closest('.monthly-log-row[data-date]') : null;
+  }
+
+
+  function clampMonthlyLogScheduleColumn(value) {
+    return Math.max(0, Math.min(MONTHLY_LOG_SCHEDULE_GRID_COLUMNS - 1, Number(value) || 0));
+  }
+
+
+  function resolveMonthlyLogScheduleInputSpan(selection) {
+    if (!selection) return 1;
+    var startColumn = clampMonthlyLogScheduleColumn(selection.column);
+    var maxSpan = Math.min(4, MONTHLY_LOG_SCHEDULE_GRID_COLUMNS - startColumn);
+    var span = 1;
+    for (var offset = 1; offset < maxSpan; offset++) {
+      var column = startColumn + offset;
+      var blocked = monthlyLogScheduleGridPlan && monthlyLogScheduleGridPlan.entries.some(function (entry) {
+        return entry.column === column && entry.visibleStart <= selection.endDate && entry.visibleEnd >= selection.startDate;
+      });
+      if (blocked) break;
+      span++;
+    }
+    return span;
+  }
+
+  function setMonthlyLogScheduleColumn(item, column) {
+    if (!item || item.type !== 'schedule') return false;
+    var next = clampMonthlyLogScheduleColumn(column);
+    if (Number(item.monthlyLogScheduleColumn) === next) return false;
+    item.monthlyLogScheduleColumn = next;
+    item.updatedAt = Date.now();
+    return true;
+  }
+
+  function addMonthlyLogScheduleDays(dateStr, amount) {
+    return addCalendarDays(dateStr, amount);
+  }
+
+  // 다일 일정 제목은 날짜별 조각 중 가운데 조각 하나에만 존재한다. 렌더 뒤 실제
+  // 첫 조각~마지막 조각의 픽셀 중앙을 계산해 그 제목을 정확한 막대 중앙으로 옮긴다.
+  function positionMonthlyLogScheduleLabels() {
+    var groups = {};
+    document.querySelectorAll('#monthly-log-rows .monthly-log-schedule-segment[data-item-id]').forEach(function (segment) {
+      var id = segment.dataset.itemId;
+      if (!groups[id]) groups[id] = [];
+      groups[id].push(segment);
+    });
+    Object.keys(groups).forEach(function (id) {
+      var segments = groups[id].sort(function (a, b) {
+        return String(a.dataset.occurrenceDate).localeCompare(String(b.dataset.occurrenceDate));
+      });
+      if (!segments.length) return;
+      var labelSegment = segments.find(function (segment) {
+        return !!segment.querySelector('.monthly-log-schedule-label');
+      });
+      if (!labelSegment) return;
+      var label = labelSegment.querySelector('.monthly-log-schedule-label');
+      var firstRect = segments[0].getBoundingClientRect();
+      var lastRect = segments[segments.length - 1].getBoundingClientRect();
+      var hostRect = labelSegment.getBoundingClientRect();
+      var totalHeight = Math.max(1, lastRect.bottom - firstRect.top);
+      var centerY = (firstRect.top + lastRect.bottom) / 2;
+      var isSingle = segments.length === 1;
+      var availableHeight = Math.max(12, totalHeight - 6);
+      var availableWidth = Math.max(12, firstRect.width - 6);
+
+      label.style.top = (centerY - hostRect.top) + 'px';
+      label.style.height = availableHeight + 'px';
+      label.style.maxHeight = availableHeight + 'px';
+      label.style.width = availableWidth + 'px';
+      label.style.maxWidth = availableWidth + 'px';
+      label.style.fontSize = '11px';
+      label.style.lineHeight = '1.08';
+      label.style.letterSpacing = '0';
+      label.style.overflow = 'hidden';
+      label.style.textOverflow = 'clip';
+      label.style.whiteSpace = 'normal';
+      label.style.wordBreak = 'break-all';
+      label.style.overflowWrap = 'anywhere';
+      // 버그 수정: 다일(세로쓰기) 제목은 display:block만 쓰면 실제 글자 줄이 box-width
+      // 전체를 채우지 못할 때 vertical-rl의 block-축 시작 쪽(오른쪽)에 붙어버려
+      // "오른쪽으로 치우침"으로 보였다(재현 확인). flex+justify-content:center를 단일
+      // 여부와 무관하게 항상 적용해 가로·세로 모두 중앙 정렬한다.
+      label.style.display = 'flex';
+      label.style.alignItems = 'center';
+      label.style.justifyContent = 'center';
+      label.dataset.fitMode = isSingle ? 'single' : 'multi';
+      label.classList.remove('is-tight-title');
+    });
+    renderMonthlyLogScheduleLinkConnectors();
+  }
+
+  function clearMonthlyLogScheduleLinkConnectors() {
+    document.querySelectorAll('#monthly-log-rows > .monthly-log-schedule-link-layer').forEach(function (el) { el.remove(); });
+  }
+
+  function renderMonthlyLogScheduleLinkConnectors() {
+    clearMonthlyLogScheduleLinkConnectors();
+    var rows = document.getElementById('monthly-log-rows');
+    if (!rows) return;
+    var byLinkKey = {};
+    document.querySelectorAll('#monthly-log-rows .monthly-log-schedule-segment[data-schedule-link-key]').forEach(function (segment) {
+      var key = segment.dataset.scheduleLinkKey;
+      var itemId = segment.dataset.itemId;
+      if (!byLinkKey[key]) byLinkKey[key] = {};
+      if (!byLinkKey[key][itemId]) byLinkKey[key][itemId] = [];
+      byLinkKey[key][itemId].push(segment);
+    });
+    var rowsRect = rows.getBoundingClientRect();
+    var width = Math.max(rows.scrollWidth, rows.clientWidth);
+    var height = Math.max(rows.scrollHeight, rows.clientHeight);
+    var ns = 'http://www.w3.org/2000/svg';
+    var svg = document.createElementNS(ns, 'svg');
+    svg.setAttribute('class', 'monthly-log-schedule-link-layer');
+    svg.setAttribute('width', String(width));
+    svg.setAttribute('height', String(height));
+    svg.setAttribute('viewBox', '0 0 ' + width + ' ' + height);
+    svg.setAttribute('aria-hidden', 'true');
+    var pathCount = 0;
+    Object.keys(byLinkKey).forEach(function (key) {
+      var nodes = Object.keys(byLinkKey[key]).map(function (itemId) {
+        var segments = byLinkKey[key][itemId].sort(function (a, b) {
+          return String(a.dataset.occurrenceDate).localeCompare(String(b.dataset.occurrenceDate));
+        });
+        var rects = segments.map(function (segment) { return segment.getBoundingClientRect(); });
+        var first = rects[0], last = rects[rects.length - 1];
+        var item = findItemById(itemId);
+        return {
+          itemId: itemId,
+          date: item ? item.date : segments[0].dataset.occurrenceDate,
+          left: first.left - rowsRect.left,
+          right: first.right - rowsRect.left,
+          top: first.top - rowsRect.top,
+          bottom: last.bottom - rowsRect.top,
+          x: (first.left + first.right) / 2 - rowsRect.left,
+          y: (first.top + last.bottom) / 2 - rowsRect.top,
+          color: getComputedStyle(segments[0]).getPropertyValue('--schedule-border').trim() || 'rgba(120,110,190,.7)'
+        };
+      }).sort(function (a, b) {
+        if (a.date !== b.date) return a.date < b.date ? -1 : 1;
+        return a.x - b.x;
+      });
+      for (var i = 0; i < nodes.length - 1; i++) {
+        var a = nodes[i], b = nodes[i + 1];
+        var path = document.createElementNS(ns, 'path');
+        var d;
+        if (a.date === b.date) {
+          var fromX = a.x <= b.x ? a.right : a.left;
+          var toX = a.x <= b.x ? b.left : b.right;
+          d = 'M ' + fromX + ' ' + a.y + ' H ' + toX;
+        } else {
+          var fromY = a.y <= b.y ? a.bottom : a.top;
+          var toY = a.y <= b.y ? b.top : b.bottom;
+          var midY = (fromY + toY) / 2;
+          d = 'M ' + a.x + ' ' + fromY + ' V ' + midY + ' H ' + b.x + ' V ' + toY;
+        }
+        path.setAttribute('d', d);
+        path.setAttribute('fill', 'none');
+        path.setAttribute('stroke', a.color);
+        path.setAttribute('stroke-width', '2');
+        path.setAttribute('stroke-linecap', 'square');
+        path.setAttribute('stroke-linejoin', 'miter');
+        path.setAttribute('opacity', '.78');
+        svg.appendChild(path);
+        pathCount++;
+      }
+    });
+    if (pathCount) rows.appendChild(svg);
+  }
+
+  function buildMonthlyLogScheduleGridPlan() {
+    var bounds = getMonthlyLogVisibleMonthBounds();
+    var needsSave = false;
+    var entries = state.items.filter(function (item) {
+      var end = item.endDate || item.date;
+      return isMonthlyLogSchedule(item) && item.date <= bounds.end && end >= bounds.start;
+    }).map(function (item) {
+      var endDate = item.endDate || item.date;
+      var visibleStart = item.date < bounds.start ? bounds.start : item.date;
+      var visibleEnd = endDate > bounds.end ? bounds.end : endDate;
+      var visibleDays = differenceInCalendarDays(visibleStart, visibleEnd) + 1;
+      return {
+        item: item,
+        visibleStart: visibleStart,
+        visibleEnd: visibleEnd,
+        continuesBefore: item.date < bounds.start,
+        continuesAfter: endDate > bounds.end,
+        visibleDays: visibleDays,
+        duration: differenceInCalendarDays(item.date, endDate) + 1,
+        column: -1,
+        paletteIndex: null,
+        palette: null
+      };
+    }).filter(function (entry) {
+      return !state.monthlyLogHideCompleted || !isItemCompletedForCleanup(entry.item, entry.visibleStart);
+    }).sort(function (a, b) {
+      var ac = Number(a.item.createdAt) || 0;
+      var bc = Number(b.item.createdAt) || 0;
+      if (ac !== bc) return ac - bc;
+      if (a.visibleStart !== b.visibleStart) return a.visibleStart < b.visibleStart ? -1 : 1;
+      return String(a.item.id).localeCompare(String(b.item.id));
+    });
+
+    var occupied = new Array(MONTHLY_LOG_SCHEDULE_GRID_COLUMNS).fill(null).map(function () { return []; });
+    var hiddenCountByDate = {};
+    var hiddenTitlesByDate = {};
+
+    entries.forEach(function (entry) {
+      var preferred = Number.isFinite(Number(entry.item.monthlyLogScheduleColumn))
+        ? clampMonthlyLogScheduleColumn(entry.item.monthlyLogScheduleColumn)
+        : -1;
+      var candidates = [];
+      if (preferred >= 0) candidates.push(preferred);
+      for (var i = 0; i < MONTHLY_LOG_SCHEDULE_GRID_COLUMNS; i++) if (i !== preferred) candidates.push(i);
+      for (var c = 0; c < candidates.length; c++) {
+        var column = candidates[c];
+        var blocked = occupied[column].some(function (other) {
+          return other.visibleStart <= entry.visibleEnd && other.visibleEnd >= entry.visibleStart;
+        });
+        if (!blocked) {
+          entry.column = column;
+          occupied[column].push(entry);
+          if (Number(entry.item.monthlyLogScheduleColumn) !== column) {
+            entry.item.monthlyLogScheduleColumn = column;
+            entry.item.updatedAt = Date.now();
+            needsSave = true;
+          }
+          break;
+        }
+      }
+      if (entry.column < 0) {
+        var cursor = parseLocalDate(entry.visibleStart);
+        var last = parseLocalDate(entry.visibleEnd);
+        while (cursor <= last) {
+          var key = formatLocalDate(cursor);
+          hiddenCountByDate[key] = (hiddenCountByDate[key] || 0) + 1;
+          if (!hiddenTitlesByDate[key]) hiddenTitlesByDate[key] = [];
+          hiddenTitlesByDate[key].push(entry.item.text);
+          cursor.setDate(cursor.getDate() + 1);
+        }
+      }
+    });
+
+    var assignedColors = [];
+    var paletteIndexByLinkKey = {};
+    entries.filter(function (entry) { return entry.column >= 0; }).forEach(function (entry) {
+      var stored = Number(entry.item.monthlyLogScheduleColorIndex);
+      var hasStored = Number.isInteger(stored) && stored >= 0 && stored < MONTHLY_LOG_SCHEDULE_PALETTE.length;
+      var startIndex = hasStored ? stored : Math.abs(getMonthlyLogScheduleColorSeed(entry.item)) % MONTHLY_LOG_SCHEDULE_PALETTE.length;
+      var chosen = -1;
+      var linkKey = getMonthlyLogScheduleLinkKey(entry.item);
+      if (linkKey && paletteIndexByLinkKey[linkKey] !== undefined) chosen = paletteIndexByLinkKey[linkKey];
+      // Existing persisted colors win when they are not visually adjacent to a similar block.
+      if (chosen < 0 && hasStored && !scheduleColorConflicts(stored, entry, assignedColors)) chosen = stored;
+      if (chosen < 0) {
+        var bestScore = -1;
+        for (var candidate = 0; candidate < MONTHLY_LOG_SCHEDULE_PALETTE.length; candidate++) {
+          var palette = MONTHLY_LOG_SCHEDULE_PALETTE[candidate];
+          var neighbors = assignedColors.filter(function (other) {
+            return other.paletteIndex != null && monthlyLogSchedulesAreAdjacent(entry, other);
+          });
+          var minDistance = neighbors.length ? Math.min.apply(null, neighbors.map(function (other) {
+            return schedulePaletteDistance(palette.hue, MONTHLY_LOG_SCHEDULE_PALETTE[other.paletteIndex].hue);
+          })) : 180;
+          var samePenalty = neighbors.some(function (other) { return other.paletteIndex === candidate; }) ? 1000 : 0;
+          var preferencePenalty = Math.min((candidate - startIndex + MONTHLY_LOG_SCHEDULE_PALETTE.length) % MONTHLY_LOG_SCHEDULE_PALETTE.length, 4) * .08;
+          var score = minDistance - samePenalty - preferencePenalty;
+          if (score > bestScore) { bestScore = score; chosen = candidate; }
+        }
+      }
+      if (chosen < 0) chosen = startIndex;
+      entry.paletteIndex = chosen;
+      entry.palette = MONTHLY_LOG_SCHEDULE_PALETTE[chosen];
+      if (linkKey) paletteIndexByLinkKey[linkKey] = chosen;
+      assignedColors.push(entry);
+      if (Number(entry.item.monthlyLogScheduleColorIndex) !== chosen) {
+        entry.item.monthlyLogScheduleColorIndex = chosen;
+        entry.item.updatedAt = Date.now();
+        needsSave = true;
+      }
+    });
+
+    if (needsSave) scheduleMonthlyLogPlanSave();
+    return {
+      bounds: bounds,
+      entries: entries,
+      hiddenCountByDate: hiddenCountByDate,
+      hiddenTitlesByDate: hiddenTitlesByDate
+    };
+  }
+
+  function getMonthlyLogScheduleEntriesForDate(dateStr) {
+    if (!monthlyLogScheduleGridPlan) return [];
+    return monthlyLogScheduleGridPlan.entries.filter(function (entry) {
+      return entry.column >= 0 && entry.visibleStart <= dateStr && dateStr <= entry.visibleEnd;
+    }).sort(function (a, b) { return a.column - b.column; });
+  }
+  function buildMonthlyLogScheduleSegment(entry, dateStr) {
+    var item = entry.item;
+    var palette = entry.palette || MONTHLY_LOG_SCHEDULE_PALETTE[0];
+    // 요구사항: projectId가 있으면 프로젝트 색을 우선 사용하고(연결선도 이 세 변수를
+    // 그대로 읽으므로 자동으로 같은 색을 쓴다), 없으면 기존 자동 색상 로직을 그대로
+    // 유지한다.
+    var project = item.projectId ? findProjectById(item.projectId) : null;
+    var segBg = palette.bg, segBorder = palette.border, segText = palette.text;
+    if (project && project.color) {
+      segBg = 'color-mix(in srgb, ' + project.color + ' 16%, var(--bg-card))';
+      segBorder = project.color;
+      segText = project.color;
+    }
+    var segment = document.createElement('div');
+    segment.className = 'monthly-log-item monthly-log-schedule-segment';
+    segment.style.setProperty('--schedule-bg', segBg);
+    segment.style.setProperty('--schedule-border', segBorder);
+    segment.style.setProperty('--schedule-text', segText);
+    segment.style.setProperty('--schedule-color', segBorder);
+    segment.dataset.scheduleTitle = item.text || '';
+    segment.dataset.itemId = item.id;
+    segment.dataset.occurrenceDate = dateStr;
+    segment.dataset.scheduleColumn = String(entry.column);
+    segment.dataset.scheduleColorIndex = String(entry.paletteIndex == null ? 0 : entry.paletteIndex);
+    var scheduleLinkKey = getMonthlyLogScheduleLinkKey(item);
+    if (scheduleLinkKey) {
+      segment.dataset.scheduleLinkKey = scheduleLinkKey;
+      segment.classList.add('is-linked-schedule');
+    }
+    segment.dataset.monthlyLogLane = '0';
+    segment.style.gridColumn = String(entry.column + 1);
+    segment.style.setProperty('--schedule-duration-days', String(entry.visibleDays));
+    segment.tabIndex = 0;
+    segment.setAttribute('role', 'button');
+    segment.setAttribute('aria-selected', 'false');
+    segment.setAttribute('aria-label', item.text + ', ' + formatDotDate(item.date) + '부터 ' + formatDotDate(item.endDate || item.date) + '까지');
+    segment.title = item.text + ' · ' + formatDotDate(item.date) + (item.endDate && item.endDate !== item.date ? '–' + formatDotDate(item.endDate) : '') + (project ? ' · ' + project.name : '');
+
+    var isFirst = dateStr === entry.visibleStart;
+    var isLast = dateStr === entry.visibleEnd;
+    var isSingle = isFirst && isLast;
+    segment.classList.toggle('is-schedule-first', isFirst);
+    segment.classList.toggle('is-schedule-middle', !isFirst && !isLast);
+    segment.classList.toggle('is-schedule-last', isLast);
+    segment.classList.toggle('is-schedule-single', isSingle);
+    segment.classList.toggle('continues-before', entry.continuesBefore && isFirst);
+    segment.classList.toggle('continues-after', entry.continuesAfter && isLast);
+    if (isOccurrenceCompleted(item, dateStr)) segment.classList.add('is-done');
+
+    // 한 일정의 제목 DOM은 보이는 첫 조각에 한 번만 둔다. 실제 위치는 렌더 뒤
+    // positionMonthlyLogScheduleLabels가 전체 블록의 중앙으로 옮긴다.
+    if (isFirst) {
+      segment.classList.add('has-schedule-label');
+      var label = document.createElement('span');
+      label.className = 'monthly-log-schedule-label monthly-log-item-title';
+      label.textContent = item.text || '제목 없음';
+      label.title = segment.title;
+      segment.appendChild(label);
+
+      var handle = createMonthlyLogDragHandle(item, dateStr);
+      handle.classList.add('monthly-log-schedule-drag');
+      segment.appendChild(handle);
+    }
+    return segment;
+  }
+
+  function buildMonthlyLogScheduleInputEl(dateStr, column) {
+    var wrap = document.createElement('span');
+    wrap.className = 'monthly-log-inline-add monthly-log-schedule-inline-add';
+    wrap.dataset.date = dateStr;
+    wrap.style.setProperty('--schedule-input-column', String(clampMonthlyLogScheduleColumn(column == null ? 0 : column)));
+    wrap.style.setProperty('--schedule-input-span', '1');
+
+    var input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'week-inline-input monthly-log-row-input';
+    input.dataset.date = dateStr;
+    input.dataset.mode = 'schedule';
+    input.placeholder = '일정 입력…';
+    input.autocomplete = 'off';
+    input.setAttribute('aria-label', formatAnnounceDate(dateStr) + ' 일정 추가');
+    input.addEventListener('focus', function () { markLastActiveListDate(dateStr); });
+    wrap.appendChild(input);
+    return wrap;
+  }
+  function buildMonthlyLogScheduleGrid(dateStr) {
+    var host = document.createElement('div');
+    host.className = 'monthly-log-row-lanes monthly-log-schedule-grid-host';
+    host.dataset.date = dateStr;
+    host.tabIndex = -1;
+
+    var grid = document.createElement('div');
+    grid.className = 'monthly-log-schedule-grid';
+    grid.dataset.date = dateStr;
+    grid.style.setProperty('--schedule-grid-columns', String(MONTHLY_LOG_SCHEDULE_GRID_COLUMNS));
+
+    for (var column = 0; column < MONTHLY_LOG_SCHEDULE_GRID_COLUMNS; column++) {
+      var cell = document.createElement('span');
+      cell.className = 'monthly-log-schedule-grid-cell';
+      cell.dataset.date = dateStr;
+      cell.dataset.scheduleColumn = String(column);
+      cell.style.gridColumn = String(column + 1);
+      cell.setAttribute('aria-label', formatAnnounceDate(dateStr) + ', ' + (column + 1) + '번째 일정 칸');
+      grid.appendChild(cell);
+    }
+
+    getMonthlyLogScheduleEntriesForDate(dateStr).forEach(function (entry) {
+      grid.appendChild(buildMonthlyLogScheduleSegment(entry, dateStr));
+    });
+
+    var hiddenCount = monthlyLogScheduleGridPlan && monthlyLogScheduleGridPlan.hiddenCountByDate[dateStr];
+    if (hiddenCount) {
+      var overflow = document.createElement('span');
+      overflow.className = 'monthly-log-schedule-overflow';
+      overflow.textContent = '+' + hiddenCount;
+      overflow.title = (monthlyLogScheduleGridPlan.hiddenTitlesByDate[dateStr] || []).join(' · ');
+      overflow.setAttribute('aria-label', '숨겨진 일정 ' + hiddenCount + '개');
+      grid.appendChild(overflow);
+    }
+
+    host.appendChild(grid);
+    var dropLane = document.createElement('div');
+    dropLane.className = 'monthly-log-row-items monthly-log-lane monthly-log-schedule-drop-lane';
+    dropLane.dataset.laneIndex = '0';
+    dropLane.dataset.date = dateStr;
+    host.appendChild(dropLane);
+
+    var selectedColumn = monthlyLogScheduleCellSelection && monthlyLogScheduleCellSelection.startDate === dateStr
+      ? monthlyLogScheduleCellSelection.column
+      : monthlyLogPendingScheduleColumnByDate[dateStr];
+    host.appendChild(buildMonthlyLogScheduleInputEl(dateStr, selectedColumn == null ? 0 : selectedColumn));
+    return host;
+  }
+
+  function resolveMonthlyLogScheduleColumnAtPoint(el, x) {
+    var host = el ? el.closest('.monthly-log-schedule-grid-host') : null;
+    if (!host) return null;
+    var grid = host.querySelector('.monthly-log-schedule-grid');
+    if (!grid) return null;
+    var rect = grid.getBoundingClientRect();
+    if (!rect.width) return null;
+    var ratio = Math.max(0, Math.min(0.999999, (x - rect.left) / rect.width));
+    return Math.max(0, Math.min(MONTHLY_LOG_SCHEDULE_GRID_COLUMNS - 1, Math.floor(ratio * MONTHLY_LOG_SCHEDULE_GRID_COLUMNS)));
+  }
+
+  // 일정 이동은 세로 구분선처럼 실제 격자 열에 즉시 고정한다.
+  // 포인터가 셀 경계를 넘는 순간에만 다음 열로 바뀌며, 열 사이의 자유 좌표는 사용하지 않는다.
+  function resolveMonthlyLogScheduleSnappedColumnAtPoint(el, x, previousColumn) {
+    var grid = el && (
+      el.classList.contains('monthly-log-schedule-grid')
+        ? el
+        : el.querySelector('.monthly-log-schedule-grid')
+    );
+    if (!grid) return null;
+
+    var rect = grid.getBoundingClientRect();
+    if (!rect.width) return null;
+
+    var cellWidth = rect.width / MONTHLY_LOG_SCHEDULE_GRID_COLUMNS;
+    var raw = (x - rect.left) / cellWidth;
+    // 셀 경계 근처에서 앞뒤로 떨리지 않도록, 이전 칸의 경계를 충분히 넘었을 때만
+    // 다음 칸으로 이동한다(히스테리시스 구간). 그 안에서는 이전 칸을 그대로 유지한다.
+    if (previousColumn !== null && previousColumn !== undefined) {
+      var deadZone = 0.15;
+      if (raw > previousColumn - 0.5 - deadZone && raw < previousColumn + 0.5 + deadZone) {
+        return clampMonthlyLogScheduleColumn(previousColumn);
+      }
+    }
+    return clampMonthlyLogScheduleColumn(Math.round(raw));
+  }
+
+  function setMonthlyLogScheduleDropHighlight(host, column) {
+    document.querySelectorAll('.monthly-log-schedule-grid-host.drop-target-schedule-grid').forEach(function (el) {
+      el.classList.remove('drop-target-schedule-grid');
+      el.style.removeProperty('--schedule-drop-column');
+    });
+    if (!host || column == null) return;
+    host.classList.add('drop-target-schedule-grid');
+    host.style.setProperty('--schedule-drop-column', String(clampMonthlyLogScheduleColumn(column)));
+  }
+
+  // 빈 눈금 칸을 세로로 드래그하면 해당 열에 기간 일정을 만든다. 기존 날짜 라벨 범위
+  // 선택과 같은 dateTimeDraft를 재사용하고, 마우스를 놓은 뒤 시작 행의 입력칸에 즉시
+  // 포커스한다. 제목을 입력하고 Enter를 누르면 선택한 열이 item에 저장된다.
+  var monthlyLogScheduleGridDragState = null;
+  function clearMonthlyLogScheduleGridPreview() {
+    document.querySelectorAll('#monthly-log-rows > .monthly-log-schedule-range-preview').forEach(function (preview) { preview.remove(); });
+    document.querySelectorAll('.monthly-log-schedule-grid-cell.is-range-preview').forEach(function (cell) {
+      cell.classList.remove('is-range-preview');
+    });
+  }
+  function showMonthlyLogScheduleGridPreview(startDate, endDate, column, blocked) {
+    clearMonthlyLogScheduleGridPreview();
+    var preview = createMonthlyLogScheduleSelectionOverlay('monthly-log-schedule-range-preview', startDate, endDate, column);
+    if (preview && blocked) preview.classList.add('is-blocked');
+  }
+
+  function createMonthlyLogScheduleMarquee(ds) {
+    var overlay = document.createElement('div');
+    overlay.className = 'item-marquee-overlay monthly-log-schedule-marquee';
+    document.body.appendChild(overlay);
+    ds.marqueeEl = overlay;
+  }
+
+  function updateMonthlyLogScheduleMarquee(ds) {
+    if (!ds || !ds.marqueeEl) return;
+    // 버그 수정: 마퀴 드래그 중 화면 가장자리 근처에서 자동 스크롤(updateMonthlyLogScheduleAutoScroll)이
+    // 계속 발생하면, 실제 일정 세그먼트의 뷰포트 좌표(getBoundingClientRect)는 스크롤만큼
+    // 계속 움직이는데 드래그 시작점(ds.startY)은 뷰포트 고정 좌표라 그대로 멈춰 있어, 마퀴
+    // 사각형이 화면상 그대로여도 실제 내용물은 그 아래에서 빠져나가 버려 감쌌던 일정이
+    // 선택에서 누락되는 실제 결함이 있었다. 시작점을 "드래그 시작 이후 스크롤된 양"만큼
+    // 보정해, 마퀴가 뷰포트가 아니라 콘텐츠(스크롤된 실제 셀 위치) 기준으로 고정되게 한다.
+    var scheduleBody = getMonthlyLogScheduleBody();
+    var scrollDelta = (scheduleBody && ds.scrollAnchorTop != null) ? (scheduleBody.scrollTop - ds.scrollAnchorTop) : 0;
+    // 콘텐츠 상의 시작 지점은 스크롤이 흐른 만큼 실제 세그먼트들과 같은 방향/양으로
+    // 뷰포트 좌표가 이동해야 한다(뷰포트Y = 문서Y - scrollTop이므로 scrollTop이 줄면
+    // 뷰포트 좌표는 커진다) -- 따라서 델타를 빼야 한다(더하면 방향이 반대가 된다).
+    var startYAdjusted = ds.startY - scrollDelta;
+    var x1 = Math.min(ds.startX, ds.lastX), y1 = Math.min(startYAdjusted, ds.lastY);
+    var x2 = Math.max(ds.startX, ds.lastX), y2 = Math.max(startYAdjusted, ds.lastY);
+    ds.marqueeEl.style.left = x1 + 'px';
+    ds.marqueeEl.style.top = y1 + 'px';
+    ds.marqueeEl.style.width = (x2 - x1) + 'px';
+    ds.marqueeEl.style.height = (y2 - y1) + 'px';
+    var hit = new Set();
+    var firstDateById = {};
+    document.querySelectorAll('#monthly-log-rows .monthly-log-schedule-segment[data-item-id]').forEach(function (segment) {
+      var r = segment.getBoundingClientRect();
+      if (r.left < x2 && r.right > x1 && r.top < y2 && r.bottom > y1) {
+        hit.add(segment.dataset.itemId);
+        if (!firstDateById[segment.dataset.itemId] || segment.dataset.occurrenceDate < firstDateById[segment.dataset.itemId]) {
+          firstDateById[segment.dataset.itemId] = segment.dataset.occurrenceDate;
+        }
+      }
+    });
+    var finalSet = ds.additive ? new Set(ds.initialSelectedIds) : new Set();
+    hit.forEach(function (id) { finalSet.add(id); });
+    state.selectedItemIds = finalSet;
+    state.selectedOccurrenceById.clear();
+    finalSet.forEach(function (id) {
+      var date = firstDateById[id] || (findItemById(id) && findItemById(id).date);
+      if (date) addSelectedOccurrence(id, monthlyLogContainerKey(date));
+    });
+    var ids = Array.from(finalSet);
+    if (ids.length) {
+      var lastId = ids[ids.length - 1];
+      var anchorDate = firstDateById[lastId] || (findItemById(lastId) && findItemById(lastId).date) || state.selectedDate;
+      state.lastSelectedItemId = lastId;
+      state.selectionAnchor = { itemId:lastId, context:'monthly-log', containerKey:monthlyLogContainerKey(anchorDate) };
+      monthlyLogScheduleGridIsActive = true;
+    }
+    renderSelectionState();
+  }
+
+  function cleanupMonthlyLogScheduleMarquee(ds) {
+    if (ds && ds.marqueeEl) ds.marqueeEl.remove();
+    if (ds) ds.marqueeEl = null;
+  }
+  function teardownMonthlyLogScheduleGridDrag() {
+    document.removeEventListener('pointermove', onMonthlyLogScheduleGridPointerMove);
+    document.removeEventListener('pointerup', onMonthlyLogScheduleGridPointerUp);
+    document.removeEventListener('pointercancel', onMonthlyLogScheduleGridPointerCancel);
+    document.removeEventListener('contextmenu', onMonthlyLogScheduleGridContextMenu, true);
+    stopMonthlyLogScheduleAutoScroll();
+  }
+  function cancelMonthlyLogScheduleGridInteraction(options) {
+    options = options || {};
+    var ds = monthlyLogScheduleGridDragState;
+    if (ds) {
+      teardownMonthlyLogScheduleGridDrag();
+      cleanupMonthlyLogScheduleMarquee(ds);
+      monthlyLogScheduleGridDragState = null;
+    }
+    clearMonthlyLogScheduleGridPreview();
+    stopMonthlyLogScheduleAutoScroll();
+    if (options.clearDraft !== false) clearMonthlyLogScheduleDraftSelection();
+  }
+
+  function onMonthlyLogScheduleGridContextMenu(e) {
+    if (!monthlyLogScheduleGridDragState && !monthlyLogScheduleCellSelection) return;
+    e.preventDefault();
+    e.stopPropagation();
+    cancelMonthlyLogScheduleGridInteraction({ clearDraft:true });
+  }
+
+  function onMonthlyLogScheduleGridPointerDown(e) {
+    if (dragState || e.target.closest('.monthly-log-schedule-segment') || e.target.closest('.monthly-log-schedule-inline-add')) return;
+    var cell = e.target.closest('.monthly-log-schedule-grid-cell');
+    if (!cell) return;
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    // 라운드5 F: 이전 monthlyLogScheduleGridDragState가 어떤 이유로든 정리되지 못한 채
+    // 남아 있으면(예외 등) document 리스너를 새로 등록하기 전에 먼저 완전히 정리한다 --
+    // 그렇지 않으면 pointermove/up/cancel/contextmenu 리스너가 계속 누적된다(위
+    // onDragHandlePointerDown과 같은 종류의 문제).
+    if (monthlyLogScheduleGridDragState) cancelMonthlyLogScheduleGridInteraction({ clearDraft: false });
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    var additive = !!(e.ctrlKey || e.metaKey || e.shiftKey);
+    var initialSelectedIds = new Set(state.selectedItemIds);
+    clearMonthlyLogScheduleDraftSelection();
+    if (!additive) clearItemSelection();
+    monthlyLogScheduleGridIsActive = true;
+    monthlyLogScheduleGridDragState = {
+      pointerId: e.pointerId,
+      pending: true,
+      active: false,
+      mode: null,
+      startX: e.clientX,
+      startY: e.clientY,
+      lastX: e.clientX,
+      lastY: e.clientY,
+      startDate: cell.dataset.date,
+      hoverDate: cell.dataset.date,
+      column: clampMonthlyLogScheduleColumn(cell.dataset.scheduleColumn),
+      additive: additive,
+      initialSelectedIds: initialSelectedIds,
+      marqueeEl: null,
+      cellWidth: cell.getBoundingClientRect().width || 40,
+      scrollAnchorTop: (getMonthlyLogScheduleBody() && getMonthlyLogScheduleBody().scrollTop) || 0
+    };
+    document.addEventListener('pointermove', onMonthlyLogScheduleGridPointerMove);
+    document.addEventListener('pointerup', onMonthlyLogScheduleGridPointerUp);
+    document.addEventListener('pointercancel', onMonthlyLogScheduleGridPointerCancel);
+    document.addEventListener('contextmenu', onMonthlyLogScheduleGridContextMenu, true);
+  }
+  function onMonthlyLogScheduleGridPointerMove(e) {
+    var ds = monthlyLogScheduleGridDragState;
+    if (!ds || e.pointerId !== ds.pointerId) return;
+    ds.lastX = e.clientX;
+    ds.lastY = e.clientY;
+    var dx = e.clientX - ds.startX;
+    var dy = e.clientY - ds.startY;
+    if (ds.pending) {
+      if (Math.hypot(dx, dy) < MONTHLY_LOG_RANGE_DRAG_THRESHOLD) return;
+      ds.pending = false;
+      ds.active = true;
+    }
+
+    e.preventDefault();
+    updateMonthlyLogScheduleAutoScroll(e.clientY);
+    var row = resolveMonthlyLogScheduleRowAtPoint(e.clientX, e.clientY);
+    if (row) ds.hoverDate = row.dataset.date;
+    var host = row && row.querySelector('.monthly-log-schedule-grid-host');
+    var hoverColumn = host ? resolveMonthlyLogScheduleColumnAtPoint(host, e.clientX) : ds.column;
+    ds.hoverColumn = hoverColumn;
+
+    // 버그 수정: 예전엔 시작 컬럼을 한 번이라도 벗어나면 그 뒤로는 영원히 마퀴(기존
+    // 항목 선택) 모드로 굳어버려, 가로/대각선으로 드래그해 새 일정을 만드는 것 자체가
+    // 불가능했다. 이제는 매 이동마다 "시작 셀~현재 셀이 만드는 사각형" 안에 기존
+    // 일정이 실제로 걸리는지로 동적으로 판정한다 -- 비어 있으면 항상 새 일정 만들기
+    // (가로/세로/대각선 전부 지원), 기존 일정과 겹치면 그 순간부터 마퀴로 전환하고,
+    // 다시 빈 영역으로 돌아오면 마퀴를 취소하고 생성 모드로 복귀한다.
+    var overlapsExisting = monthlyLogScheduleRectOverlapsExisting(ds.startDate, ds.hoverDate, ds.column, hoverColumn);
+    if (overlapsExisting) {
+      if (ds.mode !== 'marquee') {
+        ds.mode = 'marquee';
+        clearMonthlyLogScheduleGridPreview();
+        createMonthlyLogScheduleMarquee(ds);
+      }
+      updateMonthlyLogScheduleMarquee(ds);
+      return;
+    }
+    if (ds.mode === 'marquee') {
+      cleanupMonthlyLogScheduleMarquee(ds);
+      state.selectedItemIds = new Set(ds.initialSelectedIds);
+      state.selectedOccurrenceById.clear();
+      renderSelectionState();
+    }
+    ds.mode = 'range';
+    // 새 일정을 만드는 최종 컬럼은 항상 "지금 포인터가 있는 컬럼"을 따라간다(가로/대각선
+    // 드래그로 다른 컬럼에서 손을 떼면 그 컬럼에 만들어진다).
+    ds.column = hoverColumn;
+    var blocked = !isMonthlyLogScheduleRangeFree(ds.startDate, ds.hoverDate, ds.column);
+    showMonthlyLogScheduleGridPreview(ds.startDate, ds.hoverDate, ds.column, blocked);
+  }
+  function finishMonthlyLogScheduleGridSelection(ds) {
+    var start = ds.startDate <= ds.hoverDate ? ds.startDate : ds.hoverDate;
+    var end = ds.startDate <= ds.hoverDate ? ds.hoverDate : ds.startDate;
+    if (!isMonthlyLogScheduleRangeFree(start, end, ds.column)) {
+      clearMonthlyLogScheduleGridPreview();
+      announce('선택한 칸에 이미 일정이 있습니다.');
+      return;
+    }
+    clearMonthlyLogScheduleGridPreview();
+    activateMonthlyLogScheduleCellSelection(start, end, ds.column, true);
+  }
+  function onMonthlyLogScheduleGridPointerUp(e) {
+    var ds = monthlyLogScheduleGridDragState;
+    if (!ds || e.pointerId !== ds.pointerId) return;
+    teardownMonthlyLogScheduleGridDrag();
+    monthlyLogScheduleGridDragState = null;
+    if (ds.pending) {
+      if (!isMonthlyLogScheduleRangeFree(ds.startDate, ds.startDate, ds.column)) return;
+      activateMonthlyLogScheduleCellSelection(ds.startDate, ds.startDate, ds.column, true);
+      return;
+    }
+    if (ds.mode === 'marquee') {
+      cleanupMonthlyLogScheduleMarquee(ds);
+      suppressNextItemGutterClickOnce();
+      blurQuickInputIfFocused();
+      return;
+    }
+    finishMonthlyLogScheduleGridSelection(ds);
+  }
+  function onMonthlyLogScheduleGridPointerCancel(e) {
+    var ds = monthlyLogScheduleGridDragState;
+    if (!ds || e.pointerId !== ds.pointerId) return;
+    cancelMonthlyLogScheduleGridInteraction({ clearDraft:false });
+  }
+
+  function appendMonthlyLogItemMenuButton(parent, item) {
+    var menuBtn = document.createElement('button');
+    menuBtn.type = 'button';
+    menuBtn.className = 'arrow monthly-log-item-menu-btn';
+    menuBtn.dataset.action = 'monthly-log-item-menu';
+    menuBtn.dataset.itemId = item.id;
+    menuBtn.setAttribute('aria-haspopup', 'menu');
+    menuBtn.setAttribute('aria-expanded', 'false');
+    menuBtn.setAttribute('aria-label', '항목 메뉴: ' + item.text);
+    menuBtn.textContent = '→';
+    menuBtn.addEventListener('click', function (e) {
+      e.stopPropagation();
+      if (activeMoveMenu && activeMoveMenu.anchorItemId === item.id) { closeMoveDateMenu(); return; }
+      openMoveDateMenu([item.id], menuBtn);
+    });
+    parent.appendChild(menuBtn);
+  }
+
+  function buildMonthlyLogItemEl(item, dateStr) {
+    if (item.type === 'divider') return buildMonthlyLogDividerRow(item, dateStr);
+    var el = document.createElement('div');
+    el.className = 'monthly-log-item';
+    el.dataset.itemId = item.id;
+    el.dataset.occurrenceDate = dateStr;
+    el.dataset.monthlyLogLane = String(getMonthlyLogLaneAt(item, dateStr));
+    el.tabIndex = 0;
+    el.setAttribute('role', 'button');
+    el.setAttribute('aria-selected', 'false');
+    if (isOccurrenceCompleted(item, dateStr)) el.classList.add('is-done');
+    el.appendChild(createMonthlyLogDragHandle(item, dateStr));
+    el.appendChild(checkboxButton(item, dateStr));
+    el.appendChild(typeMenuButton(item, 'monthly-log-item-type-btn', dateStr));
+    var title = document.createElement('span');
+    title.className = 'monthly-log-item-title';
+    if (item.instanceGroupId) title.classList.add('is-instance-linked');
+    title.textContent = item.text;
+    title.title = item.text;
+    el.appendChild(title);
+    appendMonthlyLogItemMenuButton(el, item);
+    return el;
+  }
+
+  function buildMonthlyLogRow(dateStr, dayNum) {
+    var d = parseLocalDate(dateStr);
+    var dow = d.getDay();
+    var annotation = getCalendarAnnotations(dateStr);
+    var row = document.createElement('div');
+    row.className = 'monthly-log-row';
+    row.dataset.date = dateStr;
+    if (annotation.isPublicHoliday) row.classList.add('is-holiday');
+    else if (dow === 0) row.classList.add('is-sun');
+    else if (dow === 6) row.classList.add('is-sat');
+    // 주 구분선: 이 날짜가 (설정된 주 시작 요일 기준) 그 주의 첫 날일 때만, 매월 1일
+    // 행에는 붙이지 않는다(헤더와 중복 방지). 요일 정책은 state.calendarWeekStartsOn
+    // 하나로 미니 달력·Weekly 주 기준과 통일한다(getWeekStart).
+    if (dateStr === getWeekStart(dateStr, state.calendarWeekStartsOn) && dayNum !== 1) row.classList.add('is-week-start');
+    if (dateStr === state.todayDate) row.classList.add('is-today');
+    // Monthly Log uses exact grid-cell and schedule-block selection; never outline a whole date row.
+
+    var label = document.createElement('div');
+    label.className = 'monthly-log-row-label';
+    label.title = 'Ctrl + 마우스 휠: 이 날짜 칸 높이 조절';
+    var dayEl = document.createElement('span');
+    dayEl.textContent = String(dayNum).padStart(2, '0');
+    var weekdayEl = document.createElement('span');
+    weekdayEl.className = 'monthly-log-row-weekday';
+    weekdayEl.textContent = annotation.holidayName ? annotation.holidayName : WEEKDAY_KO[dow];
+    label.appendChild(dayEl);
+    label.appendChild(weekdayEl);
+    if (annotation.lunarVisible) {
+      var lunarEl = document.createElement('span');
+      lunarEl.className = 'monthly-log-row-lunar';
+      lunarEl.textContent = formatLunarShort(annotation.lunar);
+      label.appendChild(lunarEl);
+    }
+    row.appendChild(label);
+
+    // Monthly Log 달력 본문에는 일정만 표시한다. 날짜별 일반 할 일/메모는 오른쪽
+    // '이번 달 할 일' 패널과 Today/Weekly에서 확인하고, 여기서는 기간과 겹침을 한눈에
+    // 읽을 수 있는 세로 블록 그리드만 렌더한다.
+    row.appendChild(buildMonthlyLogScheduleGrid(dateStr));
+
+    return row;
+  }
+
+  // ---------------------------------------------------------------------
+  // Calendar 날짜 행 직접 입력 -- 행마다 항상 존재하는 인라인 입력(런타임에 "+" 버튼으로
+  // 열고 닫는 방식이 아니다). 클릭/포커스/타이핑은 전부 #monthly-log-rows 위임
+  // (handleMonthlyLogRowsClick/Keydown/FocusIn/FocusOut)이 처리하므로 행마다 개별
+  // 리스너를 달지 않는다. createItem()을 그대로 재사용해 Daily/Weekly와 즉시 동기화된다.
+  // ---------------------------------------------------------------------
+  // 날짜별로 마지막에 고른 종류를 기억해(세션 한정, 저장 안 함) Enter로 새 항목을 만든
+  // 뒤 같은 행에서 같은 종류로 계속 입력할 수 있게 한다. 처음 만드는 행은 기본 schedule.
+  var monthlyLogRowLastType = {};
+
+  function buildMonthlyLogRowInputEl(dateStr) {
+    var wrap = document.createElement('span');
+    wrap.className = 'monthly-log-inline-add';
+    wrap.dataset.date = dateStr;
+
+    var mode = monthlyLogRowLastType[dateStr] || 'schedule';
+
+    var modesWrap = document.createElement('span');
+    modesWrap.className = 'week-inline-modes';
+    modesWrap.setAttribute('role', 'group');
+    modesWrap.setAttribute('aria-label', '입력 종류');
+
+    WEEKLY_INLINE_MODES.forEach(function (cfg) {
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'week-inline-mode';
+      btn.dataset.action = 'monthly-row-mode';
+      btn.dataset.type = cfg.type;
+      btn.dataset.date = dateStr;
+      btn.setAttribute('aria-pressed', String(cfg.type === mode));
+      btn.setAttribute('aria-label', cfg.label);
+      var icon = document.createElement('span');
+      icon.className = cfg.icon;
+      btn.appendChild(icon);
+      modesWrap.appendChild(btn);
+    });
+
+    var input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'week-inline-input monthly-log-row-input';
+    input.dataset.date = dateStr;
+    input.dataset.mode = mode;
+    input.autocomplete = 'off';
+    input.setAttribute('aria-label', formatAnnounceDate(dateStr) + ' 항목 추가');
+    input.addEventListener('focus', function () { markLastActiveListDate(dateStr); }); // 3단계: Weekly 인라인 입력과 같은 패턴.
+
+    wrap.appendChild(modesWrap);
+    wrap.appendChild(input);
+    return wrap;
+  }
+
+  function renderMonthlyLogRows() {
+    var container = document.getElementById('monthly-log-rows');
+    if (!container) return;
+    monthlyLogScheduleGridPlan = buildMonthlyLogScheduleGridPlan();
+    var monthStart = parseLocalDate(state.monthlyLogViewMonth);
+    var year = monthStart.getFullYear();
+    var month = monthStart.getMonth();
+    var total = daysInMonthFromParts(year, month);
+    var frag = document.createDocumentFragment();
+    for (var day = 1; day <= total; day++) {
+      frag.appendChild(buildMonthlyLogRow(formatLocalDate(new Date(year, month, day)), day));
+    }
+    container.replaceChildren(frag);
+    requestAnimationFrame(positionMonthlyLogScheduleLabels);
+    // 행 자체를 통째로 새로 만들었으므로, 확정된 날짜 범위(state.selectedDateRange)가
+    // 있다면 새 DOM에도 다시 클래스를 입혀야 한다(미니 달력의 renderCalendarRangeSelection과
+    // 같은 필요성).
+    renderMonthlyLogRangeSelection();
+    requestAnimationFrame(function () {
+      positionMonthlyLogScheduleLabels();
+      renderMonthlyLogScheduleDraftSelection(false);
+    });
+  }
+
+  function renderMonthlyLogHeader() {
+    var monthDate = parseLocalDate(state.monthlyLogViewMonth);
+    var label = monthDate.getFullYear() + '년 ' + (monthDate.getMonth() + 1) + '월';
+    var monthLabel = document.getElementById('monthly-log-month-label');
+    var inboxTitle = document.getElementById('monthly-inbox-title');
+    if (monthLabel) monthLabel.textContent = label + ' 달력';
+    if (inboxTitle) inboxTitle.textContent = label + ' 할일';
+  }
+
+  function renderMonthlyLog() {
+    renderMonthlyLogHeader();
+    renderMonthlyLogRows();
+    var inboxList = document.getElementById('monthly-inbox-list');
+    if (inboxList) {
+      renderMonthlyItemsInto(
+        inboxList,
+        state.monthlyLogViewMonth.slice(0, 7),
+        '이번 달에 해둘 일을 적어보세요.'
+      );
+    }
+    renderMonthlyInboxOverdue(state.monthlyLogViewMonth.slice(0, 7));
+  }
+
+  // ---------------------------------------------------------------------
+  // Monthly Log 날짜 범위 선택 -- 미니 달력의 calendarRangeDragState/
+  // onCalendarDatePointerDown 패턴(pointer capture 없이 document 레벨 리스너 + 5px
+  // 임계값 + pending/active 상태)을 그대로 따르되, 대상이 .date 그리드 셀이 아니라
+  // .monthly-log-row-label(날짜/요일 영역)이라는 점만 다르다. state.selectedDateRange/
+  // state.dateTimeDraft/state.selectedDate는 미니 달력과 완전히 같은 필드를 공유한다
+  // (요구사항: 새 상태를 만들지 말고 기존 필드 재사용).
+  // ---------------------------------------------------------------------
+  var MONTHLY_LOG_RANGE_DRAG_THRESHOLD = 5; // px
+  var monthlyLogRangeDragState = null; // { pending, active, pointerId, startX, startY, startDate, hoverDate }
+
+  function clearMonthlyLogRangePreview() {
+    document.querySelectorAll('#monthly-log-rows .monthly-log-row.range-preview').forEach(function (el) {
+      el.classList.remove('range-preview');
+    });
+  }
+
+  function showMonthlyLogRangePreview(fromDate, toDate) {
+    clearMonthlyLogRangePreview();
+    var start = fromDate <= toDate ? fromDate : toDate;
+    var end = fromDate <= toDate ? toDate : fromDate;
+    document.querySelectorAll('#monthly-log-rows .monthly-log-row[data-date]').forEach(function (el) {
+      var d = el.dataset.date;
+      if (d >= start && d <= end) el.classList.add('range-preview');
+    });
+  }
+
+  function clearMonthlyLogConfirmedRangeClasses() {
+    document.querySelectorAll('#monthly-log-rows .monthly-log-row').forEach(function (el) {
+      el.classList.remove('range-selected-start', 'range-selected-middle', 'range-selected-end', 'range-selected-single');
+    });
+  }
+
+  function applyMonthlyLogConfirmedRangeClasses(start, end) {
+    clearMonthlyLogConfirmedRangeClasses();
+    if (start === end) {
+      var singleEl = document.querySelector('#monthly-log-rows .monthly-log-row[data-date="' + start + '"]');
+      if (singleEl) singleEl.classList.add('range-selected-single');
+      return;
+    }
+    document.querySelectorAll('#monthly-log-rows .monthly-log-row[data-date]').forEach(function (el) {
+      var d = el.dataset.date;
+      if (d < start || d > end) return;
+      if (d === start) el.classList.add('range-selected-start');
+      else if (d === end) el.classList.add('range-selected-end');
+      else el.classList.add('range-selected-middle');
+    });
+  }
+
+  function renderMonthlyLogRangeSelection() {
+    if (state.selectedDateRange) {
+      applyMonthlyLogConfirmedRangeClasses(state.selectedDateRange.startDate, state.selectedDateRange.endDate);
+    } else {
+      clearMonthlyLogConfirmedRangeClasses();
+    }
+  }
+
+  function updateMonthlyLogRangeLive(start, end) {
+    state.dateTimeDraft = { startDate: start, endDate: end };
+    showMonthlyLogRangePreview(start, end);
+    renderDateFields();
+  }
+
+  function teardownMonthlyLogRangeDragListeners() {
+    document.removeEventListener('pointermove', onMonthlyLogRangePointerMove);
+    document.removeEventListener('pointerup', onMonthlyLogRangePointerUp);
+    document.removeEventListener('pointercancel', onMonthlyLogRangePointerCancel);
+  }
+
+  function cancelMonthlyLogRangeDrag() {
+    if (!monthlyLogRangeDragState) return;
+    teardownMonthlyLogRangeDragListeners();
+    monthlyLogRangeDragState = null;
+    clearMonthlyLogRangePreview();
+  }
+  function focusMonthlyLogRowInput(date) {
+    var row = document.querySelector('.monthly-log-row[data-date="' + date + '"]');
+    var host = row && row.querySelector('.monthly-log-schedule-grid-host');
+    var input = host && host.querySelector('.monthly-log-row-input');
+    if (host) host.classList.add('is-schedule-input-active');
+    if (input) input.focus();
+  }
+
+  function onMonthlyLogRowLabelPointerDown(e) {
+    if (dragState) return; // 12: 항목 드래그와 겹치지 않게.
+    var label = e.target.closest('.monthly-log-row-label');
+    if (!label) return;
+    var row = label.closest('.monthly-log-row[data-date]');
+    if (!row) return;
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    e.stopPropagation();
+    e.preventDefault(); // 텍스트 선택 방지(9: 드래그 중 텍스트 드래그 선택 방지).
+
+    clearItemSelection(); // 4: 날짜 조작을 시작하면 기존 항목 선택은 먼저 해제한다(미니 달력과 동일 원칙).
+    markLastActiveListDate(row.dataset.date); // 3단계: 날짜 라벨 조작도 붙여넣기 대상 후보로 기억.
+
+    monthlyLogRangeDragState = {
+      pending: true,
+      active: false,
+      pointerId: e.pointerId,
+      startX: e.clientX,
+      startY: e.clientY,
+      startDate: row.dataset.date,
+      hoverDate: row.dataset.date
+    };
+    document.addEventListener('pointermove', onMonthlyLogRangePointerMove);
+    document.addEventListener('pointerup', onMonthlyLogRangePointerUp);
+    document.addEventListener('pointercancel', onMonthlyLogRangePointerCancel);
+  }
+
+  function onMonthlyLogRangePointerMove(e) {
+    if (!monthlyLogRangeDragState || e.pointerId !== monthlyLogRangeDragState.pointerId) return;
+    var ds = monthlyLogRangeDragState;
+    if (ds.pending) {
+      var dx = e.clientX - ds.startX;
+      var dy = e.clientY - ds.startY;
+      if (Math.hypot(dx, dy) < MONTHLY_LOG_RANGE_DRAG_THRESHOLD) return;
+      ds.pending = false;
+      ds.active = true;
+      if (state.selectedDateRange) {
+        state.selectedDateRange = null;
+        clearMonthlyLogConfirmedRangeClasses();
+      }
+      updateMonthlyLogRangeLive(ds.startDate, ds.startDate);
+    }
+    var el = document.elementFromPoint(e.clientX, e.clientY);
+    var row = el ? el.closest('.monthly-log-row[data-date]') : null;
+    if (row) ds.hoverDate = row.dataset.date;
+    var start = ds.startDate <= ds.hoverDate ? ds.startDate : ds.hoverDate;
+    var end = ds.startDate <= ds.hoverDate ? ds.hoverDate : ds.startDate;
+    updateMonthlyLogRangeLive(start, end);
+  }
+
+  function onMonthlyLogRangePointerUp(e) {
+    if (!monthlyLogRangeDragState || e.pointerId !== monthlyLogRangeDragState.pointerId) return;
+    var ds = monthlyLogRangeDragState;
+    teardownMonthlyLogRangeDragListeners();
+    monthlyLogRangeDragState = null;
+
+    if (!ds.active) {
+      // 7: 5px 미만 이동 = 단일 클릭 = 단일 날짜 선택(범위는 해제).
+      clearMonthlyLogRangePreview();
+      state.selectedDate = ds.startDate;
+      state.selectedDateRange = null;
+      state.dateTimeDraft = null;
+      savePreferences();
+      renderApp();
+      // 라운드2 4: 날짜 라벨(숫자·요일) 한 번 클릭만으로도 그 행의 입력칸에 바로 포커스가
+      // 가게 한다(기존에는 행의 "빈 영역"만 이 혜택이 있었고, 라벨 자체는 선택만 되고
+      // 입력은 별도로 한 번 더 클릭해야 했다 -- 요구사항). 범위 드래그(ds.active)는 이
+      // 분기에 들어오지 않으므로 그대로 포커스 이동 없이 범위 선택만 확정된다.
+      focusMonthlyLogRowInput(ds.startDate);
+      return;
+    }
+
+    var start = ds.startDate <= ds.hoverDate ? ds.startDate : ds.hoverDate;
+    var end = ds.startDate <= ds.hoverDate ? ds.hoverDate : ds.startDate;
+    state.selectedDate = start;
+    state.selectedDateRange = { startDate: start, endDate: end };
+    state.dateTimeDraft = { startDate: start, endDate: end };
+    savePreferences();
+    setInputMode('schedule');
+    clearMonthlyLogRangePreview();
+    renderApp();
+    setTimeout(function () { focusMonthlyLogRowInput(start); }, 0);
+  }
+
+  function onMonthlyLogRangePointerCancel(e) {
+    if (!monthlyLogRangeDragState || e.pointerId !== monthlyLogRangeDragState.pointerId) return;
+    teardownMonthlyLogRangeDragListeners();
+    monthlyLogRangeDragState = null;
+    clearMonthlyLogRangePreview();
+  }
+
+  function wireMonthlyLogRangeSelection(rowsContainer) {
+    if (rowsContainer._rangeSelectionWired) return;
+    rowsContainer._rangeSelectionWired = true;
+    rowsContainer.addEventListener('pointerdown', onMonthlyLogRowLabelPointerDown);
+  }
+
+  function resetMonthlyLogScroll() {
+    var body = document.getElementById('monthly-log-body');
+    if (body) body.scrollTop = 0;
+  }
+
+  // ---------------------------------------------------------------------
+  // Calendar 좌우 분할(경계선 드래그) -- Weekly 두 행 분할선(week-row-divider, onWeekRowDivider*)과
+  // 완전히 같은 패턴(pointer capture + rAF 스로틀 + pointerup/cancel/Escape 안전 종료)이되
+  // 세로(top, height) 대신 가로(left, width)를 조절한다는 점만 다르다. 별도 state
+  // 변수를 쓰는 독립된 조절이라 Weekly 쪽 드래그와 이벤트가 얽히지 않는다.
+  // 1199px 미만(기존 반응형 분기점)에서는 Monthly Log/월간 할일이 위아래로 쌓이므로
+  // 이 분할 자체가 의미 없어 경계선을 숨긴다.
+  // ---------------------------------------------------------------------
+  function isMonthlySplitNarrowLayout() {
+    return window.innerWidth < 1200;
+  }
+
+  function getMonthlySplitAvailableWidth() {
+    var view = document.querySelector('.monthly-log-view');
+    return view ? view.clientWidth : 0;
+  }
+
+  function clampMonthlySplitRatio(ratio, availableWidth) {
+    if (!availableWidth) return Math.max(0, Math.min(1, ratio));
+    var minRatio = MONTHLY_SPLIT_MIN_INBOX_WIDTH / availableWidth;
+    var maxRatio = 1 - (MONTHLY_SPLIT_MIN_LOG_WIDTH / availableWidth);
+    if (maxRatio < minRatio) return 0.5; // 극단적으로 좁은 경우(이 화면에서는 사실상 없음)의 안전값.
+    return Math.max(minRatio, Math.min(maxRatio, ratio));
+  }
+
+  // 라운드3 6: 분할선의 -/+ 버튼 -- 드래그와 같은 clampMonthlySplitRatio/저장 경로를
+  // 그대로 재사용하고, 한 단계는 요구사항 범위(32~48px) 중간값인 40px로 폭만 스텝
+  // 이동한다. 도킹 모드/좁은 화면에서는 드래그와 마찬가지로 의미가 없어 무시한다.
+  var MONTHLY_SPLIT_STEP_PX = 40;
+
+  function stepMonthlySplitWidth(direction) {
+    if (isMonthlySplitNarrowLayout()) return;
+    var available = getMonthlySplitAvailableWidth();
+    if (!available) return;
+    var currentRatio = clampMonthlySplitRatio(state.calendarMonthlySplitRatio, available);
+    var currentWidth = Math.round(available * currentRatio);
+    var maxWidth = Math.max(MONTHLY_SPLIT_MIN_INBOX_WIDTH, available - MONTHLY_SPLIT_MIN_LOG_WIDTH);
+    var nextWidth = Math.max(MONTHLY_SPLIT_MIN_INBOX_WIDTH, Math.min(maxWidth, currentWidth + direction * MONTHLY_SPLIT_STEP_PX));
+    state.calendarMonthlySplitRatio = clampMonthlySplitRatio(nextWidth / available, available);
+    savePreferences();
+    applyMonthlySplitLayout();
+  }
+
+  function applyMonthlySplitLayout() {
+    var inboxPanel = document.getElementById('monthly-inbox-panel');
+    var divider = document.getElementById('monthly-split-divider');
+    if (!inboxPanel) return;
+    if (isMonthlySplitNarrowLayout()) {
+      inboxPanel.style.flex = '';
+      inboxPanel.style.flexBasis = '';
+      inboxPanel.style.width = '';
+      if (divider) divider.hidden = true;
+      return;
+    }
+    var available = getMonthlySplitAvailableWidth();
+    if (!available) return;
+    var ratio = clampMonthlySplitRatio(state.calendarMonthlySplitRatio, available);
+    var inboxWidth = Math.round(available * ratio);
+    inboxPanel.style.flex = '0 0 ' + inboxWidth + 'px';
+    inboxPanel.style.flexBasis = inboxWidth + 'px';
+    inboxPanel.style.width = inboxWidth + 'px';
+    // 달력과 이번 달 할 일 사이의 경계는 넓은 화면에서 항상 보이며 드래그 가능하다.
+    if (divider) divider.hidden = false;
+  }
+
+  // Monthly Log도 Today 패널과 같은 원칙: .artboard 바깥에 실제 여유 공간이 있으면(1625px
+  // 보다 넓은 화면) 오른쪽 월간 할일 패널만 그 공간으로 빼내 왼쪽으로 넓힌다
+  // (position:fixed, getMonthlyPanelDockGap/MONTHLY_PANEL_MIN_WIDTH·MAX_WIDTH 재사용).
+  // 이때는 calendarMonthlySplitRatio 기반 flex 분할(applyMonthlySplitLayout)이 더 이상
+  // 적용되지 않으므로(패널이 flex 흐름을 벗어남) Monthly Log 메인 날짜 목록(.monthly-log-body)
+  // 폭이 전혀 바뀌지 않는다 -- split divider도 이 상태에서는 의미가 없어 숨긴다(예전
+  // 좁은 화면 분기에서 이미 쓰던 것과 같은 hidden 패턴). 여유가 부족하면 이 함수는 기존
+  // 비율 기반 레이아웃(applyMonthlySplitLayout)에 그대로 위임한다 -- 그 쪽의 동작은
+  // 전혀 바뀌지 않는다.
+  // Monthly Log 기능 복구 작업: "docked-wide"가 true인 넓은 화면에서는 patched-wide 모드가
+  // #monthly-split-divider를 영구히 hidden으로 만들고 다시 되돌리는 경로가 없어(패널이
+  // flex 흐름을 벗어나므로) 분할선이 그 폭 구간에서는 사실상 영구히 사용 불가능해지는
+  // 문제가 있었다. 이번 작업의 요구사항(#2)은 분할선이 항상(1199px 초과 전 구간에서)
+  // 정상적으로 드래그 가능해야 한다는 것이고, docked-wide 모드에 대한 언급이 없으므로,
+  // 이 도킹 자체를 잠정적으로 끈다 -- calc/CSS는 그대로 남겨 두되(추후 별도 단계에서
+  // "도킹 상태에서도 분할선이 동작하게" 정식으로 다시 설계할 수 있게) 지금은 발동만
+  // 막는다. 이제 항상 기존 비율 기반 레이아웃(applyMonthlySplitLayout)이 담당한다.
+  // 최종 감사(2026-07-27) 10 재조사: .monthly-log-view는 .artboard(position:relative,
+  // max-width:1625px) *안에* 있는 position:absolute 자식이라, left:112px/right:0은
+  // 뷰포트가 아니라 .artboard 기준이다 -- 즉 Today와 완전히 같은 구조다. 다만 .artboard는
+  // body 중앙 정렬이라 여유 공간이 좌우로 절반씩만 남는다(실측: 1920px에서 147.5px씩) --
+  // Today는 이걸 applyArtboardDockShift로 .artboard를 왼쪽으로 밀어 오른쪽에 전체 여유를
+  // 몰아준다. 그 함수 자체(및 Today가 쓰는 computeTodayPanelDockLayout)는 건드리지 않고,
+  // 같은 .artboard/같은 shift 함수를 Monthly Log 전용 폭 계산으로 재사용한다(계산 로직은
+  // 새로 만들되, DOM 조작 유틸은 공유 -- Today의 도킹 판정/폭 자체에는 영향이 없다).
+  function computeMonthlyLogPanelDockLayout(viewportWidth) {
+    if (viewportWidth < TODAY_MAIN_FULL_WIDTH) return null; // .artboard 기본 폭(1625px, 값만 읽음)보다 좁으면 나눌 여유가 없다.
+    var availableAtFullMain = viewportWidth - TODAY_MAIN_FULL_WIDTH;
+    if (availableAtFullMain < MONTHLY_SPLIT_MIN_INBOX_WIDTH) return null; // 패널 최소폭(260px)도 안 나오면 도킹 포기.
+    var mainWidth = TODAY_MAIN_FULL_WIDTH;
+    var panelWidth = Math.min(availableAtFullMain, MONTHLY_SPLIT_MAX_INBOX_WIDTH);
+    var combinedWidth = mainWidth + panelWidth;
+    var combinedLeft = Math.max(0, (viewportWidth - combinedWidth) / 2);
+    return { mainWidth: mainWidth, panelWidth: panelWidth, combinedLeft: combinedLeft };
+  }
+
+  function shouldDockMonthlyLogInboxWide() {
+    // Calendar에서는 패널 경계 드래그가 항상 동작해야 하므로 도킹 모드를 사용하지 않는다.
+    return false;
+  }
+
+  function applyMonthlyLogInboxDockDom() {
+    var panel = document.getElementById('monthly-inbox-panel');
+    var divider = document.getElementById('monthly-split-divider');
+    var main = document.querySelector('.monthly-log-main');
+    if (!panel || !main) return;
+    // 안전장치: .artboard의 maxWidth/marginRight는 Today의 dock(applyArtboardDockShift)도
+    // 공유해서 쓰는 스타일이다 -- 지금 Calendar 화면이 아니면(예: Today 화면에서 resize만
+    // 일어난 경우) 절대 손대지 않는다. 그렇지 않으면 이 함수가 창 크기 조절마다 매번
+    // 호출되면서(wireMonthlySplitDivider의 resize 리스너) Today가 방금 적용해 둔 shift를
+    // 조용히 되돌려버리는 회귀가 생긴다(Today dock 계산 자체는 안 건드리지만 DOM은
+    // 공유하므로 "어느 화면이 지금 이 스타일의 주인인지"는 반드시 확인해야 한다).
+    if (state.currentView !== 'calendar') return;
+    var layout = computeMonthlyLogPanelDockLayout(window.innerWidth);
+    var dock = !isMonthlySplitNarrowLayout() && shouldDockMonthlyLogInboxWide() && !!layout;
+    panel.classList.toggle('is-docked-wide', dock);
+    if (!dock) {
+      panel.style.width = '';
+      panel.style.left = '';
+      panel.style.right = '';
+      panel.style.top = '';
+      panel.style.bottom = '';
+      main.style.flexBasis = '';
+      applyArtboardDockShift(null); // 9: 좁아지면 Monthly Log가 걸었던 shift도 함께 되돌린다.
+      applyMonthlySplitLayout(); // 일반 상태는 기존 비율 기반 레이아웃이 그대로 담당(8: split ratio 손대지 않음).
+      return;
+    }
+    // 1: 패널이 flex 흐름을 벗어나 있는 동안, 본문은 "도킹하지 않았을 때와 같은 폭"을
+    // 그대로 유지한다 -- 기존 비율 시스템이 계산했을 inboxWidth만큼을 뺀 나머지를 그대로
+    // flex-basis로 고정해, 본문이 패널 빈 자리만큼 갑자기 넓어지지 않게 한다.
+    var available = getMonthlySplitAvailableWidth();
+    var ratio = clampMonthlySplitRatio(state.calendarMonthlySplitRatio, available);
+    var normalInboxWidth = Math.min(Math.round(available * ratio), MONTHLY_SPLIT_MAX_INBOX_WIDTH);
+    var mainWidth = Math.max(MONTHLY_SPLIT_MIN_LOG_WIDTH, available - normalInboxWidth - 12);
+    main.style.flexBasis = mainWidth + 'px';
+
+    applyArtboardDockShift(layout); // 2: .artboard를 왼쪽으로 밀어 오른쪽에 패널이 들어갈 정상 폭을 만든다(Today와 같은 유틸 재사용).
+    var artboard = document.querySelector('.artboard');
+    var rect = artboard.getBoundingClientRect(); // shift 적용 후 실측 -- 좌표 혼용 방지(Today 패턴과 동일).
+    panel.style.flexBasis = '';
+    panel.style.right = 'auto';
+    // 11: Math.round 없이 실측값을 그대로 써서 .artboard 오른쪽 끝과 패널 왼쪽 끝 사이에
+    // 반올림으로 인한 0.5px 틈/겹침이 생기지 않게 한다.
+    panel.style.left = rect.right + 'px';
+    panel.style.width = layout.panelWidth + 'px';
+    panel.style.top = rect.top + 'px';
+    panel.style.bottom = (window.innerHeight - rect.bottom) + 'px';
+    // 5/6: "분할선 표시" 사용자 설정을 그대로 따른다 -- dock 상태라고 무조건 숨기지 않는다.
+    // 7: 좁은 화면으로 줄어들 때(dock->false) 위 분기에서 applyMonthlySplitLayout이 다시
+    // divider.hidden을 계산하므로, dock->split 전환 후에도 사용자가 직접 끈 설정만 유지된다.
+    if (divider) divider.hidden = false;
+  }
+
+  var monthlySplitDragState = null; // { pointerId, startRatio, currentRatio, handle, viewRect }
+
+  function onMonthlySplitDividerPointerDown(e) {
+    if (e.target.closest('.monthly-split-step-btn')) return;
+    if (isMonthlySplitNarrowLayout()) return;
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    var view = document.querySelector('.monthly-log-view');
+    if (!view) return;
+    e.preventDefault();
+    e.stopPropagation();
+    var handle = e.currentTarget;
+    monthlySplitDragState = {
+      pointerId: e.pointerId,
+      startRatio: state.calendarMonthlySplitRatio,
+      currentRatio: state.calendarMonthlySplitRatio,
+      handle: handle,
+      viewRect: view.getBoundingClientRect()
+    };
+    document.body.classList.add('monthly-split-dragging');
+    try { handle.setPointerCapture(e.pointerId); } catch (err) {}
+    document.addEventListener('pointermove', onMonthlySplitDividerPointerMove, true);
+    document.addEventListener('pointerup', onMonthlySplitDividerPointerUp, true);
+    document.addEventListener('pointercancel', onMonthlySplitDividerPointerCancel, true);
+    document.addEventListener('keydown', onMonthlySplitDividerEscapeKeydown, true);
+  }
+
+  function onMonthlySplitDividerPointerMove(e) {
+    var ds = monthlySplitDragState;
+    if (!ds || e.pointerId !== ds.pointerId) return;
+    e.preventDefault();
+    var available = ds.viewRect.width || getMonthlySplitAvailableWidth() || 1;
+    var inboxWidth = ds.viewRect.right - e.clientX;
+    var maxWidth = Math.max(MONTHLY_SPLIT_MIN_INBOX_WIDTH, available - MONTHLY_SPLIT_MIN_LOG_WIDTH);
+    inboxWidth = Math.max(MONTHLY_SPLIT_MIN_INBOX_WIDTH, Math.min(maxWidth, inboxWidth));
+    ds.currentRatio = clampMonthlySplitRatio(inboxWidth / available, available);
+    state.calendarMonthlySplitRatio = ds.currentRatio;
+    applyMonthlySplitLayout();
+  }
+
+  function teardownMonthlySplitDividerListeners(ds) {
+    if (!ds) return;
+    document.removeEventListener('pointermove', onMonthlySplitDividerPointerMove, true);
+    document.removeEventListener('pointerup', onMonthlySplitDividerPointerUp, true);
+    document.removeEventListener('pointercancel', onMonthlySplitDividerPointerCancel, true);
+    document.removeEventListener('keydown', onMonthlySplitDividerEscapeKeydown, true);
+    document.body.classList.remove('monthly-split-dragging');
+    try { ds.handle.releasePointerCapture(ds.pointerId); } catch (err) {}
+  }
+
+  function onMonthlySplitDividerPointerUp(e) {
+    var ds = monthlySplitDragState;
+    if (!ds || e.pointerId !== ds.pointerId) return;
+    teardownMonthlySplitDividerListeners(ds);
+    state.calendarMonthlySplitRatio = ds.currentRatio;
+    monthlySplitDragState = null;
+    applyMonthlySplitLayout();
+    savePreferences();
+  }
+
+  function onMonthlySplitDividerPointerCancel(e) {
+    var ds = monthlySplitDragState;
+    if (!ds || e.pointerId !== ds.pointerId) return;
+    teardownMonthlySplitDividerListeners(ds);
+    state.calendarMonthlySplitRatio = ds.startRatio;
+    monthlySplitDragState = null;
+    applyMonthlySplitLayout();
+  }
+
+  function onMonthlySplitDividerEscapeKeydown(e) {
+    var ds = monthlySplitDragState;
+    if (!ds || e.key !== 'Escape') return;
+    e.preventDefault();
+    e.stopPropagation();
+    teardownMonthlySplitDividerListeners(ds);
+    state.calendarMonthlySplitRatio = ds.startRatio;
+    monthlySplitDragState = null;
+    applyMonthlySplitLayout();
+  }
+
+  function wireMonthlySplitDivider() {
+    var dividerEl = document.getElementById('monthly-split-divider');
+    if (!dividerEl || dividerEl._monthlySplitWired) return;
+    dividerEl._monthlySplitWired = true;
+    dividerEl.addEventListener('pointerdown', onMonthlySplitDividerPointerDown);
+    dividerEl.querySelectorAll('.monthly-split-step-btn').forEach(function (btn) {
+      btn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        stepMonthlySplitWidth(Number(btn.dataset.step));
+      });
+    });
+    if (!window._monthlySplitResizeWired) {
+      window._monthlySplitResizeWired = true;
+      window.addEventListener('resize', applyMonthlyLogInboxDockDom);
+    }
+    applyMonthlyLogInboxDockDom();
+  }
+
+  // 요구사항: "오늘이 해당 월에 있으면 진입 시 오늘 행이 보이도록 스크롤해도 된다" --
+  // 현재 표시 월에 오늘이 없으면(is-today 행이 없으면) 아무 것도 하지 않는다.
+  function scrollMonthlyLogTodayIntoView() {
+    var row = document.querySelector('.monthly-log-row.is-today');
+    if (row) row.scrollIntoView({ block: 'center' });
+  }
+
+  function navigateMonthlyLog(delta) {
+    var current = parseLocalDate(state.monthlyLogViewMonth);
+    var next = new Date(current.getFullYear(), current.getMonth() + delta, 1);
+    state.monthlyLogViewMonth = formatLocalDate(next);
+    savePreferences();
+    renderMonthlyLog();
+    resetMonthlyLogScroll();
+  }
+
+  function navigateMonthlyLogToToday() {
+    var today = parseLocalDate(state.todayDate);
+    var monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+    state.monthlyLogViewMonth = formatLocalDate(monthStart);
+    savePreferences();
+    renderMonthlyLog();
+    resetMonthlyLogScroll();
+    scrollMonthlyLogTodayIntoView();
+  }
+
+  // 항목 클릭 -> Daily/Weekly와 같은 선택 모델(handleItemPointerSelect)에 편입 +
+  // 일반 클릭은 상세 패널도 함께 연다. 부모(#monthly-log-rows)에 한 번만 위임
+  // 등록하므로(행은 replaceChildren로 매번 교체되지만 부모 자신은 그대로다)
+  // calendar<->today<->trash 반복 전환에도 리스너가 중복 등록되지 않는다.
+  function onMonthlyLogScheduleSegmentPointerDown(e) {
+    if (!e.target.closest || !e.target.closest('.monthly-log-schedule-segment')) return;
+    clearMonthlyLogScheduleDraftSelection();
+    clearMonthlyLogRangePreview();
+    clearMonthlyLogConfirmedRangeClasses();
+    state.selectedDateRange = null;
+    state.dateTimeDraft = null;
+    monthlyLogScheduleGridIsActive = true;
+    renderDateFields();
+  }
+
+  function handleMonthlyLogRowsClick(e) {
+    if (suppressNextItemGutterClick) { suppressNextItemGutterClick = false; return; }
+    if (e.target.closest('.group-header')) return;
+    var modeBtn = e.target.closest('[data-action="monthly-row-mode"]');
+    if (modeBtn) {
+      var wrap = modeBtn.closest('.monthly-log-inline-add');
+      var input = wrap ? wrap.querySelector('.monthly-log-row-input') : null;
+      monthlyLogRowLastType[modeBtn.dataset.date] = modeBtn.dataset.type;
+      if (input) { input.dataset.mode = modeBtn.dataset.type; input.focus(); }
+      return;
+    }
+    var checkboxBtn = e.target.closest('[data-action="toggle-complete"]');
+    if (checkboxBtn) { e.stopPropagation(); toggleItemCompleted(checkboxBtn.dataset.itemId, checkboxBtn.dataset.occurrenceDate); return; }
+    var typeBtn = e.target.closest('[data-action="type-menu"]');
+    if (typeBtn) { e.stopPropagation(); openTypeMenu(typeBtn.dataset.itemId, typeBtn); return; }
+    if (e.target.closest('.monthly-log-drag')) return;
+    var itemEl = e.target.closest('.monthly-log-item');
+    if (itemEl) {
+      clearMonthlyLogScheduleDraftSelection();
+      if (itemEl.classList.contains('monthly-log-schedule-segment')) {
+        state.selectedDateRange = null;
+        state.dateTimeDraft = null;
+        clearMonthlyLogRangePreview();
+        clearMonthlyLogConfirmedRangeClasses();
+        renderDateFields();
+        monthlyLogScheduleGridIsActive = true;
+      }
+      var monthlyItem = findItemById(itemEl.dataset.itemId);
+      if (monthlyItem) {
+        var isScheduleSegment = itemEl.classList.contains('monthly-log-schedule-segment');
+        var noModifier = !e.ctrlKey && !e.metaKey && !e.shiftKey;
+        if (isScheduleSegment && noModifier) {
+          // 한 번 클릭은 즉시 선택되고 짧은 지연 뒤 상세를 연다. 같은 위치를 더블클릭하면
+          // 공통 dblclick 편집기가 이 타이머를 취소하므로 제목 편집과 단일 클릭 상세가 공존한다.
+          handleItemPointerSelect(
+            e,
+            itemEl.dataset.itemId,
+            'monthly-log',
+            monthlyLogContainerKey(itemEl.dataset.occurrenceDate),
+            itemEl.dataset.occurrenceDate,
+            true
+          );
+          if (pendingDailyTitleClickTimer) clearTimeout(pendingDailyTitleClickTimer);
+          pendingDailyTitleClickTimer = setTimeout(function () {
+            pendingDailyTitleClickTimer = null;
+            openDetailDrawer(itemEl.dataset.itemId, itemEl.dataset.occurrenceDate);
+          }, 140);
+        } else {
+          handleItemPointerSelect(
+            e,
+            itemEl.dataset.itemId,
+            'monthly-log',
+            monthlyLogContainerKey(itemEl.dataset.occurrenceDate),
+            itemEl.dataset.occurrenceDate
+          );
+        }
+      }
+      return;
+    }
+    // 격자와 격자 입력은 자체 포인터 로직이 처리한다. 행 전체 날짜 선택/입력으로
+    // 새지 않게 여기서 종료한다.
+    if (e.target.closest('.monthly-log-schedule-grid-host')) return;
+    var row = e.target.closest('.monthly-log-row');
+    if (row && !e.target.closest('.monthly-log-row-label')) {
+      clearMonthlyLogScheduleDraftSelection();
+      clearItemSelection();
+      markLastActiveListDate(row.dataset.date);
+    }
+  }
+  function handleMonthlyLogRowsKeydown(e) {
+    var rowInput = e.target && e.target.classList && e.target.classList.contains('monthly-log-row-input') ? e.target : null;
+    if (rowInput) {
+      var rowInputMod = e.ctrlKey || e.metaKey;
+      if (rowInputMod && !e.altKey && String(e.key).toLowerCase() === 'z') {
+        e.preventDefault();
+        e.stopPropagation();
+        if (e.shiftKey) redo(); else undo();
+        return;
+      }
+      if (rowInputMod && !e.altKey && String(e.key).toLowerCase() === 'y') {
+        e.preventDefault();
+        e.stopPropagation();
+        redo();
+        return;
+      }
+      if (e.key === 'Enter' && !e.isComposing) {
+        e.preventDefault();
+        var textValue = rowInput.value.trim();
+        if (!textValue) return;
+        var dateStr = rowInput.dataset.date;
+        var monthlyOpts = buildCreateOptsFromDraft('schedule', textValue, dateStr);
+        var pendingScheduleColumn = monthlyLogPendingScheduleColumnByDate[dateStr];
+        if (pendingScheduleColumn !== undefined && pendingScheduleColumn !== null) {
+          monthlyOpts.monthlyLogScheduleColumn = pendingScheduleColumn;
+          delete monthlyLogPendingScheduleColumnByDate[dateStr];
+        }
+        clearMonthlyLogScheduleDraftSelection({ keepDraft:true });
+        clearDateTimeDraftAfterCreate();
+        createItem(monthlyOpts);
+        return;
+      }
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        rowInput.value = '';
+        clearMonthlyLogScheduleDraftSelection();
+        rowInput.blur();
+        return;
+      }
+      return;
+    }
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    var itemEl = e.target.closest('.monthly-log-item');
+    if (!itemEl) return;
+    e.preventDefault();
+    openDetailDrawer(itemEl.dataset.itemId, itemEl.dataset.occurrenceDate);
+  }
+
+  // focusin/focusout는 버블링되므로(focus/blur와 달리) 컨테이너 위임이 가능하다 --
+  // 포커스된 행의 입력만 종류 기호를 드러내고, 값이 비어 있으면 포커스를 잃을 때
+  // 다시 "빈 줄"처럼 감춘다(타이핑 중이던 텍스트가 있으면 그대로 보이게 유지).
+  function handleMonthlyLogRowsFocusIn(e) {
+    var input = e.target && e.target.classList && e.target.classList.contains('monthly-log-row-input') ? e.target : null;
+    if (!input) return;
+    var wrap = input.closest('.monthly-log-inline-add');
+    if (wrap) wrap.classList.add('is-active');
+  }
+
+  function handleMonthlyLogRowsFocusOut(e) {
+    var input = e.target && e.target.classList && e.target.classList.contains('monthly-log-row-input') ? e.target : null;
+    if (!input) return;
+    var wrap = input.closest('.monthly-log-inline-add');
+    // 같은 행의 종류 버튼(●/○/─)으로 포커스가 넘어가는 중이면 감추지 않는다 -- 그렇지
+    // 않으면 mousedown이 먼저 blur를 일으켜 기호가 display:none으로 사라지고, 뒤이은
+    // click이 이미 사라진 버튼을 놓치는 실제 상호작용 버그가 있었다.
+    if (wrap && e.relatedTarget && wrap.contains(e.relatedTarget)) return;
+    if (input.value.trim()) return;
+    if (wrap) wrap.classList.remove('is-active');
+  }
+
+  function wireMonthlyLog() {
+    var rows = document.getElementById('monthly-log-rows');
+    if (rows) {
+      rows.addEventListener('click', handleMonthlyLogRowsClick);
+      rows.addEventListener('dblclick', handleListDblClick); // 제목 더블클릭 편집 -- Daily/Weekly와 같은 핸들러 재사용.
+      rows.addEventListener('keydown', handleMonthlyLogRowsKeydown);
+      rows.addEventListener('focusin', handleMonthlyLogRowsFocusIn);
+      rows.addEventListener('focusout', handleMonthlyLogRowsFocusOut);
+      wireMonthlyLogRangeSelection(rows);
+      rows.addEventListener('pointerdown', onMonthlyLogScheduleSegmentPointerDown, true);
+      rows.addEventListener('pointerdown', onMonthlyLogScheduleGridPointerDown);
+      rows.addEventListener('contextmenu', onMonthlyLogScheduleGridContextMenu);
+      wireItemListMarqueeDelegation(rows);
+    }
+    document.querySelectorAll('.monthly-log-nav-btn[data-monthly-nav]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var nav = btn.dataset.monthlyNav;
+        if (nav === 'today') navigateMonthlyLogToToday();
+        else navigateMonthlyLog(Number(nav));
+      });
+    });
+    wireMonthlyItemsListDelegation(document.getElementById('monthly-inbox-list'));
+    wireMonthlyQuickInput(document.getElementById('monthly-inbox-quick'), function () {
+      return state.monthlyLogViewMonth.slice(0, 7);
+    });
+    wireMonthlyLogTitleWheel();
+    wireMonthlySplitDivider();
+    if (!window._monthlyLogLaneResizeWired) {
+      window._monthlyLogLaneResizeWired = true;
+      window.addEventListener('resize', function () {
+        if (state.currentView === 'calendar') positionMonthlyLogScheduleLabels();
+      });
+    }
   }
 
   // ---------------------------------------------------------------------
@@ -12566,17 +23629,134 @@ if (endBox && activeDateWheel && activeDateWheel.anchorEl === endBox) {
     row.addEventListener('click', toggleAllDay);
   }
 
-  // 4/7: 이월 토글 버튼 + Daily 상단 [삭제] 버튼.
+  // 현재 선택된 날짜의 이월 항목 id 목록 -- isRolloverItem(source of truth)을 그대로 쓰는
+  // getRolloverItemsForDate 결과에서만 뽑으므로, 이월 판정을 새로 만들지 않는다.
+  function getCurrentRolloverItemIds() {
+    return getRolloverItemsForDate(state.selectedDate).map(function (it) { return it.id; });
+  }
+
+  // 이월 항목을 targetDate로 "정착"시키는 공용 핵심 로직. moveSingleItemToDate(기간
+  // 보존·completionByDate 이동 등 기존 규칙)와 assignOrderForMove(대상 날짜 맨 뒤에
+  // 기존 상대 순서대로 이어붙임)를 그대로 재사용한다.
+  // 중요: getRolloverItemsForDate(selectedDate)로 뽑히는 이월 항목은 정의상 이미
+  // item.date <= selectedDate <= (endDate||date)를 만족하므로(그래야애초에 오늘 목록
+  // 조회에 걸림), targetDate가 selectedDate/오늘이면 moveSingleItemToDate는 "이미 그
+  // 날짜"라 보고 아무 것도 바꾸지 않고 false를 반환하는 게 정상이다(진짜 이동이
+  // 필요없는 경우). 그런데도 이 항목이 이월로 보이는 이유는 오직 originalDate/
+  // migratedFrom이 실제 date와 다르기 때문이므로, moveSingleItemToDate가 무엇을
+  // 반환하든 관계없이(day가 실제로 바뀌었든 아니든) 대상 항목 전부에 대해
+  // commitDrop의 "일반 목적지로 드롭" 분기가 이미 쓰는 것과 동일한 정리
+  // (originalDate=item.date, migratedFrom=null)를 적용해야 이월 목록에서 빠지고
+  // 오늘 일반 목록에 나타난다(이월 판정 로직 자체(isRolloverItem)는 전혀 바꾸지
+  // 않는다 -- 기존 정책 그대로 재사용, 여기서는 그 정책이 이미 요구하는 "정산" 절차만
+  // 수행).
+  function moveRolloverItemsToDate(itemIds, targetDate) {
+    var uniqueIds = Array.from(new Set(itemIds));
+    var processed = [];
+    withHistoryTransaction(function () {
+      uniqueIds.forEach(function (id) {
+        var item = findItemById(id);
+        if (!item || item.deletedAt) return;
+        moveSingleItemToDate(item, targetDate);
+        processed.push(item);
+      });
+      if (processed.length) {
+        assignOrderForMove(processed, targetDate);
+        processed.forEach(function (item) {
+          item.originalDate = item.date;
+          item.migratedFrom = null;
+          // moveSingleItemToDate는 targetDate가 이미 item.date와 같으면(이월 항목은
+          // 정의상 오늘 날짜라 항상 이 경우다) 조기 반환하며 rolloverPending을 건드리지
+          // 않으므로, 여기서 명시적으로 정착 처리해야 "오늘" 버튼이 실제로 이월 영역에서
+          // 빠지고 정상 목록에 나타난다(레거시/신규 데이터 공통).
+          item.rolloverPending = false;
+          item.updatedAt = Date.now();
+          // 이동된 항목이 selectedItemIds/selectedOccurrenceById에 낡은 채로 남아있지
+          // 않게 정리한다(요구사항) -- 이 항목과 무관한 다른 선택은 건드리지 않는다.
+          state.selectedItemIds.delete(item.id);
+          state.selectedOccurrenceById.delete(item.id);
+          if (state.lastSelectedItemId === item.id) state.lastSelectedItemId = null;
+          if (state.selectionAnchor && state.selectionAnchor.itemId === item.id) state.selectionAnchor = null;
+        });
+      }
+    });
+    if (processed.length) saveItems();
+    return processed;
+  }
+
+  // 날짜가 바뀌었을 때 과거의 미완료 task를 오늘로 자동 이월한다. moveSingleItemToDate가
+  // 이미 "originalDate는 최초 1회만 설정 + migratedFrom은 이동 직전 시작일"이라는 정책을
+  // 갖고 있고 이는 자동 이월이 요구하는 정책과 완전히 같으므로(예: 7/20 최초 계획 ->
+  // 7/21 자동 이월 시 originalDate=7/20, migratedFrom=7/20 -> 미완료로 7/22가 되면
+  // originalDate는 7/20 유지, migratedFrom=7/21), 별도 래퍼 없이 applyMoveItemsToDate를
+  // 그대로 재사용한다. 수동 정착(moveRolloverItemsToDate)과 달리 originalDate/
+  // migratedFrom을 정리하지 않으므로, 이동 후에도 isRolloverItem이 계속 true로 남아
+  // 이월 영역에 표시된다(요구사항) -- isRolloverItem 판정 로직 자체는 건드리지 않는다.
+  function runAutoRollover() {
+    var today = formatLocalDate(new Date());
+    if (state.todayDate !== today) state.todayDate = today;
+    var ids = getAutoRolloverCandidateIds(today);
+    if (!ids.length) return;
+    var touched = applyMoveItemsToDate(ids, today, true); // pending=true: 자동 이월 staging, 즉시 정착하지 않는다.
+    if (!touched || !touched.length) return;
+    touched.forEach(function (item) {
+      // 이전 날짜를 가리키던 occurrence 선택 잔상만 정리한다 -- selectedItemIds의
+      // item.id 선택 자체는 유지할 수 있다는 요구사항이라 건드리지 않는다.
+      state.selectedOccurrenceById.delete(item.id);
+    });
+    renderApp();
+  }
+
+  var autoRolloverMidnightTimer = null;
+  // 1분 간격 polling 대신, 다음 로컬 자정까지 정확히 한 번만 timer를 예약하고 실행 후
+  // 다시 다음 자정으로 재예약한다(앱을 자정 전부터 계속 열어 둔 경우를 위함).
+  function scheduleAutoRolloverMidnightCheck() {
+    if (autoRolloverMidnightTimer) clearTimeout(autoRolloverMidnightTimer);
+    var now = new Date();
+    var nextMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 2);
+    var delay = Math.max(1000, nextMidnight.getTime() - now.getTime());
+    autoRolloverMidnightTimer = setTimeout(function () {
+      autoRolloverMidnightTimer = null;
+      runAutoRollover();
+      refreshWeeklyAutoFollowRange();
+      scheduleAutoRolloverMidnightCheck();
+    }, delay);
+  }
+
+  // 이월 헤더의 일괄 '오늘'.
+  function moveAllRolloverItemsToToday() {
+    var ids = getCurrentRolloverItemIds();
+    if (!ids.length) return;
+    var touched = moveRolloverItemsToDate(ids, state.todayDate);
+    if (touched.length) {
+      renderApp();
+      announce(touched.length + '개 항목을 ' + formatAnnounceDate(state.todayDate) + '로 이동했습니다.');
+    }
+  }
+
+  // 이월 헤더의 일괄 '삭제' -- 기존 softDeleteItems를 그대로 재사용한다(영구 삭제 아님,
+  // id 중복 제거·단일 Undo 트랜잭션·saveItems/renderApp 1회도 그 함수가 이미 보장).
+  function deleteAllRolloverItems() {
+    var ids = getCurrentRolloverItemIds();
+    if (!ids.length) return;
+    softDeleteItems(ids);
+  }
+
+  // 이월 카드 개별 '오늘' -- moveAllRolloverItemsToToday와 같은 핵심 로직을 재사용하되
+  // 이 항목 하나만 대상으로 한다(다른 곳에서 선택 중이던 항목들의 선택은 건드리지 않음).
+  function moveRolloverItemToToday(itemId) {
+    var touched = moveRolloverItemsToDate([itemId], state.todayDate);
+    if (touched.length) renderApp();
+  }
+
+  // 4/7: 이월 토글 버튼 + Daily 상단 일괄 '오늘'/'삭제' 버튼.
   function wireRolloverControls() {
     var toggle = document.querySelector('.rollover-toggle');
     if (toggle) toggle.addEventListener('click', toggleRolloverExpanded);
+    var todayAllBtn = document.querySelector('.rollover-today-btn');
+    if (todayAllBtn) todayAllBtn.addEventListener('click', moveAllRolloverItemsToToday);
     var deleteBtn = document.querySelector('.rollover .delete-btn');
-    if (deleteBtn) {
-      deleteBtn.addEventListener('click', function () {
-        if (!state.selectedItemIds.size) return;
-        softDeleteItems(Array.from(state.selectedItemIds));
-      });
-    }
+    if (deleteBtn) deleteBtn.addEventListener('click', deleteAllRolloverItems);
   }
 
   // --- 시간 필드 표시/검증 ----------------------------------------------------
@@ -12828,6 +24008,15 @@ function applyTimeFieldChange(field, newTime) {
       end = start;
     }
 
+    // 라운드5 E: 조용히 렌더링 단계(getOccurrenceDates)에서만 잘라내지 않고, 사용자가
+    // 실제 입력하는 이 시점에도 같은 상수로 확인해 안내한다. 기존 정상 범위 데이터는
+    // 건드리지 않는다 -- 이 클램프는 "지금 새로 입력한" 값에만 적용된다.
+    var spanDays = differenceInCalendarDays(start, end);
+    if (isFinite(spanDays) && spanDays > MAX_OCCURRENCE_SPAN_DAYS) {
+      end = addCalendarDays(start, MAX_OCCURRENCE_SPAN_DAYS);
+      announce('기간은 최대 ' + (MAX_OCCURRENCE_SPAN_DAYS + 1) + '일까지 설정할 수 있어 종료일을 자동으로 줄였습니다.');
+    }
+
     state.endDateDraftActive = true;
   }
 
@@ -13044,8 +24233,11 @@ function applyTimeFieldChange(field, newTime) {
       var idx = Math.round(col.scrollTop / DATE_WHEEL_ITEM_HEIGHT);
       updateWheelColumnVisual(col, idx);
       clearWheelSettleTimer(unit);
-      // 130ms 동안 추가 스크롤이 없으면 "멈췄다"고 보고 정렬·확정한다(터치 드래그 패닝 등
-      // 실제 자유 스크롤 전용 — 휠/클릭/키보드는 목표 인덱스를 이미 알고 있어 아래에서 즉시 확정한다).
+      // 팝업을 처음 열 때 scrollColumnToValue가 만드는 합성 scroll은 사용자 조작이 아니다.
+      // 특히 비어 있던 종료일을 처음 누른 경우 이 scroll이 같은 날짜를 즉시 커밋하면서
+      // 종료일을 다시 비활성화하는 회귀가 생겼다. 초기 정렬 구간에는 시각 갱신만 한다.
+      if (activeDateWheel && activeDateWheel.initializing) return;
+      // 130ms 동안 추가 스크롤이 없으면 "멈췄다"고 보고 정렬·확정한다.
       if (activeDateWheel) {
         activeDateWheel.settleTimers[unit] = setTimeout(function () { settleWheelColumn(col, unit); }, 130);
       }
@@ -13358,39 +24550,41 @@ function applyTimeFieldChange(field, newTime) {
         e.preventDefault();
         e.stopPropagation();
 
-        // 종료 날짜 입력칸은 휠 조작뿐 아니라 직접 타이핑한 텍스트도 Enter로 확정할 수
-        // 있어야 한다(3/7번 요구사항). 시작 날짜 입력칸의 기존 확정 방식(휠만 닫음, 10번
-        // 요구사항 -- 이번에 변경하지 않음)은 아래 field==='end' 분기 밖에서 그대로 유지된다.
-        if (
-          field === 'end' &&
-          activeDateWheel &&
-          activeDateWheel.anchorEl === input &&
-          activeDateWheel.target
-        ) {
-          var parsed = parseYmdDateInput(input.value);
-          if (!parsed) {
-            input.classList.add('is-invalid');
-            input.setAttribute('aria-invalid', 'true');
-            input.select();
-            return;
-          }
-          input.classList.remove('is-invalid');
-          input.removeAttribute('aria-invalid');
-          // 6: 기존 종료<시작 클램프를 포함해 이미 검증된 커밋 경로(target.applyDate --
-          // 휠 클릭·방향키와 동일한 경로)를 그대로 재사용한다. 새 커밋 로직을 만들지 않는다.
-          var target = activeDateWheel.target; // closeDateWheelPopup이 activeDateWheel을 지우기 전에 잡아둔다.
-          target.applyDate(parsed);
-          closeDateWheelPopup(false);
-          // 2/3: '일' 클릭 확정과 같은 규칙 -- 종료 날짜 target에만 있는 플래그이므로
-          // 시작 날짜(휠만 닫힘)는 그대로 영향받지 않는다.
-          if (target.closeParentOnConfirm) closeMoveDateMenu(false);
+        // 붙여넣기 직후 날짜 휠이 닫혀 있더라도 Enter만으로 항상 확정한다.
+        var parsed = parseYmdDateInput(input.value);
+
+        if (!parsed) {
+          input.classList.add('is-invalid');
+          input.setAttribute('aria-invalid', 'true');
+          input.select();
           return;
         }
 
-        // 6(기존): 값은 이미 매 조작마다 라이브 커밋돼 있으므로 Enter는 휠만 닫으면 된다.
-        if (activeDateWheel && activeDateWheel.anchorEl === input) {
+        input.classList.remove('is-invalid');
+        input.removeAttribute('aria-invalid');
+
+        var hasOwnWheel = !!(
+          activeDateWheel &&
+          activeDateWheel.anchorEl === input &&
+          activeDateWheel.target
+        );
+
+        // 열린 휠의 target을 우선 사용하고, 없으면 현재 입력칸용 target을 즉석에서 만든다.
+        var target = hasOwnWheel
+          ? activeDateWheel.target
+          : makeTarget();
+
+        target.applyDate(parsed);
+
+        if (hasOwnWheel) {
           closeDateWheelPopup(false);
         }
+
+        if (target.closeParentOnConfirm) {
+          closeMoveDateMenu(false);
+        }
+
+        return;
       }
     });
   }
@@ -13521,15 +24715,60 @@ function applyTimeFieldChange(field, newTime) {
     colsWrap.appendChild(centerLine);
 
     popup.appendChild(colsWrap);
-   document.body.appendChild(popup);
-positionPopup(popup, anchorEl);
-anchorEl.setAttribute('aria-expanded', 'true');
+    document.body.appendChild(popup);
+    positionPopup(popup, anchorEl);
 
-var anchorRect =
-  anchorEl.getBoundingClientRect();
+    // 상세 날짜 이동 메뉴 안에서 연 날짜 휠만 입력칸 오른쪽에 배치한다.
+    // 오른쪽 공간이 부족하면 왼쪽으로 전환하고, 화면 바깥으로 나가지 않게 보정한다.
+    if (target) {
+      var fieldRect = anchorEl.getBoundingClientRect();
+      var wheelRect = popup.getBoundingClientRect();
+      var wheelGap = 10;
+      var viewportGap = 12;
 
-var popupRect =
-  popup.getBoundingClientRect();
+      var wheelLeft = fieldRect.right + wheelGap;
+      var wheelTop = fieldRect.top;
+
+      if (
+        wheelLeft + wheelRect.width >
+        window.innerWidth - viewportGap
+      ) {
+        wheelLeft =
+          fieldRect.left -
+          wheelRect.width -
+          wheelGap;
+      }
+
+      wheelLeft = Math.max(
+        viewportGap,
+        Math.min(
+          wheelLeft,
+          window.innerWidth -
+            wheelRect.width -
+            viewportGap
+        )
+      );
+
+      if (
+        wheelTop + wheelRect.height >
+        window.innerHeight - viewportGap
+      ) {
+        wheelTop =
+          window.innerHeight -
+          wheelRect.height -
+          viewportGap;
+      }
+
+      wheelTop = Math.max(viewportGap, wheelTop);
+
+      popup.style.left = Math.round(wheelLeft) + 'px';
+      popup.style.top = Math.round(wheelTop) + 'px';
+    }
+
+    anchorEl.setAttribute('aria-expanded', 'true');
+
+    var anchorRect = anchorEl.getBoundingClientRect();
+    var popupRect = popup.getBoundingClientRect();
 
 activeDateWheel = {
   field: field,
@@ -13556,6 +24795,8 @@ activeDateWheel = {
     month: null,
     day: null
   },
+  // 초기 열 정렬에서 발생하는 합성 scroll이 날짜를 커밋하지 못하게 한다.
+  initializing: true,
 
   // target이 있으면(상세 패널 등) 커밋·복원을 target이 전담하므로 아래 상단 패널 전용
   // 스냅샷은 만들지 않는다.
@@ -13579,7 +24820,20 @@ activeDateWheel = {
     wireWheelColumn(yearCol, 'year');
     wireWheelColumn(monthCol, 'month');
     wireWheelColumn(dayCol, 'day');
-  
+
+    // scrollTo({behavior:'auto'})의 scroll 이벤트는 브라우저에 따라 다음 프레임 이후에도
+    // 도착한다. 짧은 보호 구간 뒤에만 실제 사용자 스크롤 커밋을 허용한다.
+    setTimeout(function () {
+      if (activeDateWheel && activeDateWheel.el === popup) {
+        activeDateWheel.initializing = false;
+        Object.keys(activeDateWheel.settleTimers).forEach(function (unit) {
+          if (activeDateWheel.settleTimers[unit]) {
+            clearTimeout(activeDateWheel.settleTimers[unit]);
+            activeDateWheel.settleTimers[unit] = null;
+          }
+        });
+      }
+    }, 180);
 
     setTimeout(function () {
       document.addEventListener('pointerdown', onOutsideDateWheelPointerDown, true);
@@ -14552,6 +25806,171 @@ originalEndTime: state.timeDraft.endTime || null,
   }
 }
 
+  // index.html에는 7개의 .week-card가 정적으로 있다 -- 그중 하나를 그대로 복제하지 않고
+  // 같은 구조(header>span+plus버튼, ul)를 코드로 새로 만든다(정적 카드 삭제 시 이벤트
+  // 위임(wireListDelegation)이 이미 .week-grid에 걸려 있어 새 카드에도 별도 리스너 등록이
+  // 필요 없다).
+  function createWeekCardElement() {
+    var card = document.createElement('div');
+    card.className = 'week-card';
+    var header = document.createElement('header');
+    var span = document.createElement('span');
+    header.appendChild(span);
+    var plusBtn = document.createElement('button');
+    plusBtn.type = 'button';
+    plusBtn.className = 'plus';
+    plusBtn.dataset.action = 'weekly-add';
+    plusBtn.setAttribute('aria-label', '항목 추가');
+    plusBtn.textContent = '＋';
+    header.appendChild(plusBtn);
+    card.appendChild(header);
+    var ul = document.createElement('ul');
+    // renderWeeklyDateHeaders()가 'ul[data-date]'로 조회해 실제 날짜를 채우므로(기존
+    // 정적 카드는 이미 data-date를 갖고 있었다), 새로 만드는 카드도 처음부터 빈 값으로
+    // 미리 갖고 있어야 그 조회에 걸린다.
+    ul.dataset.date = '';
+    card.appendChild(ul);
+    return card;
+  }
+
+  // grid 하나 안의 .week-card 개수를 target에 맞춘다(공용 헬퍼) -- 부족하면 뒤에 이어
+  // 붙이고 남으면 뒤에서부터 지운다.
+  // 8~14일을 위·아래 두 행에 최대한 균형 있게 나눈다(위쪽이 홀수 하나를 더 가짐 --
+  // 8=4+4, 9=5+4, ..., 14=7+7). 1~7일은 항상 단일 행(위쪽 grid만, 아래쪽은 0).
+  // 카드 분배(syncWeekCardCount)·행별 grid 열 수(applyWeekGridLayout)가 전부 이 계산
+  // 하나만 공용으로 쓴다 -- 드래그 hit-test·+ 버튼·반응형은 이 함수가 만들어 둔 DOM
+  // (각 카드의 실제 위치·data-date)을 그대로 따라가므로 별도로 이 값을 참조할 필요가 없다.
+  function getWeeklyRowDistribution(visibleDays) {
+    var days = visibleDays || WEEKLY_VISIBLE_DAYS_DEFAULT;
+    if (days <= WEEKLY_ROW_DAYS) {
+      return { rowCount: 1, topCount: days, bottomCount: 0 };
+    }
+    return { rowCount: 2, topCount: Math.ceil(days / 2), bottomCount: Math.floor(days / 2) };
+  }
+
+  function syncGridCardCount(grid, target) {
+    if (!grid) return;
+    var cards = grid.querySelectorAll('.week-card');
+    if (cards.length < target) {
+      for (var i = cards.length; i < target; i++) grid.appendChild(createWeekCardElement());
+    } else if (cards.length > target) {
+      for (var j = cards.length - 1; j >= target; j--) cards[j].remove();
+    }
+  }
+
+  // state.weeklyVisibleDays만큼 .week-card 개수를 두 grid(.week-grid-top/.week-grid-bottom)에
+  // getWeeklyRowDistribution 기준으로 균형 있게 나눠 맞춘다 -- 각 날짜 카드는 정확히
+  // 한 곳(위 또는 아래)에만 존재한다(같은 카드 DOM을 복제해 두 곳에 넣지 않는다).
+  // querySelectorAll('.week-card')는 문서 순서를 그대로 돌려주므로(위쪽 grid가 DOM상
+  // 아래쪽보다 항상 먼저 나온다), renderWeeklyDateHeaders의 기존 인덱스 기반 날짜
+  // 채우기는 전혀 손대지 않아도 그대로 정확히 동작한다.
+  function syncWeekCardCount() {
+    var topGrid = document.querySelector('.week-grid-top');
+    var bottomGrid = document.querySelector('.week-grid-bottom');
+    var dist = getWeeklyRowDistribution(state.weeklyVisibleDays);
+    syncGridCardCount(topGrid, dist.topCount);
+    syncGridCardCount(bottomGrid, dist.bottomCount);
+  }
+
+  // 1~7일(단일 행): 실제 표시 일수만큼 열(폭 균등, 위쪽 grid만 사용, 아래쪽은 0이라
+  // 어차피 숨겨진다). 8~14일(분할 모드): 위·아래 grid가 각자 자기 행의 실제 날짜
+  // 수(getWeeklyRowDistribution의 topCount/bottomCount)만큼 열을 갖는다 -- 두 행의
+  // 열 수가 서로 달라도(예: 9일=5+4) 각 행은 자기 열 수 기준으로 화면 폭을 꽉 채우므로
+  // 가짜 빈 열이 생기지 않는다. 각 grid는 항상 최대 7장의 카드만 갖는 단일 줄이므로
+  // grid-auto-rows를 auto로 바꿔줄 필요가 없다.
+  function applyWeekGridLayout() {
+    var topGrid = document.querySelector('.week-grid-top');
+    var bottomGrid = document.querySelector('.week-grid-bottom');
+    var dist = getWeeklyRowDistribution(state.weeklyVisibleDays);
+    if (topGrid) topGrid.style.setProperty('--week-cols', String(Math.max(dist.topCount, 1)));
+    if (bottomGrid) bottomGrid.style.setProperty('--week-cols', String(Math.max(dist.bottomCount, 1)));
+  }
+
+  function isWeeklyRowSplit() {
+    return (state.weeklyVisibleDays || WEEKLY_VISIBLE_DAYS_DEFAULT) > WEEKLY_ROW_DAYS;
+  }
+
+  // 분할선이 실제로 움직일 수 있는 세로 공간(= .weekly-body 높이 - 분할선 자신의 높이).
+  function getWeeklyRowScrollHeightAvailable() {
+    var bodyEl = document.querySelector('.weekly-body');
+    if (!bodyEl) return 0;
+    var h = bodyEl.getBoundingClientRect().height;
+    return Math.max(0, h - WEEKLY_ROW_DIVIDER_HEIGHT);
+  }
+
+  // 각 행의 최소 높이 -- "고정 추측값"이 아니라 실제 렌더된 요소(날짜 헤더 고정
+  // 61px·목록 상단 여백·카드 한 줄 실측 높이)를 기준으로 계산한다. 카드가 하나도
+  // 렌더돼 있지 않은 극단적인 경우(완전히 빈 플래너)에만 안전한 기본값으로 대체한다.
+  function getWeekRowMinHeight() {
+    var headerEl = document.querySelector('.week-card header');
+    var ulEl = document.querySelector('.week-card ul');
+    var liEl = document.querySelector('.week-card li');
+    var headerH = headerEl ? headerEl.offsetHeight : 61;
+    var ulMarginTop = ulEl ? parseFloat(getComputedStyle(ulEl).marginTop || '0') : 16;
+    var liH = liEl ? liEl.offsetHeight : 38;
+    return headerH + ulMarginTop + liH + 8;
+  }
+
+  // 비율이 위·아래 어느 쪽도 최소 높이 아래로 내려가지 않게 clamp한다. availableHeight가
+  // 너무 작아(패널 레벨 최소 높이 보장이 이미 이를 막고 있어야 하지만) 유효 구간이
+  // 뒤집히면 방어적으로 0.5로 되돌린다.
+  function clampWeeklyRowSplitRatio(ratio, availableHeight) {
+    if (!availableHeight || availableHeight <= 0) return WEEKLY_ROW_SPLIT_RATIO_DEFAULT;
+    var rowMin = getWeekRowMinHeight();
+    var minRatio = rowMin / availableHeight;
+    var maxRatio = 1 - minRatio;
+    if (minRatio > maxRatio) return WEEKLY_ROW_SPLIT_RATIO_DEFAULT;
+    return Math.max(minRatio, Math.min(maxRatio, ratio));
+  }
+
+  function updateWeekRowDividerAria(ratio) {
+    var dividerEl = document.querySelector('.week-row-divider');
+    if (dividerEl) dividerEl.setAttribute('aria-valuenow', String(Math.round(ratio * 100)));
+  }
+
+  // 8일 이상(분할 모드) 여부에 따라 .weekly-body에 week-row-split 클래스를 토글하고,
+  // 분할 모드일 때만 위·아래 행의 min-height(px, 실측)와 flex-grow(비율)를 적용한다.
+  // flex-grow 두 값이 곧 비율이므로, 이후 전체 패널 높이가 바뀌어도(창 크기 변경,
+  // 전체 패널 드래그) 이 함수를 다시 부르지 않아도 브라우저가 같은 비율로 실시간
+  // 재분배한다 -- 표시 일수·비율 자체가 바뀔 때만 다시 호출하면 된다.
+  function applyWeekRowSplitLayout() {
+    var bodyEl = document.querySelector('.weekly-body');
+    var topEl = document.querySelector('.week-row-scroll-top');
+    var bottomEl = document.querySelector('.week-row-scroll-bottom');
+    var dividerEl = document.querySelector('.week-row-divider');
+    if (!bodyEl || !topEl || !bottomEl || !dividerEl) return;
+    var split = isWeeklyRowSplit();
+    bodyEl.classList.toggle('week-row-split', split);
+    if (!split) {
+      // 단일 행일 때는 flex-basis를 auto(콘텐츠 기준)로 되돌린다 -- 1199px 이하
+      // 구간처럼 .weekly-body의 조상이 height:auto(내용 기준 크기)인 상황에서 basis:0인
+      // 채로 두면 "분배할 여유 공간"이 전혀 없어 행 자체가 0에 가깝게 찌그러진다(실제
+      // 재현 확인됨). 분할 모드(basis:0, 아래에서 설정)는 .weekly-body가 항상 min/max
+      // -height로 어느 정도 실제 높이를 갖도록 보장돼 있어 문제가 없다.
+      topEl.style.flexBasis = 'auto';
+      topEl.style.flexGrow = '';
+      topEl.style.minHeight = '';
+      bottomEl.style.flexBasis = '';
+      bottomEl.style.flexGrow = '';
+      bottomEl.style.minHeight = '';
+      dividerEl.setAttribute('aria-hidden', 'true');
+      dividerEl.tabIndex = -1;
+      return;
+    }
+    var available = getWeeklyRowScrollHeightAvailable();
+    var ratio = clampWeeklyRowSplitRatio(state.weeklyRowSplitRatio, available);
+    var rowMin = getWeekRowMinHeight();
+    topEl.style.flexBasis = '0';
+    bottomEl.style.flexBasis = '0';
+    topEl.style.minHeight = rowMin + 'px';
+    bottomEl.style.minHeight = rowMin + 'px';
+    topEl.style.flexGrow = String(ratio);
+    bottomEl.style.flexGrow = String(1 - ratio);
+    dividerEl.removeAttribute('aria-hidden');
+    dividerEl.tabIndex = 0;
+    updateWeekRowDividerAria(ratio);
+  }
+
   // Weekly "+" 버튼의 aria-label에 실제 날짜를 채운다(정적 HTML은 공용 라벨만 가짐).
   function initWeeklyPlusLabels() {
     document.querySelectorAll('.week-card').forEach(function (card) {
@@ -14567,10 +25986,22 @@ originalEndTime: state.timeDraft.endTime || null,
   // 3: Weekly 날짜 이동 — 항상 연속된 7일(state.weekStartDate ~ +6일)을 보여준다.
   // 항목의 실제 date/이동 여부는 절대 건드리지 않고, 어느 7일을 "보여줄지"만 바꾼다.
   // ---------------------------------------------------------------------
-  function getWeekStartSunday(dateStr) {
+  // 달력 설정의 주 시작 요일(0=일요일, 1=월요일)을 반영한 일반화 버전. weekStartsOn을
+  // 생략하면(호출부가 옛 방식 그대로 하나만 넘기면) 기존과 동일하게 일요일 기준으로
+  // 동작한다 -- 미니 달력 grid/Monthly Log 주 구분선/Weekly 'week' 모드가 전부 이 한
+  // 함수를 공유한다(Weekly 'rolling' 모드는 이 함수를 아예 쓰지 않아 영향 없음).
+  function getWeekStart(dateStr, weekStartsOn) {
+    var startsOn = weekStartsOn === 1 ? 1 : 0;
     var d = parseLocalDate(dateStr);
-    var sunday = new Date(d.getFullYear(), d.getMonth(), d.getDate() - d.getDay());
-    return formatLocalDate(sunday);
+    var diff = (d.getDay() - startsOn + 7) % 7;
+    var start = new Date(d.getFullYear(), d.getMonth(), d.getDate() - diff);
+    return formatLocalDate(start);
+  }
+
+  // 보기 기준(mode)에 따른 "최신" Weekly 시작 날짜. 'week'는 현재 달력 설정의 주 시작
+  // 요일을 따르고, 'rolling'은 오늘 날짜 자체가 시작일이다(주 시작 요일 설정과 무관).
+  function computeWeeklyRangeStartForMode(mode) {
+    return mode === 'week' ? getWeekStart(state.todayDate, state.calendarWeekStartsOn) : state.todayDate;
   }
 
   // 7개 .week-card의 헤더 텍스트(MM.DD (요일))·일/토 색상 클래스·ul[data-date]·+
@@ -14585,11 +26016,14 @@ originalEndTime: state.timeDraft.endTime || null,
       var headerSpan = card.querySelector('header span');
       var ul = card.querySelector('ul[data-date]');
       var plusBtn = card.querySelector('.plus');
+      var annotation = getCalendarAnnotations(dateStr);
       if (headerSpan) {
-        headerSpan.textContent = String(d.getMonth() + 1).padStart(2, '0') + '.' + String(d.getDate()).padStart(2, '0') + ' (' + WEEKDAY_KO[d.getDay()] + ')';
+        headerSpan.textContent = String(d.getMonth() + 1).padStart(2, '0') + '.' + String(d.getDate()).padStart(2, '0') + ' (' + WEEKDAY_KO[d.getDay()] + ')' + (annotation.holidayName ? ' · ' + annotation.holidayName : '');
         headerSpan.classList.remove('sun', 'sat');
-        if (d.getDay() === 0) headerSpan.classList.add('sun');
+        if (annotation.isPublicHoliday) headerSpan.classList.add('sun');
+        else if (d.getDay() === 0) headerSpan.classList.add('sun');
         else if (d.getDay() === 6) headerSpan.classList.add('sat');
+        headerSpan.setAttribute('aria-label', formatAnnounceDate(dateStr) + (annotation.holidayName ? ', ' + annotation.holidayName : ''));
       }
       if (ul) ul.dataset.date = dateStr;
       if (plusBtn) plusBtn.setAttribute('aria-label', formatAnnounceDate(dateStr) + '에 항목 추가');
@@ -14601,30 +26035,700 @@ originalEndTime: state.timeDraft.endTime || null,
     renderWeeklyDateHeaders();
     renderWeekly();
     renderSelectionState();
-    var weeklyBody = document.querySelector('.weekly-body');
-    if (weeklyBody) weeklyBody.scrollTop = 0; // Weekly 내부 스크롤은 항상 맨 위로.
+    // 6: 이전/다음 이동 후 각 행의 내부 스크롤은 항상 맨 위로(위·아래 두 행 모두).
+    document.querySelectorAll('.week-row-scroll').forEach(function (el) { el.scrollTop = 0; });
+    // weekStartDate를 바꾸는 모든 경로(수동 이동/기준 선택/원형 버튼/자동 추적 갱신)가
+    // 공통으로 이 함수를 거치므로, 원형 버튼의 aria-pressed/라벨도 여기서 한 곳으로
+    // 모아 항상 최신 자동 추적 상태를 반영하게 한다.
+    renderWeekModeButtonState();
   }
 
+  // 이동 버튼(하루 전/후, 표시 일수만큼 전/후)은 사용자가 직접 과거/미래를 탐색하는
+  // 것이므로 수동 탐색 상태로 전환한다(자동 추적 끔) -- 날짜가 바뀌어도 이 범위를
+  // 그대로 유지해야 하기 때문.
   function navigateWeek(deltaDays) {
     state.weekStartDate = addCalendarDays(state.weekStartDate, deltaDays);
+    state.weeklyAutoFollow = false;
     afterWeekNavigate();
   }
 
-  function navigateWeekToToday() {
-    state.weekStartDate = getWeekStartSunday(state.todayDate);
+  // 가운데 원형 버튼: 선택된 보기 기준(state.weeklyRangeMode)의 "최신" 범위로 복귀하고
+  // 자동 추적을 다시 켠다. 기준 자체는 바꾸지 않는다(기준을 바꾸려면 "..." 메뉴 사용).
+  function jumpWeeklyRangeToLatest() {
+    state.weeklyAutoFollow = true;
+    state.weekStartDate = computeWeeklyRangeStartForMode(state.weeklyRangeMode);
     afterWeekNavigate();
   }
 
+  // "..." 메뉴에서 보기 기준을 고를 때: 기준을 바꾸고 그 기준의 최신 범위로 즉시
+  // 이동 + 자동 추적을 켠다(요구사항: "기준 선택 즉시 이동 + 자동 추적 활성화").
+  function setWeeklyRangeMode(mode) {
+    if (!WEEKLY_RANGE_MODE_VALUES[mode]) return;
+    state.weeklyRangeMode = mode;
+    jumpWeeklyRangeToLatest();
+    renderWeekRangeMenuState();
+  }
+
+  // 자동 추적 중일 때만 현재 기준의 최신 범위로 weekStartDate를 다시 맞춘다 -- 이미
+  // 최신이면(값이 같으면) 아무 것도 하지 않아 같은 날짜에 여러 번 불려도 중복 이동하지
+  // 않는다(멱등). runAutoRollover와 같은 4개 트리거(앱 실행/새로고침/visibility/focus/
+  // 자정)에서 그 직후에 호출되며, 새 리스너나 타이머를 따로 만들지 않는다.
+  function refreshWeeklyAutoFollowRange() {
+    if (!state.weeklyAutoFollow) return;
+    var target = computeWeeklyRangeStartForMode(state.weeklyRangeMode);
+    if (state.weekStartDate === target) return;
+    state.weekStartDate = target;
+    afterWeekNavigate();
+  }
+
+  // '-range'/'range'(기존 '-7'/'7' 큰 화살표)는 항상 정확히 ±7일이 아니라 "현재 표시
+  // 일수만큼" 이동한다(3일 보기면 ±3일, 10일 보기면 ±10일) — '-1'/'1'(하루 전/후)은
+  // 표시 일수와 무관하게 항상 하루씩 그대로 이동한다(기존 정책 유지).
   function wireWeeklyNav() {
     document.querySelectorAll('.week-nav-btn[data-nav]').forEach(function (btn) {
       btn.addEventListener('click', function () {
         var nav = btn.dataset.nav;
-        if (nav === 'today') navigateWeekToToday();
+        if (nav === 'today') jumpWeeklyRangeToLatest();
+        else if (nav === '-range') navigateWeek(-(state.weeklyVisibleDays || WEEKLY_VISIBLE_DAYS_DEFAULT));
+        else if (nav === 'range') navigateWeek(state.weeklyVisibleDays || WEEKLY_VISIBLE_DAYS_DEFAULT);
         else navigateWeek(Number(nav));
       });
     });
   }
 
+  // 가운데 원형 버튼의 aria-pressed(자동 추적 중=true)와 라벨을 현재 상태로 동기화한다.
+  function renderWeekModeButtonState() {
+    var btn = document.querySelector('.week-nav-btn[data-nav="today"]');
+    if (!btn) return;
+    btn.setAttribute('aria-pressed', String(!!state.weeklyAutoFollow));
+    btn.setAttribute('aria-label', state.weeklyRangeMode === 'week' ? '이번 주로 이동' : '오늘로 이동');
+  }
+
+  // [-][N일][+] 표시 일수 조절 컨트롤의 현재 값/버튼 disabled 상태를 반영한다.
+  function renderWeekDaysControl() {
+    var valueEl = document.querySelector('.week-days-value');
+    var decBtn = document.querySelector('.week-days-btn[data-days-action="dec"]');
+    var incBtn = document.querySelector('.week-days-btn[data-days-action="inc"]');
+    var days = state.weeklyVisibleDays || WEEKLY_VISIBLE_DAYS_DEFAULT;
+    if (valueEl) valueEl.textContent = days + '일';
+    if (decBtn) decBtn.disabled = days <= WEEKLY_VISIBLE_DAYS_MIN;
+    if (incBtn) incBtn.disabled = days >= WEEKLY_VISIBLE_DAYS_MAX;
+  }
+
+  // 큰 이동 화살표(‹‹/››)의 의미가 "표시 일수만큼 이동"으로 바뀌므로, 표시 일수가
+  // 바뀔 때마다 aria-label도 그 값을 반영해 다시 채운다(기존 "일주일 전/후" 고정 문구는
+  // 표시 일수가 7이 아닐 때 더 이상 정확하지 않다).
+  function updateWeekRangeNavLabels() {
+    var days = state.weeklyVisibleDays || WEEKLY_VISIBLE_DAYS_DEFAULT;
+    var prevBtn = document.querySelector('.week-nav-btn[data-nav="-range"]');
+    var nextBtn = document.querySelector('.week-nav-btn[data-nav="range"]');
+    if (prevBtn) prevBtn.setAttribute('aria-label', days + '일 전');
+    if (nextBtn) nextBtn.setAttribute('aria-label', days + '일 후');
+  }
+
+  // 표시 일수 변경의 단일 진입점 — DOM 카드 수·grid 레이아웃·헤더 라벨·목록·선택 표시·
+  // 조절 UI·패널 최소 높이를 전부 이 순서로 갱신한 뒤 저장한다(호출자는 증감 버튼뿐).
+  function setWeeklyVisibleDays(next) {
+    var clamped = Math.max(WEEKLY_VISIBLE_DAYS_MIN, Math.min(WEEKLY_VISIBLE_DAYS_MAX, next));
+    if (clamped === state.weeklyVisibleDays) return;
+    state.weeklyVisibleDays = clamped;
+    // 자동 추적 중이면 표시 일수가 바뀌어도 "오늘부터/이번 주부터"라는 기준 자체는
+    // 유지해야 하므로 시작일을 다시 계산한다(오늘 기준: 오늘부터 새 일수, 주 기준:
+    // 현재 주 시작일부터 새 일수). 수동 탐색 중이면 손대지 않아 현재 weekStartDate가
+    // 그대로 새 일수만큼의 시작일로 쓰인다(요구사항: "수동으로 보던 시작일 유지").
+    if (state.weeklyAutoFollow) {
+      state.weekStartDate = computeWeeklyRangeStartForMode(state.weeklyRangeMode);
+    }
+    syncWeekCardCount();
+    applyWeekGridLayout();
+    applyWeekRowSplitLayout();
+    renderWeeklyDateHeaders();
+    renderWeekly();
+    renderSelectionState();
+    renderWeekDaysControl();
+    updateWeekRangeNavLabels();
+    refreshWeeklyPanelMinHeight();
+    renderWeekRangeMenuState();
+    savePreferences();
+  }
+
+  function wireWeekDaysControl() {
+    var decBtn = document.querySelector('.week-days-btn[data-days-action="dec"]');
+    var incBtn = document.querySelector('.week-days-btn[data-days-action="inc"]');
+    if (decBtn) decBtn.addEventListener('click', function () { setWeeklyVisibleDays((state.weeklyVisibleDays || WEEKLY_VISIBLE_DAYS_DEFAULT) - 1); });
+    if (incBtn) incBtn.addEventListener('click', function () { setWeeklyVisibleDays((state.weeklyVisibleDays || WEEKLY_VISIBLE_DAYS_DEFAULT) + 1); });
+  }
+
+  // ---------------------------------------------------------------------
+  // Weekly 보기 기준("...") 메뉴 -- .type-menu/.move-menu와 같은 상호작용 패턴(positionPopup
+  // 재사용, role="menu"/menuitemradio, 지연 등록된 outside-pointerdown/keydown, 포커스 복원).
+  // ---------------------------------------------------------------------
+  var activeWeekRangeMenu = null; // { el }
+
+  function weekRangeModeLabel(mode) {
+    var days = state.weeklyVisibleDays || WEEKLY_VISIBLE_DAYS_DEFAULT;
+    return mode === 'week' ? '이번 주 기준' : ('오늘부터 ' + days + '일');
+  }
+
+  // 메뉴가 열려 있는 동안 표시 일수가 바뀌면("오늘부터 N일" 라벨) 즉시 반영한다.
+  function renderWeekRangeMenuState() {
+    if (!activeWeekRangeMenu) return;
+    var items = activeWeekRangeMenu.el.querySelectorAll('[role="menuitemradio"]');
+    items.forEach(function (item) {
+      var mode = item.dataset.mode;
+      item.textContent = weekRangeModeLabel(mode);
+      item.setAttribute('aria-checked', String(state.weeklyRangeMode === mode));
+      item.tabIndex = state.weeklyRangeMode === mode ? 0 : -1;
+    });
+  }
+
+  function moveWeekRangeMenuFocus(items, target) {
+    items.forEach(function (it) { it.tabIndex = -1; });
+    target.tabIndex = 0;
+    target.focus();
+  }
+
+  function onWeekRangeMenuKeydown(e) {
+    if (!activeWeekRangeMenu) return;
+    var items = Array.prototype.slice.call(activeWeekRangeMenu.el.querySelectorAll('[role="menuitemradio"],[role="menuitem"],[role="menuitemcheckbox"]'));
+    var currentIndex = items.indexOf(document.activeElement);
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      e.stopPropagation();
+      closeWeekRangeMenu(true);
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      moveWeekRangeMenuFocus(items, items[(currentIndex + 1 + items.length) % items.length]);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      moveWeekRangeMenuFocus(items, items[(currentIndex - 1 + items.length) % items.length]);
+    } else if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      if (currentIndex >= 0) {
+        var el = items[currentIndex];
+        if (el.getAttribute('role') === 'menuitemradio') {
+          setWeeklyRangeMode(el.dataset.mode);
+          closeWeekRangeMenu(true);
+        } else {
+          el.click();
+        }
+      }
+    }
+  }
+
+  function onOutsideWeekRangeMenuPointerDown(e) {
+    if (!activeWeekRangeMenu) return;
+    if (activeWeekRangeMenu.el.contains(e.target)) return;
+    var btn = document.querySelector('.week-range-menu-btn');
+    if (btn && btn.contains(e.target)) return;
+    closeWeekRangeMenu(false);
+  }
+
+  function closeWeekRangeMenu(restoreFocus) {
+    if (!activeWeekRangeMenu) return;
+    activeWeekRangeMenu.el.remove();
+    document.removeEventListener('pointerdown', onOutsideWeekRangeMenuPointerDown, true);
+    document.removeEventListener('keydown', onWeekRangeMenuKeydown, true);
+    activeWeekRangeMenu = null;
+    var btn = document.querySelector('.week-range-menu-btn');
+    if (btn) {
+      btn.setAttribute('aria-expanded', 'false');
+      if (restoreFocus !== false) btn.focus();
+    }
+  }
+
+  function openWeekRangeMenu(anchorEl) {
+    if (activeWeekRangeMenu) {
+      closeWeekRangeMenu();
+      return;
+    }
+    if (activeTypeMenu) closeTypeMenu(false);
+    if (activeMoveMenu) closeMoveDateMenu(false);
+
+    var menu = document.createElement('div');
+    menu.className = 'week-range-menu';
+    menu.id = 'week-range-menu';
+    menu.setAttribute('role', 'menu');
+    menu.setAttribute('aria-label', 'Weekly 보기 기준');
+
+    var label = document.createElement('div');
+    label.className = 'week-range-menu-label';
+    label.textContent = '보기 기준';
+    menu.appendChild(label);
+
+    ['rolling', 'week'].forEach(function (mode) {
+      var checked = state.weeklyRangeMode === mode;
+      var item = document.createElement('div');
+      item.className = 'week-range-menu-item';
+      item.setAttribute('role', 'menuitemradio');
+      item.setAttribute('aria-checked', String(checked));
+      item.dataset.mode = mode;
+      item.tabIndex = checked ? 0 : -1;
+      item.textContent = weekRangeModeLabel(mode);
+      item.addEventListener('click', function () {
+        setWeeklyRangeMode(mode);
+        closeWeekRangeMenu(true);
+      });
+      menu.appendChild(item);
+    });
+
+    var sep = document.createElement('div');
+    sep.className = 'week-range-menu-divider';
+    sep.setAttribute('role', 'separator');
+    menu.appendChild(sep);
+
+    var cleanupItem = document.createElement('div');
+    cleanupItem.className = 'week-range-menu-item menu-item-has-help';
+    cleanupItem.setAttribute('role', 'menuitem');
+    cleanupItem.dataset.weekRangeAction = 'cleanup-completed';
+    cleanupItem.dataset.help = '현재 Weekly에 보이는 ' + getVisibleWeeklyDates().length + '일 전체에서 완료 항목을 각 날짜의 완료 구분선 아래로 모읍니다.';
+    cleanupItem.title = cleanupItem.dataset.help;
+    cleanupItem.tabIndex = -1;
+    cleanupItem.textContent = '완료한 할 일 정리하기';
+    cleanupItem.addEventListener('click', function () {
+      cleanupCompletedItemsForVisibleWeek();
+      closeWeekRangeMenu(true);
+    });
+    menu.appendChild(cleanupItem);
+
+    var hideCompletedItem = document.createElement('div');
+    hideCompletedItem.className = 'week-range-menu-item menu-item-has-help';
+    hideCompletedItem.setAttribute('role', 'menuitemcheckbox');
+    hideCompletedItem.setAttribute('aria-checked', String(!!state.weeklyHideCompleted));
+    hideCompletedItem.dataset.weekRangeAction = 'hide-completed';
+    hideCompletedItem.dataset.help = '현재 Weekly에 보이는 ' + getVisibleWeeklyDates().length + '일에서 완료된 항목만 숨깁니다. 항목은 삭제되지 않습니다.';
+    hideCompletedItem.title = hideCompletedItem.dataset.help;
+    hideCompletedItem.tabIndex = -1;
+    var hideCheck = document.createElement('span');
+    hideCheck.className = 'monthly-log-menu-item-check';
+    var hideLabel = document.createElement('span');
+    hideLabel.textContent = '완료 항목 숨기기';
+    hideCompletedItem.appendChild(hideCheck);
+    hideCompletedItem.appendChild(hideLabel);
+    hideCompletedItem.addEventListener('click', function () {
+      state.weeklyHideCompleted = !state.weeklyHideCompleted;
+      savePreferences();
+      renderWeekly();
+      hideCompletedItem.setAttribute('aria-checked', String(!!state.weeklyHideCompleted));
+    });
+    menu.appendChild(hideCompletedItem);
+
+    document.body.appendChild(menu);
+    positionPopup(menu, anchorEl);
+    anchorEl.setAttribute('aria-expanded', 'true');
+    activeWeekRangeMenu = { el: menu };
+
+    var toFocus = menu.querySelector('[aria-checked="true"]') || menu.querySelector('[role="menuitemradio"]');
+    if (toFocus) toFocus.focus();
+
+    // 이 클릭 이벤트 자체가 곧바로 outside-click으로 처리되지 않도록 다음 tick에 등록.
+    setTimeout(function () {
+      document.addEventListener('pointerdown', onOutsideWeekRangeMenuPointerDown, true);
+      document.addEventListener('keydown', onWeekRangeMenuKeydown, true);
+    }, 0);
+  }
+
+  function wireWeekRangeMenuButton() {
+    var btn = document.querySelector('.week-range-menu-btn');
+    if (!btn) return;
+    btn.addEventListener('click', function (e) {
+      e.stopPropagation();
+      openWeekRangeMenu(btn);
+    });
+  }
+
+  // ---------------------------------------------------------------------
+  // Monthly Log 우측 상단 "..." 메뉴 -- Weekly의 week-range-menu와 완전히 같은 패턴
+  // (팝업/포커스/외부클릭/Escape). 이번 단계는 항목 하나(음력 표시 체크형 토글)뿐이다.
+  // 구분선(세로 구분선) 명령은 의미가 아직 확정되지 않아 이번 단계에서 넣지 않는다.
+  // ---------------------------------------------------------------------
+  var activeMonthlyLogMenu = null; // { el }
+
+  function renderMonthlyLogMenuState() {
+    if (!activeMonthlyLogMenu) return;
+    var lunarItem = activeMonthlyLogMenu.el.querySelector('[data-monthly-log-menu-action="lunar"]');
+    if (lunarItem) lunarItem.setAttribute('aria-checked', String(!!state.lunarEnabled));
+    var hideCompletedItem = activeMonthlyLogMenu.el.querySelector('[data-monthly-log-menu-action="hide-completed"]');
+    if (hideCompletedItem) hideCompletedItem.setAttribute('aria-checked', String(!!state.monthlyLogHideCompleted));
+  }
+
+  function onOutsideMonthlyLogMenuPointerDown(e) {
+    if (!activeMonthlyLogMenu) return;
+    if (activeMonthlyLogMenu.el.contains(e.target)) return;
+    var btn = document.querySelector('.monthly-log-menu-btn');
+    if (btn && btn.contains(e.target)) return;
+    closeMonthlyLogMenu(false);
+  }
+
+  function closeMonthlyLogMenu(restoreFocus) {
+    if (!activeMonthlyLogMenu) return;
+    activeMonthlyLogMenu.el.remove();
+    document.removeEventListener('pointerdown', onOutsideMonthlyLogMenuPointerDown, true);
+    document.removeEventListener('keydown', onMonthlyLogMenuKeydown, true);
+    activeMonthlyLogMenu = null;
+    var btn = document.querySelector('.monthly-log-menu-btn');
+    if (btn) {
+      btn.setAttribute('aria-expanded', 'false');
+      if (restoreFocus !== false) btn.focus();
+    }
+  }
+
+  function toggleMonthlyLogLunarMenuItem() {
+    setLunarEnabled(!state.lunarEnabled); // 8/9/10: Today 미니 달력과 같은 state.lunarEnabled 공유.
+    renderMonthlyLogMenuState();
+  }
+
+  // menuitemcheckbox 하나의 role="menuitem"(체크형이 아닌 일반 명령)도 같은 메뉴 안에
+  // 섞일 수 있으므로, 포커스된 항목의 data-monthly-log-menu-action으로 분기한다(항목이
+  // 하나뿐이라던 이전 가정은 더 이상 유효하지 않다).
+  function onMonthlyLogMenuKeydown(e) {
+    if (!activeMonthlyLogMenu) return;
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      e.stopPropagation();
+      closeMonthlyLogMenu(true);
+      return;
+    }
+    var items = Array.prototype.slice.call(activeMonthlyLogMenu.el.querySelectorAll('[role^="menuitem"]'));
+    var currentIndex = items.indexOf(document.activeElement);
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      items[(currentIndex + 1 + items.length) % items.length].focus();
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      items[(currentIndex - 1 + items.length) % items.length].focus();
+    } else if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      var action = document.activeElement && document.activeElement.dataset.monthlyLogMenuAction;
+      if (action === 'lunar') { toggleMonthlyLogLunarMenuItem(); closeMonthlyLogMenu(true); }
+      else if (action === 'cleanup-completed') { cleanupCompletedItemsForMonthlyLogMonth(); closeMonthlyLogMenu(true); }
+      else if (action === 'hide-completed') {
+        state.monthlyLogHideCompleted = !state.monthlyLogHideCompleted;
+        savePreferences();
+        renderMonthlyLogRows();
+        renderMonthlyLogMenuState();
+      }
+    }
+  }
+
+  function openMonthlyLogMenu(anchorEl) {
+    if (activeMonthlyLogMenu) {
+      closeMonthlyLogMenu();
+      return;
+    }
+    if (activeTypeMenu) closeTypeMenu(false);
+    if (activeMoveMenu) closeMoveDateMenu(false);
+
+    var menu = document.createElement('div');
+    menu.className = 'monthly-log-menu';
+    menu.id = 'monthly-log-menu';
+    menu.setAttribute('role', 'menu');
+    menu.setAttribute('aria-label', 'Monthly Log 설정');
+
+    var lunarItem = document.createElement('div');
+    lunarItem.className = 'monthly-log-menu-item';
+    lunarItem.setAttribute('role', 'menuitemcheckbox');
+    lunarItem.setAttribute('aria-checked', String(!!state.lunarEnabled));
+    lunarItem.dataset.monthlyLogMenuAction = 'lunar';
+    lunarItem.tabIndex = 0;
+    var check = document.createElement('span');
+    check.className = 'monthly-log-menu-item-check';
+    var label = document.createElement('span');
+    label.textContent = '음력 표시';
+    lunarItem.appendChild(check);
+    lunarItem.appendChild(label);
+    lunarItem.addEventListener('click', function () {
+      toggleMonthlyLogLunarMenuItem();
+      closeMonthlyLogMenu(true);
+    });
+    menu.appendChild(lunarItem);
+
+    var cleanupCompletedItem = document.createElement('div');
+    cleanupCompletedItem.className = 'monthly-log-menu-item menu-item-has-help';
+    cleanupCompletedItem.setAttribute('role', 'menuitem');
+    cleanupCompletedItem.dataset.monthlyLogMenuAction = 'cleanup-completed';
+    cleanupCompletedItem.dataset.help = '현재 Monthly Log에 표시된 한 달 전체에서 완료 항목을 날짜별 완료 구분선 아래로 모읍니다.';
+    cleanupCompletedItem.title = cleanupCompletedItem.dataset.help;
+    cleanupCompletedItem.tabIndex = -1;
+    cleanupCompletedItem.textContent = '완료한 할 일 정리하기';
+    cleanupCompletedItem.addEventListener('click', function () {
+      cleanupCompletedItemsForMonthlyLogMonth();
+      closeMonthlyLogMenu(true);
+    });
+    menu.appendChild(cleanupCompletedItem);
+
+    var hideCompletedItem = document.createElement('div');
+    hideCompletedItem.className = 'monthly-log-menu-item menu-item-has-help';
+    hideCompletedItem.setAttribute('role', 'menuitemcheckbox');
+    hideCompletedItem.setAttribute('aria-checked', String(!!state.monthlyLogHideCompleted));
+    hideCompletedItem.dataset.monthlyLogMenuAction = 'hide-completed';
+    hideCompletedItem.dataset.help = '현재 Monthly Log 달력에서 완료된 항목만 화면에서 숨깁니다. 항목은 삭제되지 않습니다.';
+    hideCompletedItem.title = hideCompletedItem.dataset.help;
+    hideCompletedItem.tabIndex = -1;
+    var hideCheck = document.createElement('span');
+    hideCheck.className = 'monthly-log-menu-item-check';
+    var hideLabel = document.createElement('span');
+    hideLabel.textContent = '완료 항목 숨기기';
+    hideCompletedItem.appendChild(hideCheck);
+    hideCompletedItem.appendChild(hideLabel);
+    hideCompletedItem.addEventListener('click', function () {
+      state.monthlyLogHideCompleted = !state.monthlyLogHideCompleted;
+      savePreferences();
+      renderMonthlyLogRows();
+      renderMonthlyLogMenuState();
+    });
+    menu.appendChild(hideCompletedItem);
+
+    document.body.appendChild(menu);
+    positionPopup(menu, anchorEl);
+    anchorEl.setAttribute('aria-expanded', 'true');
+    activeMonthlyLogMenu = { el: menu };
+    lunarItem.focus();
+
+    setTimeout(function () {
+      document.addEventListener('pointerdown', onOutsideMonthlyLogMenuPointerDown, true);
+      document.addEventListener('keydown', onMonthlyLogMenuKeydown, true);
+    }, 0);
+  }
+
+  function wireMonthlyLogMenuButton() {
+    var btn = document.querySelector('.monthly-log-menu-btn');
+    if (!btn) return;
+    btn.addEventListener('click', function (e) {
+      e.stopPropagation();
+      openMonthlyLogMenu(btn);
+    });
+  }
+var activeMonthlyInboxMenu = null;
+
+function getMonthlyInboxMenuMonthKey(anchorEl) {
+  return anchorEl.dataset.monthlyInboxMenu === 'calendar'
+    ? state.monthlyLogViewMonth.slice(0, 7)
+    : currentTodayMonthKey();
+}
+
+function closeMonthlyInboxMenu(restoreFocus) {
+  if (!activeMonthlyInboxMenu) return;
+
+  var menu = activeMonthlyInboxMenu.el;
+  var anchorEl = activeMonthlyInboxMenu.anchorEl;
+
+  document.removeEventListener(
+    'pointerdown',
+    onOutsideMonthlyInboxMenuPointerDown,
+    true
+  );
+
+  document.removeEventListener(
+    'keydown',
+    onMonthlyInboxMenuKeydown,
+    true
+  );
+
+  if (menu && menu.isConnected) {
+    menu.remove();
+  }
+
+  if (anchorEl) {
+    anchorEl.setAttribute('aria-expanded', 'false');
+
+    if (restoreFocus) {
+      anchorEl.focus();
+    }
+  }
+
+  activeMonthlyInboxMenu = null;
+}
+
+function onOutsideMonthlyInboxMenuPointerDown(e) {
+  if (!activeMonthlyInboxMenu) return;
+
+  if (
+    activeMonthlyInboxMenu.el.contains(e.target) ||
+    activeMonthlyInboxMenu.anchorEl.contains(e.target)
+  ) {
+    return;
+  }
+
+  closeMonthlyInboxMenu(false);
+}
+
+function onMonthlyInboxMenuKeydown(e) {
+  if (!activeMonthlyInboxMenu) return;
+
+  var items = Array.prototype.slice.call(
+    activeMonthlyInboxMenu.el.querySelectorAll('[role^="menuitem"]')
+  );
+  var currentIndex = items.indexOf(document.activeElement);
+
+  if (e.key === 'Escape') {
+    e.preventDefault();
+    e.stopPropagation();
+    closeMonthlyInboxMenu(true);
+    return;
+  }
+
+  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+    e.preventDefault();
+    var delta = e.key === 'ArrowDown' ? 1 : -1;
+    var nextIndex = (currentIndex + delta + items.length) % items.length;
+    if (items[nextIndex]) items[nextIndex].focus();
+    return;
+  }
+
+  if (e.key === 'Enter' || e.key === ' ') {
+    if (currentIndex < 0) return;
+    e.preventDefault();
+    items[currentIndex].click();
+  }
+}
+
+function openMonthlyInboxMenu(anchorEl) {
+  if (
+    activeMonthlyInboxMenu &&
+    activeMonthlyInboxMenu.anchorEl === anchorEl
+  ) {
+    closeMonthlyInboxMenu(true);
+    return;
+  }
+
+  if (activeMonthlyInboxMenu) {
+    closeMonthlyInboxMenu(false);
+  }
+
+  if (activeMonthlyLogMenu) {
+    closeMonthlyLogMenu(false);
+  }
+
+  if (activeTodayMenu) {
+    closeTodayMenu(false);
+  }
+
+  if (activeTypeMenu) {
+    closeTypeMenu(false);
+  }
+
+  var menu = document.createElement('div');
+  menu.className = 'monthly-log-menu';
+  menu.setAttribute('role', 'menu');
+  menu.setAttribute(
+    'aria-label',
+    '이번 달 할 일 메뉴'
+  );
+
+  var dividerItem =
+    document.createElement('div');
+
+  dividerItem.className =
+    'monthly-log-menu-item';
+
+  dividerItem.setAttribute(
+    'role',
+    'menuitem'
+  );
+
+  dividerItem.tabIndex = 0;
+  dividerItem.textContent = '구분선 추가';
+
+  dividerItem.addEventListener(
+    'click',
+    function () {
+      var monthKey =
+        getMonthlyInboxMenuMonthKey(anchorEl);
+
+      createMonthlyItem({
+        type: 'divider',
+        text: '',
+        monthKey: monthKey
+      });
+
+      closeMonthlyInboxMenu(true);
+    }
+  );
+
+  menu.appendChild(dividerItem);
+
+  var cleanupCompletedItem = document.createElement('div');
+  cleanupCompletedItem.className = 'monthly-log-menu-item menu-item-has-help';
+  cleanupCompletedItem.setAttribute('role', 'menuitem');
+  cleanupCompletedItem.dataset.monthlyInboxAction = 'cleanup-completed';
+  cleanupCompletedItem.dataset.help = '현재 이달의 할 일에서 완료 항목을 완료 구분선 아래로 모읍니다.';
+  cleanupCompletedItem.title = cleanupCompletedItem.dataset.help;
+  cleanupCompletedItem.tabIndex = -1;
+  cleanupCompletedItem.textContent = '완료한 할 일 정리하기';
+  cleanupCompletedItem.addEventListener('click', function () {
+    cleanupCompletedMonthlyItems(getMonthlyInboxMenuMonthKey(anchorEl));
+    closeMonthlyInboxMenu(true);
+  });
+  menu.appendChild(cleanupCompletedItem);
+
+  var hideCompletedItem = document.createElement('div');
+  hideCompletedItem.className = 'monthly-log-menu-item menu-item-has-help';
+  hideCompletedItem.setAttribute('role', 'menuitemcheckbox');
+  hideCompletedItem.setAttribute('aria-checked', String(!!state.monthlyInboxHideCompleted));
+  hideCompletedItem.dataset.monthlyInboxAction = 'hide-completed';
+  hideCompletedItem.dataset.help = '이달의 할 일에서 완료한 항목만 화면에서 숨깁니다. 항목은 삭제되지 않습니다.';
+  hideCompletedItem.title = hideCompletedItem.dataset.help;
+  hideCompletedItem.tabIndex = -1;
+  var hideCompletedCheck = document.createElement('span');
+  hideCompletedCheck.className = 'monthly-log-menu-item-check';
+  var hideCompletedLabel = document.createElement('span');
+  hideCompletedLabel.textContent = '완료한 항목 숨기기';
+  hideCompletedItem.appendChild(hideCompletedCheck);
+  hideCompletedItem.appendChild(hideCompletedLabel);
+  hideCompletedItem.addEventListener('click', function () {
+    setMonthlyInboxHideCompleted(!state.monthlyInboxHideCompleted);
+    closeMonthlyInboxMenu(true);
+  });
+  menu.appendChild(hideCompletedItem);
+
+  document.body.appendChild(menu);
+
+  positionPopup(menu, anchorEl);
+
+  anchorEl.setAttribute(
+    'aria-expanded',
+    'true'
+  );
+
+  activeMonthlyInboxMenu = {
+    el: menu,
+    anchorEl: anchorEl
+  };
+
+  dividerItem.focus();
+
+  setTimeout(function () {
+    document.addEventListener(
+      'pointerdown',
+      onOutsideMonthlyInboxMenuPointerDown,
+      true
+    );
+
+    document.addEventListener(
+      'keydown',
+      onMonthlyInboxMenuKeydown,
+      true
+    );
+  }, 0);
+}
+
+function wireMonthlyInboxMenuButtons() {
+  var buttons = document.querySelectorAll(
+    '.monthly-inbox-menu-btn'
+  );
+
+  buttons.forEach(function (btn) {
+    if (btn._monthlyInboxMenuWired) return;
+
+    btn._monthlyInboxMenuWired = true;
+
+    btn.addEventListener('click', function (e) {
+      e.stopPropagation();
+      openMonthlyInboxMenu(btn);
+    });
+  });
+}
   // ---------------------------------------------------------------------
   // Weekly 패널 내리기·올리기 토글 + 상단 경계 드래그로 높이·위치 조절.
   // Weekly는 display:none/height:0 방식의 "접힘"이 아니라, 펼쳤을 때의 top/height를 항상
@@ -14653,13 +26757,42 @@ originalEndTime: state.timeDraft.endTime || null,
     return h > 0 ? h : (WEEKLY_DEFAULT_TOP + 610);
   }
 
+  // 표시 일수가 8일 이상이라 위·아래 두 행으로 분할될 때, 헤더+두 행이 잘리지 않는 데
+  // 필요한 실제 최소 높이를 "고정 추측값"이 아니라 매번 실제 렌더된 요소를 기준으로
+  // 잰다 — .weekly-head(헤더 블록, margin 포함) + .weekly-body의 margin-top + 행 최소
+  // 높이(getWeekRowMinHeight) × 2 + 분할선 높이. 각 행이 이제 독립적으로 스크롤되므로
+  // (더 이상 전체 콘텐츠를 스크롤 없이 다 보여줄 필요가 없다) 항목 수에 비례해 계속
+  // 커지는 전체 콘텐츠 높이가 아니라 "헤더·카드 한 줄이 잘리지 않는" 구조적 최소값만
+  // 있으면 된다. 요소가 아직 없으면(초기화 극초반) null을 반환한다.
+  function getWeeklyRequiredContentHeight() {
+    var headEl = document.querySelector('.weekly-head');
+    var bodyEl = document.querySelector('.weekly-body');
+    if (!headEl || !bodyEl) return null;
+    var headStyle = getComputedStyle(headEl);
+    var bodyStyle = getComputedStyle(bodyEl);
+    var headBlock = headEl.offsetHeight + parseFloat(headStyle.marginTop || '0') + parseFloat(headStyle.marginBottom || '0');
+    var bodyMarginTop = parseFloat(bodyStyle.marginTop || '0');
+    var rowMin = getWeekRowMinHeight();
+    return headBlock + bodyMarginTop + rowMin * 2 + WEEKLY_ROW_DIVIDER_HEIGHT;
+  }
+
+  // 한 줄(1~7일)일 때는 기존 WEEKLY_MIN_VISIBLE_HEIGHT를 그대로 쓴다(회귀 없음, 8-2).
+  // 두 줄(8~14일)일 때만 실제 콘텐츠 기준 최소 높이로 바꾼다 — 측정에 실패하면(요소
+  // 없음) 안전하게 기존 상수로 폴백한다.
+  function getWeeklyMinVisibleHeight() {
+    var days = state.weeklyVisibleDays || WEEKLY_VISIBLE_DAYS_DEFAULT;
+    if (days <= WEEKLY_ROW_DAYS) return WEEKLY_MIN_VISIBLE_HEIGHT;
+    var required = getWeeklyRequiredContentHeight();
+    return required != null ? Math.max(WEEKLY_MIN_VISIBLE_HEIGHT, required) : WEEKLY_MIN_VISIBLE_HEIGHT;
+  }
+
   // 저장된/드래그로 요청한 top이 현재 화면 높이에서도 안전한 범위인지 다시 clamp한다 —
-  // Weekly가 항상 최소 WEEKLY_MIN_VISIBLE_HEIGHT만큼은 보이는 높이를 갖도록 보장한다.
+  // Weekly가 항상 최소 getWeeklyMinVisibleHeight()만큼은 보이는 높이를 갖도록 보장한다.
   // isLowered 여부와 무관하게 top은 언제나 "펼쳤을 때의" 위치이므로 이 계산 하나로 충분하다.
   function clampWeeklyTop(topPx) {
     var artboardHeight = getArtboardHeight();
     var minTop = WEEKLY_MIN_TOP;
-    var maxTop = Math.min(WEEKLY_MAX_TOP, Math.max(minTop, artboardHeight - WEEKLY_MIN_VISIBLE_HEIGHT));
+    var maxTop = Math.min(WEEKLY_MAX_TOP, Math.max(minTop, artboardHeight - getWeeklyMinVisibleHeight()));
     return Math.max(minTop, Math.min(maxTop, topPx));
   }
 
@@ -14695,6 +26828,26 @@ originalEndTime: state.timeDraft.endTime || null,
     if (!state.weeklyPanel) return;
     state.weeklyPanel.top = clampWeeklyTop(state.weeklyPanel.top || WEEKLY_DEFAULT_TOP);
     applyWeeklyPanelPosition();
+    // 10: 창 크기 변경 후에도 분할 비율은 유지하되(flex-grow 값 자체는 그대로),
+    // 새 화면에서 유효한 min-height/aria 값으로 다시 계산한다.
+    applyWeekRowSplitLayout();
+  }
+
+  // 표시 일수가 바뀌어 한 줄<->두 줄을 오갈 때 호출한다 -- clampWeeklyTop이 이제 실제
+  // 렌더된 콘텐츠(getWeeklyMinVisibleHeight)를 기준으로 다시 계산하므로, 여기서는 현재
+  // top/lastExpandedTop을 그 기준으로 다시 clamp하기만 하면 된다. 이미 유효한 값은
+  // clampWeeklyTop이 그대로 돌려주므로(8-5: 불필요한 축소 없음), 두 줄에서 다시 한
+  // 줄로 줄었을 때도 사용자가 조절한 높이가 그대로 유지된다.
+  function refreshWeeklyPanelMinHeight() {
+    if (!state.weeklyPanel) return;
+    state.weeklyPanel.top = clampWeeklyTop(state.weeklyPanel.top || WEEKLY_DEFAULT_TOP);
+    if (typeof state.weeklyPanel.lastExpandedTop === 'number') {
+      state.weeklyPanel.lastExpandedTop = clampWeeklyTop(state.weeklyPanel.lastExpandedTop);
+    }
+    applyWeeklyPanelPosition();
+    // 9: 전체 패널 높이가 바뀐 뒤(늘리거나 줄인 뒤)에도 저장된 비율을 유지하면서 새
+    // 높이에 맞는 min-height/aria 값으로 다시 계산한다.
+    applyWeekRowSplitLayout();
   }
 
   function wireWeeklyPanelResize() {
@@ -14743,6 +26896,9 @@ originalEndTime: state.timeDraft.endTime || null,
       state.weeklyPanel.isLowered = true;
     }
     applyWeeklyPanelPosition();
+    // 2/3: 펼칠 때 현재 표시 일수·저장된 분할 비율에 맞는 구조로 다시 계산한다(접힌
+    // 동안 표시 일수가 바뀌었어도 여기서 항상 최신 상태를 반영한다).
+    applyWeekRowSplitLayout();
     renderWeeklyPanelToggleState();
     saveWeeklyPanelPrefs();
     setTimeout(function () { setWeeklyPanelAnimating(false); }, 260);
@@ -14839,6 +26995,127 @@ originalEndTime: state.timeDraft.endTime || null,
     if (handle) handle.addEventListener('pointerdown', onWeeklyResizeHandlePointerDown);
   }
 
+  // ---------------------------------------------------------------------
+  // 6: 위·아래 행 사이 내부 분할선 — 전체 패널 경계 드래그(위)와 완전히 다른 핸들·다른
+  // state 변수를 쓰는 별개의 조절이다(이벤트가 서로 얽히지 않는다). 패턴 자체는 위
+  // 경계 드래그(onWeeklyResizeHandlePointerDown 등)와 동일하게 pointer capture +
+  // rAF 스로틀 + pointerup/cancel/Escape 안전 종료를 따른다. 다른 점은 절대 좌표(top,px)
+  // 대신 0~1 비율을 조절한다는 것뿐이다.
+  // ---------------------------------------------------------------------
+  var weekRowSplitDragState = null; // { pointerId, startY, startRatio, currentRatio, rafScheduled, handle, availableHeight }
+
+  function onWeekRowDividerPointerDown(e) {
+    if (!isWeeklyRowSplit()) return;
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    e.preventDefault(); // 9: 텍스트 선택/카드 드래그가 시작되지 않게.
+    e.stopPropagation(); // 10: 전체 패널 조절 핸들로 전달되지 않게.
+    var handle = e.currentTarget;
+    var available = getWeeklyRowScrollHeightAvailable();
+    weekRowSplitDragState = {
+      pointerId: e.pointerId,
+      startY: e.clientY,
+      startRatio: state.weeklyRowSplitRatio,
+      currentRatio: state.weeklyRowSplitRatio,
+      rafScheduled: false,
+      handle: handle,
+      availableHeight: available
+    };
+    try { handle.setPointerCapture(e.pointerId); } catch (err) {}
+    handle.addEventListener('pointermove', onWeekRowDividerPointerMove);
+    handle.addEventListener('pointerup', onWeekRowDividerPointerUp);
+    handle.addEventListener('pointercancel', onWeekRowDividerPointerCancel);
+    document.addEventListener('keydown', onWeekRowDividerEscapeKeydown, true);
+  }
+
+  function weekRowDividerRafTick() {
+    if (!weekRowSplitDragState) return;
+    weekRowSplitDragState.rafScheduled = false;
+    state.weeklyRowSplitRatio = weekRowSplitDragState.currentRatio;
+    applyWeekRowSplitLayout();
+  }
+
+  function onWeekRowDividerPointerMove(e) {
+    if (!weekRowSplitDragState || e.pointerId !== weekRowSplitDragState.pointerId) return;
+    var dy = e.clientY - weekRowSplitDragState.startY;
+    var available = weekRowSplitDragState.availableHeight || 1;
+    var nextRatio = clampWeeklyRowSplitRatio(weekRowSplitDragState.startRatio + dy / available, available);
+    weekRowSplitDragState.currentRatio = nextRatio;
+    if (!weekRowSplitDragState.rafScheduled) {
+      weekRowSplitDragState.rafScheduled = true;
+      requestAnimationFrame(weekRowDividerRafTick);
+    }
+  }
+
+  function teardownWeekRowDividerListeners(ds) {
+    var handle = ds && ds.handle;
+    if (!handle) return;
+    handle.removeEventListener('pointermove', onWeekRowDividerPointerMove);
+    handle.removeEventListener('pointerup', onWeekRowDividerPointerUp);
+    handle.removeEventListener('pointercancel', onWeekRowDividerPointerCancel);
+    try { handle.releasePointerCapture(ds.pointerId); } catch (err) {}
+    document.removeEventListener('keydown', onWeekRowDividerEscapeKeydown, true);
+  }
+
+  function onWeekRowDividerPointerUp(e) {
+    if (!weekRowSplitDragState || e.pointerId !== weekRowSplitDragState.pointerId) return;
+    var ds = weekRowSplitDragState;
+    teardownWeekRowDividerListeners(ds);
+    state.weeklyRowSplitRatio = ds.currentRatio;
+    weekRowSplitDragState = null;
+    applyWeekRowSplitLayout();
+    savePreferences();
+  }
+
+  function onWeekRowDividerPointerCancel(e) {
+    if (!weekRowSplitDragState || e.pointerId !== weekRowSplitDragState.pointerId) return;
+    var ds = weekRowSplitDragState;
+    teardownWeekRowDividerListeners(ds);
+    state.weeklyRowSplitRatio = ds.startRatio;
+    weekRowSplitDragState = null;
+    applyWeekRowSplitLayout();
+  }
+
+  function onWeekRowDividerEscapeKeydown(e) {
+    if (e.key !== 'Escape' || !weekRowSplitDragState) return;
+    e.preventDefault();
+    e.stopPropagation();
+    var ds = weekRowSplitDragState;
+    teardownWeekRowDividerListeners(ds);
+    state.weeklyRowSplitRatio = ds.startRatio;
+    weekRowSplitDragState = null;
+    applyWeekRowSplitLayout();
+  }
+
+  // 키보드: 포커스된 분할선에서 ArrowUp(위 행 감소/아래 행 증가)·ArrowDown(위 행 증가/
+  // 아래 행 감소)·Shift+Arrow(큰 단위)·Home/End(허용 최소/최대 비율). 분할선 자신에게만
+  // 등록하므로(document 전역이 아님) 날짜 카드나 페이지 단축키와 충돌하지 않는다.
+  function onWeekRowDividerKeydown(e) {
+    if (!isWeeklyRowSplit()) return;
+    var available = getWeeklyRowScrollHeightAvailable();
+    var rowMin = getWeekRowMinHeight();
+    var minRatio = available > 0 ? rowMin / available : 0;
+    var maxRatio = 1 - minRatio;
+    var step = e.shiftKey ? WEEKLY_ROW_SPLIT_KEY_STEP_LARGE : WEEKLY_ROW_SPLIT_KEY_STEP;
+    var next = state.weeklyRowSplitRatio;
+    if (e.key === 'ArrowUp') next -= step;
+    else if (e.key === 'ArrowDown') next += step;
+    else if (e.key === 'Home') next = minRatio;
+    else if (e.key === 'End') next = maxRatio;
+    else return;
+    e.preventDefault();
+    e.stopPropagation();
+    state.weeklyRowSplitRatio = clampWeeklyRowSplitRatio(next, available);
+    applyWeekRowSplitLayout();
+    savePreferences();
+  }
+
+  function wireWeekRowDivider() {
+    var dividerEl = document.querySelector('.week-row-divider');
+    if (!dividerEl) return;
+    dividerEl.addEventListener('pointerdown', onWeekRowDividerPointerDown);
+    dividerEl.addEventListener('keydown', onWeekRowDividerKeydown);
+  }
+
   function initWeeklyPanel() {
     var prefs = loadWeeklyPanelPrefs();
     state.weeklyPanel.isLowered = !!(prefs && prefs.isLowered);
@@ -14846,10 +27123,12 @@ originalEndTime: state.timeDraft.endTime || null,
     // top은 내려가 있든 아니든 항상 "펼쳤을 때의" 위치이므로 lastExpandedTop 기준으로만 정한다.
     state.weeklyPanel.top = clampWeeklyTop(state.weeklyPanel.lastExpandedTop);
     applyWeeklyPanelPosition();
+    applyWeekRowSplitLayout();
     renderWeeklyPanelToggleState();
     wireWeeklyPanelToggle();
     wireWeeklyResizeHandle();
     wireWeeklyPanelResize();
+    wireWeekRowDivider();
   }
 
   // ---------------------------------------------------------------------
@@ -14863,12 +27142,53 @@ originalEndTime: state.timeDraft.endTime || null,
     renderThemeToggleState();
     wireThemeToggle();
 
+    runStorageMigrations();
+    knownDataRevision = readCurrentDataRevision();
+    wireCrossTabConflictDetection();
     var loaded = loadState();
     state.items = loaded.items;
-    state.selectedDate = loaded.selectedDate;
-    state.calendarViewDate = loaded.calendarViewDate;
+    // Daily의 기본 선택 날짜는 항상 실제 오늘이어야 하므로(플래너의 기본 진입 목적),
+    // 저장된 과거 selectedDate/calendarViewDate(loaded.selectedDate/loaded.calendarViewDate)는
+    // 시작 시 의도적으로 쓰지 않는다 -- 앱 실행/새로고침/새 탭 진입마다 매번 이 시점에서만
+    // todayDate로 재설정하고, 이후 세션 중에는(달력 클릭 등 사용자 조작 경로에서만) 자유롭게
+    // 바뀐다 -- 자동 이월·Weekly 자동 추적·visibility/focus 등 어떤 자동 트리거도 이 줄을
+    // 다시 실행하지 않는다(다음 "전체 새로고침"에서만 재적용).
+    state.selectedDate = state.todayDate;
+    state.calendarViewDate = state.todayDate.slice(0, 7) + '-01';
+    // Monthly Log: "새로고침 후 첫 진입" 정책 -- 저장된 loaded.monthlyLogViewMonth는
+    // 여기서 의도적으로 쓰지 않고, 매번 이 시점에만 selectedDate(=오늘)가 속한 달로
+    // 재계산한다. 이후 세션 중(달력 화면을 오갈 때)에는 이 값을 아무도 다시 덮어쓰지
+    // 않으므로 "한 세션 안에서 다시 열기: 마지막 열람 달" 정책이 자연히 유지된다.
+    state.monthlyLogViewMonth = state.selectedDate.slice(0, 7) + '-01';
     state.weekStartDate = loaded.weekStartDate;
     state.lunarEnabled = loaded.lunarEnabled;
+    state.monthlyInboxHideCompleted = loaded.monthlyInboxHideCompleted;
+    state.dailyHideCompleted = loaded.dailyHideCompleted;
+    state.weeklyHideCompleted = loaded.weeklyHideCompleted;
+    state.weeklyVisibleDays = loaded.weeklyVisibleDays;
+    state.weeklyRowSplitRatio = loaded.weeklyRowSplitRatio;
+    state.weeklyRangeMode = loaded.weeklyRangeMode;
+    state.weeklyAutoFollow = loaded.weeklyAutoFollow;
+    state.monthlyItems = loaded.monthlyItems;
+    state.groups = loaded.groups;
+    pruneInvalidGroupsOnLoad();
+    state.projects = loaded.projects;
+    pruneInvalidProjectIdsOnLoad();
+    pruneEmptyDescTodosOnLoad();
+    state.calendarWeekStartsOn = loaded.calendarWeekStartsOn;
+    state.calendarMonthlySplitRatio = loaded.calendarMonthlySplitRatio;
+    state.monthlySplitDividerVisible = true;
+    state.monthlyLogHideCompleted = loaded.monthlyLogHideCompleted;
+    state.defaultInputMode = loaded.defaultInputMode || 'task';
+    state.autoRolloverEnabled = loaded.autoRolloverEnabled !== false;
+    state.inputMode = state.defaultInputMode;
+
+    // 표시 일수가 7이 아니면(저장된 값 복원) .week-card DOM 개수와 grid 레이아웃부터
+    // 실제 렌더보다 먼저 맞춰 둔다 -- renderWeeklyDateHeaders/renderWeekly가 이 카드
+    // 수를 그대로 대상으로 삼는다.
+    syncWeekCardCount();
+    applyWeekGridLayout();
+    applyWeekRowSplitLayout();
 
     // 1: 레거시 subtask -> todo 블록 마이그레이션은 앱 로드 시 이 한 번만 실행한다
     // (detailBlocksMigrationVersion으로 이미 처리된 item은 건너뜀 — 새로고침마다 또는
@@ -14885,28 +27205,106 @@ originalEndTime: state.timeDraft.endTime || null,
       if (migrated || detailBlocksMigrated) saveItems();
     }
 
+    // 사용자가 자동 이월을 끈 경우 과거 항목의 날짜를 임의로 바꾸지 않는다.
+    // 기본값은 true라 기존 사용자 동작은 그대로 유지된다.
+    if (state.autoRolloverEnabled) runAutoRollover();
+    // 자동 추적 중이었다면(수동 탐색 중이 아니라면) 재접속 시 저장된 과거 weekStartDate가
+    // 아니라 방금 갱신된 실제 오늘(state.todayDate) 기준으로 다시 계산한다. 아직 DOM
+    // 렌더(afterWeekNavigate)를 타지 않고 값만 맞춰 두면, 뒤이은 renderApp()이 한 번에
+    // 최신 상태로 그린다.
+    if (state.weeklyAutoFollow) {
+      state.weekStartDate = computeWeeklyRangeStartForMode(state.weeklyRangeMode);
+    }
+
     setInputMode(state.inputMode);
     wireModeButtons();
     wireQuickInput();
     wireListDelegation();
     initWeeklyPlusLabels();
+    renderCalendarWeekdayHeader();
     renderCalendarMonthGrid(parseLocalDate(state.calendarViewDate));
     renderCalendarTitle();
     wireCalendarDates();
     wireCalendarNav();
+    wireTodayMenuButton();111
+    wireMonthlyLog();
+  wireMonthlyLogMenuButton();
+wireMonthlyInboxMenuButtons();
+wireMonthlyPanelToggle();
     wireDateFields();
     wireTimeFields();
     wireAllDayToggle();
     wireRolloverControls();
+    wireMonthlyOverdueControls();
     wireSidebarNav();
     wireTrashFilter();
     wireTrashBulkBar();
     wireEmptyTrashButton();
     renderWeeklyDateHeaders();
+    renderWeekDaysControl();
+    updateWeekRangeNavLabels();
+    renderWeekModeButtonState();
+    wireWeekDaysControl();
     wireWeeklyNav();
+    wireWeekRangeMenuButton();
     initWeeklyPanel();
+    wireUnloadFlush();
+    if (document.visibilityState !== 'hidden') startScheduleProgressRingTimer();
     renderApp();
+
+    // initWeeklyPanel()의 최초 clamp는 renderWeekly()가 아직 실제 항목을 채우기 전이라
+    // (카드가 비어 있어 2줄 높이를 과소 측정할 수 있음) 실제 렌더가 끝난 지금 한 번 더
+    // 정확한 콘텐츠 기준으로 재보정한다(표시 일수가 8일 이상으로 복원된 경우에만 값이
+    // 실질적으로 바뀐다 -- 그 외에는 이미 유효한 값을 그대로 돌려주는 멱등 호출).
+    refreshWeeklyPanelMinHeight();
+
+    // 라운드5 D: 로딩 중 형식이 잘못돼 격리된 레코드가 있으면 안내한다(items+monthlyItems
+    // 합산 -- 두 배너를 따로 띄우지 않고 하나로 안내).
+    var totalQuarantined = (loaded.itemsQuarantinedCount || 0) + (loaded.monthlyItemsQuarantinedCount || 0) + (loaded.projectsQuarantinedCount || 0);
+    if (totalQuarantined > 0) showQuarantineNotice(totalQuarantined);
   }
+
+  // Round D 확장 레이어가 기존 폐쇄형 IIFE의 데이터·검증 함수를 안전하게 재사용하도록
+  // 필요한 최소 API만 공개한다. 외부 확장 레이어는 state 배열을 직접 교체하지 않고 아래
+  // 트랜잭션/저장/렌더 함수를 사용해야 한다.
+  window.DotDotPlannerBridge = {
+    state: state,
+    constants: {
+      STORAGE_PREFIX: STORAGE_PREFIX
+    },
+    addCalendarDays: addCalendarDays,
+    differenceInCalendarDays: differenceInCalendarDays,
+    formatLocalDate: formatLocalDate,
+    parseLocalDate: parseLocalDate,
+    formatAnnounceDate: formatAnnounceDate,
+    getOccurrenceDates: getOccurrenceDates,
+    isOccurrenceCompleted: isOccurrenceCompleted,
+    findItemById: findItemById,
+    findProjectById: findProjectById,
+    createItem: createItem,
+    moveSingleItemToDate: moveSingleItemToDate,
+    shiftScheduleCompletionMap: shiftScheduleCompletionMap,
+    normalizeCompletionMapForRange: normalizeCompletionMapForRange,
+    withHistoryTransaction: withHistoryTransaction,
+    saveItems: saveItems,
+    savePreferences: savePreferences,
+    renderApp: renderApp,
+    renderMonthlyLog: renderMonthlyLog,
+    renderMonthlyLogRows: renderMonthlyLogRows,
+    renderMonthlyLogHeader: renderMonthlyLogHeader,
+    renderSelectionState: renderSelectionState,
+    openDetailDrawer: openDetailDrawer,
+    handleItemPointerSelect: handleItemPointerSelect,
+    clearItemSelection: clearItemSelection,
+    announce: announce,
+    getMonthlyLogSchedulePlan: function () { return monthlyLogScheduleGridPlan; },
+    getMonthlyLogScheduleColorSeed: getMonthlyLogScheduleColorSeed,
+    palette: MONTHLY_LOG_SCHEDULE_PALETTE,
+    setView: setView,
+    exportAllDataAsJson: exportAllDataAsJson,
+    reportStorageFailure: reportStorageFailure,
+    reportStorageSuccessIfRecovering: reportStorageSuccessIfRecovering
+  };
 
   init();
 })();
