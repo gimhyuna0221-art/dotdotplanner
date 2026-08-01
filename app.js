@@ -122,33 +122,19 @@
   var CALENDAR_MONTHLY_SPLIT_RATIO_KEY = STORAGE_PREFIX + 'calendarMonthlySplitRatio';
   // Monthly Log 본문 안의 세로 구분선(예: 왼쪽=직장, 오른쪽=일상). 달력과
   // 이번 달 할 일 패널 사이의 폭 조절 경계선과는 별개다.
-  var MONTHLY_LOG_COLUMN_DIVIDER_ENABLED_KEY = STORAGE_PREFIX + 'monthlyLogColumnDividerEnabled';
-  var MONTHLY_LOG_COLUMN_DIVIDER_RATIO_KEY = STORAGE_PREFIX + 'monthlyLogColumnDividerRatio';
-  var MONTHLY_LOG_COLUMN_DIVIDER_RATIOS_KEY = STORAGE_PREFIX + 'monthlyLogColumnDividerRatios';
+  // Monthly Calendar v1: 세로 구분선(칸 나누기)과 사용자 크기 조절을 제거했다.
+  // STORAGE_PREFIX+'monthlyLogColumnDividerEnabled'/'...Ratio'/'...Ratios'/
+  // 'monthlyLogRowHeights'/'monthlyLogScheduleCellWidth' 키는 더 이상 읽지도 쓰지도
+  // 않는다(기존 저장값은 롤백을 위해 그대로 남겨 둔다).
   var MONTHLY_LOG_HIDE_COMPLETED_KEY = STORAGE_PREFIX + 'monthlyLogHideCompleted';
   // Daily/Weekly의 완료 항목 숨기기는 각 보기의 표시 상태만 바꾸며 항목 데이터는 유지한다.
   var DAILY_HIDE_COMPLETED_KEY = STORAGE_PREFIX + 'dailyHideCompleted';
   var WEEKLY_HIDE_COMPLETED_KEY = STORAGE_PREFIX + 'weeklyHideCompleted';
-  // Monthly Log 날짜별 행 높이. Ctrl+휠로 조절한 값은 날짜별로 저장한다.
-  var MONTHLY_LOG_ROW_HEIGHTS_KEY = STORAGE_PREFIX + 'monthlyLogRowHeights';
-  var MONTHLY_LOG_ROW_HEIGHT_DEFAULT = 38;
-  var MONTHLY_LOG_ROW_HEIGHT_MIN = 38;
-  var MONTHLY_LOG_ROW_HEIGHT_MAX = 180;
-  var MONTHLY_LOG_ROW_HEIGHT_STEP = 8;
-  // Shift+휠 가로 셀 너비 조절 -- 18칸 격자 한 칸의 픽셀 너비. null이면 기존과 동일하게
-  // 컨테이너 폭을 18등분하는 반응형 너비를 그대로 쓴다(요구사항: 기본은 반응형 유지).
-  var MONTHLY_LOG_SCHEDULE_CELL_WIDTH_KEY = STORAGE_PREFIX + 'monthlyLogScheduleCellWidth';
   // Monthly Calendar v1: 24시간 보기는 제거했다. Monthly Log 달력 본체는 보기 모드가
   // 하나뿐이므로 monthlyLogViewMode 상태와 STORAGE_PREFIX+'monthlyLogViewMode' 키는
   // 더 이상 읽지도 쓰지도 않는다(기존 저장값은 롤백을 위해 그대로 남겨 둔다).
   var DEFAULT_INPUT_MODE_KEY = STORAGE_PREFIX + 'defaultInputMode';
   var AUTO_ROLLOVER_ENABLED_KEY = STORAGE_PREFIX + 'autoRolloverEnabled';
-  var MONTHLY_LOG_SCHEDULE_CELL_WIDTH_MIN = 28;
-  var MONTHLY_LOG_SCHEDULE_CELL_WIDTH_MAX = 160;
-  var MONTHLY_LOG_SCHEDULE_CELL_WIDTH_STEP = 6;
-  var MONTHLY_LOG_COLUMN_DIVIDER_RATIO_DEFAULT = 0.5;
-  var MONTHLY_LOG_COLUMN_DIVIDER_MAX = 6; // 최대 6개 구분선 = 7개 칸
-  var MONTHLY_LOG_COLUMN_DIVIDER_MIN_GAP = 0.08;
   // 구버전에서 저장된 패널 경계선 표시값은 더 이상 사용하지 않는다. 패널 경계는 넓은
   // 화면에서 항상 보이며 마우스로 드래그해 폭을 조절한다.
   var MONTHLY_SPLIT_DIVIDER_VISIBLE_KEY = STORAGE_PREFIX + 'monthlySplitDividerVisible';
@@ -233,14 +219,7 @@
     calendarMonthlySplitRatio: CALENDAR_MONTHLY_SPLIT_RATIO_DEFAULT,
     // 달력↔이번 달 할 일 패널의 경계는 넓은 화면에서 항상 표시한다.
     monthlySplitDividerVisible: true,
-    // Monthly Log 날짜 행 안을 좌/우 두 칸으로 나누는 사용자 구분선.
-    monthlyLogColumnDividerEnabled: false,
-    monthlyLogColumnDividerRatio: MONTHLY_LOG_COLUMN_DIVIDER_RATIO_DEFAULT,
-    monthlyLogColumnDividerRatios: [],
     monthlyLogHideCompleted: false,
-    monthlyLogRowHeights: {},
-    // Shift+휠로 조절하는 18칸 격자 한 칸의 가로 너비(px). null=기존과 동일한 반응형.
-    monthlyLogScheduleCellWidth: null,
     // 빠른 입력 기본 유형과 자동 이월 사용 여부. 기존 사용자는 각각 task/true로 유지된다.
     defaultInputMode: 'task',
     autoRolloverEnabled: true,
@@ -974,46 +953,7 @@ endDateDraftActive: false,
     var monthlyInboxHideCompleted = safeGet(MONTHLY_INBOX_HIDE_COMPLETED_KEY) === 'true';
     var dailyHideCompleted = safeGet(DAILY_HIDE_COMPLETED_KEY) === 'true';
     var weeklyHideCompleted = safeGet(WEEKLY_HIDE_COMPLETED_KEY) === 'true';
-    var monthlyLogColumnDividerEnabled = safeGet(MONTHLY_LOG_COLUMN_DIVIDER_ENABLED_KEY) === 'true';
-    var rawMonthlyLogColumnRatio = parseFloat(safeGet(MONTHLY_LOG_COLUMN_DIVIDER_RATIO_KEY));
-    var monthlyLogColumnDividerRatio = (isFinite(rawMonthlyLogColumnRatio) && rawMonthlyLogColumnRatio >= 0.2 && rawMonthlyLogColumnRatio <= 0.8)
-      ? rawMonthlyLogColumnRatio
-      : MONTHLY_LOG_COLUMN_DIVIDER_RATIO_DEFAULT;
-    var monthlyLogColumnDividerRatios = [];
-    try {
-      var parsedMonthlyRatios = JSON.parse(safeGet(MONTHLY_LOG_COLUMN_DIVIDER_RATIOS_KEY) || '[]');
-      if (Array.isArray(parsedMonthlyRatios)) {
-        monthlyLogColumnDividerRatios = parsedMonthlyRatios
-          .map(Number)
-          .filter(function (value) { return isFinite(value) && value > 0.08 && value < 0.92; })
-          .sort(function (a, b) { return a - b; })
-          .slice(0, MONTHLY_LOG_COLUMN_DIVIDER_MAX);
-      }
-    } catch (err) { monthlyLogColumnDividerRatios = []; }
-    // 구버전의 단일 구분선 설정을 새 배열 구조로 마이그레이션한다.
-    if (!monthlyLogColumnDividerRatios.length && monthlyLogColumnDividerEnabled) {
-      monthlyLogColumnDividerRatios = [monthlyLogColumnDividerRatio];
-    }
-    monthlyLogColumnDividerEnabled = monthlyLogColumnDividerRatios.length > 0;
     var monthlyLogHideCompleted = safeGet(MONTHLY_LOG_HIDE_COMPLETED_KEY) === 'true';
-    var monthlyLogRowHeights = {};
-    try {
-      var parsedMonthlyLogRowHeights = JSON.parse(safeGet(MONTHLY_LOG_ROW_HEIGHTS_KEY) || '{}');
-      if (parsedMonthlyLogRowHeights && typeof parsedMonthlyLogRowHeights === 'object' && !Array.isArray(parsedMonthlyLogRowHeights)) {
-        Object.keys(parsedMonthlyLogRowHeights).forEach(function (date) {
-          var value = Number(parsedMonthlyLogRowHeights[date]);
-          if (/^\d{4}-\d{2}-\d{2}$/.test(date) && isFinite(value)) {
-            monthlyLogRowHeights[date] = Math.max(MONTHLY_LOG_ROW_HEIGHT_MIN, Math.min(MONTHLY_LOG_ROW_HEIGHT_MAX, Math.round(value)));
-          }
-        });
-      }
-    } catch (err2) { monthlyLogRowHeights = {}; }
-    var rawMonthlyLogScheduleCellWidth = parseFloat(safeGet(MONTHLY_LOG_SCHEDULE_CELL_WIDTH_KEY));
-    var monthlyLogScheduleCellWidth = (isFinite(rawMonthlyLogScheduleCellWidth) &&
-      rawMonthlyLogScheduleCellWidth >= MONTHLY_LOG_SCHEDULE_CELL_WIDTH_MIN &&
-      rawMonthlyLogScheduleCellWidth <= MONTHLY_LOG_SCHEDULE_CELL_WIDTH_MAX)
-      ? rawMonthlyLogScheduleCellWidth
-      : null;
     var rawDefaultInputMode = safeGet(DEFAULT_INPUT_MODE_KEY);
     var defaultInputMode = (rawDefaultInputMode === 'schedule' || rawDefaultInputMode === 'memo')
       ? rawDefaultInputMode
@@ -1040,12 +980,7 @@ endDateDraftActive: false,
       monthlyItems: monthlyItems,
       groups: groups,
       monthlySplitDividerVisible: monthlySplitDividerVisible,
-      monthlyLogColumnDividerEnabled: monthlyLogColumnDividerEnabled,
-      monthlyLogColumnDividerRatio: monthlyLogColumnDividerRatio,
-      monthlyLogColumnDividerRatios: monthlyLogColumnDividerRatios,
       monthlyLogHideCompleted: monthlyLogHideCompleted,
-      monthlyLogRowHeights: monthlyLogRowHeights,
-      monthlyLogScheduleCellWidth: monthlyLogScheduleCellWidth,
       defaultInputMode: defaultInputMode,
       autoRolloverEnabled: autoRolloverEnabled,
       calendarWeekStartsOn: calendarWeekStartsOn,
@@ -1125,13 +1060,7 @@ endDateDraftActive: false,
       localStorage.setItem(CALENDAR_WEEK_STARTS_ON_KEY, String(state.calendarWeekStartsOn));
       localStorage.setItem(CALENDAR_MONTHLY_SPLIT_RATIO_KEY, String(state.calendarMonthlySplitRatio));
       localStorage.setItem(MONTHLY_SPLIT_DIVIDER_VISIBLE_KEY, 'true');
-      localStorage.setItem(MONTHLY_LOG_COLUMN_DIVIDER_ENABLED_KEY, String((state.monthlyLogColumnDividerRatios || []).length > 0));
-      localStorage.setItem(MONTHLY_LOG_COLUMN_DIVIDER_RATIO_KEY, String((state.monthlyLogColumnDividerRatios || [MONTHLY_LOG_COLUMN_DIVIDER_RATIO_DEFAULT])[0] || MONTHLY_LOG_COLUMN_DIVIDER_RATIO_DEFAULT));
-      localStorage.setItem(MONTHLY_LOG_COLUMN_DIVIDER_RATIOS_KEY, JSON.stringify(state.monthlyLogColumnDividerRatios || []));
       localStorage.setItem(MONTHLY_LOG_HIDE_COMPLETED_KEY, String(state.monthlyLogHideCompleted));
-      localStorage.setItem(MONTHLY_LOG_ROW_HEIGHTS_KEY, JSON.stringify(state.monthlyLogRowHeights || {}));
-      if (state.monthlyLogScheduleCellWidth == null) localStorage.removeItem(MONTHLY_LOG_SCHEDULE_CELL_WIDTH_KEY);
-      else localStorage.setItem(MONTHLY_LOG_SCHEDULE_CELL_WIDTH_KEY, String(state.monthlyLogScheduleCellWidth));
       localStorage.setItem(DEFAULT_INPUT_MODE_KEY, state.defaultInputMode || 'task');
       localStorage.setItem(AUTO_ROLLOVER_ENABLED_KEY, String(state.autoRolloverEnabled !== false));
       reportStorageSuccessIfRecovering('preferences');
@@ -1548,32 +1477,13 @@ endDateDraftActive: false,
       return it.date <= date && date <= end;
     });
   }
-
-  // Monthly Log의 칸은 날짜 occurrence별 속성이다. 여러 세로 구분선을 지원하므로
-  // 0부터 시작하는 lane index를 저장한다. 구버전 left/right 데이터도 읽어 마이그레이션한다.
-  function getMonthlyLogDividerRatios() {
-    var ratios = Array.isArray(state.monthlyLogColumnDividerRatios)
-      ? state.monthlyLogColumnDividerRatios.map(Number).filter(function (v) { return isFinite(v); })
-      : [];
-    ratios.sort(function (a, b) { return a - b; });
-    var normalized = [];
-    var dividerGridStep = 1 / 18;
-    ratios.slice(0, MONTHLY_LOG_COLUMN_DIVIDER_MAX).forEach(function (ratio) {
-      var min = normalized.length ? normalized[normalized.length - 1] + dividerGridStep : dividerGridStep;
-      var remaining = ratios.slice(0, MONTHLY_LOG_COLUMN_DIVIDER_MAX).length - normalized.length - 1;
-      var max = 1 - dividerGridStep * (remaining + 1);
-      var snapped = Math.round(ratio / dividerGridStep) * dividerGridStep;
-      normalized.push(Math.max(min, Math.min(max, snapped)));
-    });
-    state.monthlyLogColumnDividerRatios = normalized;
-    state.monthlyLogColumnDividerEnabled = normalized.length > 0;
-    state.monthlyLogColumnDividerRatio = normalized[0] || MONTHLY_LOG_COLUMN_DIVIDER_RATIO_DEFAULT;
-    return normalized;
-  }
-
+  // Monthly Calendar v1: 세로 구분선을 제거해 칸은 항상 1개다. lane 관련 저장 필드
+  // (monthlyLogLaneIndexByDate 등)는 다음 단계에서 정리한다.
   function getMonthlyLogLaneCount() {
-    return getMonthlyLogDividerRatios().length + 1;
+    return 1;
   }
+
+
 
   function getMonthlyLogLaneAt(item, date) {
     if (!item || !date) return 0;
@@ -21745,168 +21655,6 @@ if (typeBtn) {
   // 날짜당 표시 개수 제한은 없다(모든 항목을 표시, 아래 buildMonthlyLogRow 참고).
   // ---------------------------------------------------------------------
 
-  function monthlyLogEqualDividerRatios(count) {
-    var safeCount = Math.max(0, Math.min(MONTHLY_LOG_COLUMN_DIVIDER_MAX, Number(count) || 0));
-    var ratios = [];
-    for (var i = 1; i <= safeCount; i++) ratios.push(i / (safeCount + 1));
-    return ratios;
-  }
-
-  function findLaneIndexForRatio(ratios, ratio) {
-    for (var i = 0; i < ratios.length; i++) {
-      if (ratio < ratios[i]) return i;
-    }
-    return ratios.length;
-  }
-
-  function remapMonthlyLogLaneIndexes(oldRatios, newRatios) {
-    var oldBounds = [0].concat(oldRatios, [1]);
-    state.items.forEach(function (item) {
-      if (!item.monthlyLogLaneIndexByDate || typeof item.monthlyLogLaneIndexByDate !== 'object') return;
-      Object.keys(item.monthlyLogLaneIndexByDate).forEach(function (date) {
-        var oldLane = Math.max(0, Math.min(oldBounds.length - 2, Number(item.monthlyLogLaneIndexByDate[date]) || 0));
-        var center = (oldBounds[oldLane] + oldBounds[oldLane + 1]) / 2;
-        var nextLane = findLaneIndexForRatio(newRatios, center);
-        if (nextLane > 0) item.monthlyLogLaneIndexByDate[date] = nextLane;
-        else delete item.monthlyLogLaneIndexByDate[date];
-      });
-      if (!Object.keys(item.monthlyLogLaneIndexByDate).length) item.monthlyLogLaneIndexByDate = null;
-    });
-  }
-
-  function setMonthlyLogColumnDividerCount(count) {
-    var oldRatios = getMonthlyLogDividerRatios().slice();
-    var nextCount = Math.max(0, Math.min(MONTHLY_LOG_COLUMN_DIVIDER_MAX, Number(count) || 0));
-    var nextRatios = oldRatios.slice();
-
-    while (nextRatios.length < nextCount) {
-      var bounds = [0].concat(nextRatios, [1]);
-      var widestIndex = 0;
-      var widestSize = -1;
-      for (var i = 0; i < bounds.length - 1; i++) {
-        var size = bounds[i + 1] - bounds[i];
-        if (size > widestSize) { widestSize = size; widestIndex = i; }
-      }
-      nextRatios.push((bounds[widestIndex] + bounds[widestIndex + 1]) / 2);
-      nextRatios.sort(function (a, b) { return a - b; });
-    }
-    while (nextRatios.length > nextCount) nextRatios.pop();
-
-    remapMonthlyLogLaneIndexes(oldRatios, nextRatios);
-    state.monthlyLogColumnDividerRatios = nextRatios;
-    state.monthlyLogColumnDividerEnabled = nextCount > 0;
-    state.monthlyLogColumnDividerRatio = nextRatios[0] || MONTHLY_LOG_COLUMN_DIVIDER_RATIO_DEFAULT;
-    normalizeMonthlyLogLaneIndexes();
-    savePreferences();
-    saveItems();
-    renderMonthlyLogRows();
-    renderMonthlyLogMenuState();
-  }
-
-  function applyMonthlyLogLaneLayout() {
-    var ratios = getMonthlyLogDividerRatios();
-    var boundaries = [0].concat(ratios, [1]);
-    var columns = [];
-    for (var i = 0; i < boundaries.length - 1; i++) {
-      columns.push('minmax(0,' + Math.max(0.01, boundaries[i + 1] - boundaries[i]) + 'fr)');
-    }
-    document.querySelectorAll('#monthly-log-rows .monthly-log-row-lanes').forEach(function (lanes) {
-      if (lanes.classList.contains('monthly-log-schedule-grid-host')) {
-        lanes.style.gridTemplateColumns = '';
-        lanes.classList.remove('is-split');
-        return;
-      }
-      lanes.style.gridTemplateColumns = columns.join(' ');
-      lanes.classList.toggle('is-split', ratios.length > 0);
-    });
-    positionMonthlyLogColumnDividers();
-  }
-
-  function positionMonthlyLogColumnDividers() {
-    var rows = document.getElementById('monthly-log-rows');
-    if (!rows) return;
-    var grid = rows.querySelector('.monthly-log-schedule-grid');
-    if (!grid) return;
-    var rowsRect = rows.getBoundingClientRect();
-    var gridRect = grid.getBoundingClientRect();
-    var ratios = getMonthlyLogDividerRatios();
-    rows.querySelectorAll('.monthly-log-column-divider').forEach(function (divider) {
-      var index = Number(divider.dataset.dividerIndex) || 0;
-      var ratio = ratios[index];
-      if (ratio == null) { divider.hidden = true; return; }
-      divider.hidden = false;
-      divider.style.left = (gridRect.left - rowsRect.left + gridRect.width * ratio) + 'px';
-      divider.style.height = Math.max(rows.scrollHeight, rows.clientHeight) + 'px';
-      divider.setAttribute('aria-valuenow', String(Math.round(ratio * 100)));
-    });
-  }
-
-  var monthlyLogColumnDividerDragState = null;
-
-  function updateMonthlyLogColumnDividerFromPointer(clientX) {
-    var ds = monthlyLogColumnDividerDragState;
-    var rows = document.getElementById('monthly-log-rows');
-    var lanes = rows && rows.querySelector('.monthly-log-row-lanes');
-    if (!ds || !rows || !lanes) return;
-    var rect = lanes.getBoundingClientRect();
-    var ratios = getMonthlyLogDividerRatios().slice();
-    if (!rect.width || ratios[ds.index] == null) return;
-    var raw = (clientX - rect.left) / Math.max(1, rect.width);
-    var step = 1 / MONTHLY_LOG_SCHEDULE_GRID_COLUMNS;
-    var min = ds.index > 0 ? ratios[ds.index - 1] + step : step;
-    var max = ds.index < ratios.length - 1 ? ratios[ds.index + 1] - step : 1 - step;
-    var snapped = Math.round(raw / step) * step;
-    ratios[ds.index] = Math.max(min, Math.min(max, snapped));
-    state.monthlyLogColumnDividerRatios = ratios;
-    state.monthlyLogColumnDividerRatio = ratios[0] || MONTHLY_LOG_COLUMN_DIVIDER_RATIO_DEFAULT;
-    applyMonthlyLogLaneLayout();
-  }
-
-  function onMonthlyLogColumnDividerPointerDown(e) {
-    if (e.pointerType === 'mouse' && e.button !== 0) return;
-    e.preventDefault();
-    e.stopPropagation();
-    var index = Number(e.currentTarget.dataset.dividerIndex) || 0;
-    monthlyLogColumnDividerDragState = {
-      pointerId: e.pointerId,
-      index: index,
-      startRatios: getMonthlyLogDividerRatios().slice(),
-      handle: e.currentTarget
-    };
-    try { e.currentTarget.setPointerCapture(e.pointerId); } catch (err) {}
-    e.currentTarget.addEventListener('pointermove', onMonthlyLogColumnDividerPointerMove);
-    e.currentTarget.addEventListener('pointerup', onMonthlyLogColumnDividerPointerUp);
-    e.currentTarget.addEventListener('pointercancel', onMonthlyLogColumnDividerPointerCancel);
-  }
-
-  function onMonthlyLogColumnDividerPointerMove(e) {
-    if (!monthlyLogColumnDividerDragState || e.pointerId !== monthlyLogColumnDividerDragState.pointerId) return;
-    updateMonthlyLogColumnDividerFromPointer(e.clientX);
-  }
-
-  function finishMonthlyLogColumnDividerDrag(cancelled) {
-    var ds = monthlyLogColumnDividerDragState;
-    if (!ds) return;
-    ds.handle.removeEventListener('pointermove', onMonthlyLogColumnDividerPointerMove);
-    ds.handle.removeEventListener('pointerup', onMonthlyLogColumnDividerPointerUp);
-    ds.handle.removeEventListener('pointercancel', onMonthlyLogColumnDividerPointerCancel);
-    try { ds.handle.releasePointerCapture(ds.pointerId); } catch (err) {}
-    if (cancelled) state.monthlyLogColumnDividerRatios = ds.startRatios.slice();
-    monthlyLogColumnDividerDragState = null;
-    savePreferences();
-    applyMonthlyLogLaneLayout();
-  }
-
-  function onMonthlyLogColumnDividerPointerUp(e) {
-    if (!monthlyLogColumnDividerDragState || e.pointerId !== monthlyLogColumnDividerDragState.pointerId) return;
-    finishMonthlyLogColumnDividerDrag(false);
-  }
-
-  function onMonthlyLogColumnDividerPointerCancel(e) {
-    if (!monthlyLogColumnDividerDragState || e.pointerId !== monthlyLogColumnDividerDragState.pointerId) return;
-    finishMonthlyLogColumnDividerDrag(true);
-  }
-
   // Monthly Log 전용 구분선 행. 그룹 카운트에서는 제외되지만, 드래그와 칸 이동은
   // 일반 항목과 같은 occurrence 기준으로 동작한다.
   function buildMonthlyLogDividerRow(item, dateStr) {
@@ -22251,143 +21999,6 @@ if (typeBtn) {
     return addCalendarDays(dateStr, amount);
   }
 
-  function getMonthlyLogRowHeight(dateStr) {
-    var value = state.monthlyLogRowHeights && Number(state.monthlyLogRowHeights[dateStr]);
-    if (!isFinite(value)) return MONTHLY_LOG_ROW_HEIGHT_DEFAULT;
-    return Math.max(MONTHLY_LOG_ROW_HEIGHT_MIN, Math.min(MONTHLY_LOG_ROW_HEIGHT_MAX, Math.round(value)));
-  }
-
-  var monthlyLogRowHeightSaveTimer = null;
-  function setMonthlyLogRowHeight(dateStr, height) {
-    if (!state.monthlyLogRowHeights || typeof state.monthlyLogRowHeights !== 'object') state.monthlyLogRowHeights = {};
-    var next = Math.max(MONTHLY_LOG_ROW_HEIGHT_MIN, Math.min(MONTHLY_LOG_ROW_HEIGHT_MAX, Math.round(height)));
-    if (next === MONTHLY_LOG_ROW_HEIGHT_DEFAULT) delete state.monthlyLogRowHeights[dateStr];
-    else state.monthlyLogRowHeights[dateStr] = next;
-    if (monthlyLogRowHeightSaveTimer) clearTimeout(monthlyLogRowHeightSaveTimer);
-    monthlyLogRowHeightSaveTimer = setTimeout(function () {
-      monthlyLogRowHeightSaveTimer = null;
-      savePreferences();
-    }, 160);
-    return next;
-  }
-
-
-  function resetMonthlyLogRowHeightsForVisibleMonth() {
-    if (!state.monthlyLogRowHeights || typeof state.monthlyLogRowHeights !== 'object') {
-      state.monthlyLogRowHeights = {};
-    }
-    var monthKey = state.monthlyLogViewMonth.slice(0, 7);
-    var changed = false;
-    Object.keys(state.monthlyLogRowHeights).forEach(function (dateStr) {
-      if (dateStr.slice(0, 7) !== monthKey) return;
-      delete state.monthlyLogRowHeights[dateStr];
-      changed = true;
-    });
-    savePreferences();
-    renderMonthlyLogRows();
-    announce(changed ? '현재 달의 날짜 칸 높이를 기본값으로 되돌렸습니다.' : '현재 달의 날짜 칸 높이는 이미 기본값입니다.');
-  }
-
-  // Shift+휠 가로 셀 너비 -- 값이 없으면(null) 기존과 동일한 반응형(컨테이너 폭÷18)을
-  // 그대로 쓴다. 실제 DOM 반영은 모든 .monthly-log-schedule-grid에 공통 CSS 변수
-  // (--schedule-cell-width)를 세팅하는 방식이라, 각 행마다 따로 계산할 필요가 없다.
-  function getMonthlyLogScheduleCellWidth() {
-    var value = Number(state.monthlyLogScheduleCellWidth);
-    return isFinite(value) && state.monthlyLogScheduleCellWidth != null ? value : null;
-  }
-
-  function getMonthlyLogAutoScheduleCellWidth() {
-    var grid = document.querySelector('.monthly-log-schedule-grid');
-    if (!grid) return (MONTHLY_LOG_SCHEDULE_CELL_WIDTH_MIN + MONTHLY_LOG_SCHEDULE_CELL_WIDTH_MAX) / 2;
-    var rect = grid.getBoundingClientRect();
-    return rect.width ? rect.width / MONTHLY_LOG_SCHEDULE_GRID_COLUMNS : MONTHLY_LOG_SCHEDULE_CELL_WIDTH_MIN;
-  }
-
-  var monthlyLogScheduleCellWidthSaveTimer = null;
-  function setMonthlyLogScheduleCellWidth(width) {
-    var next = Math.max(MONTHLY_LOG_SCHEDULE_CELL_WIDTH_MIN, Math.min(MONTHLY_LOG_SCHEDULE_CELL_WIDTH_MAX, Math.round(width)));
-    state.monthlyLogScheduleCellWidth = next;
-    applyMonthlyLogScheduleCellWidthToDom();
-    if (monthlyLogScheduleCellWidthSaveTimer) clearTimeout(monthlyLogScheduleCellWidthSaveTimer);
-    monthlyLogScheduleCellWidthSaveTimer = setTimeout(function () {
-      monthlyLogScheduleCellWidthSaveTimer = null;
-      savePreferences();
-    }, 160);
-    return next;
-  }
-
-  // .monthly-log-schedule-grid는 기본적으로 position:absolute;inset:0으로 호스트에
-  // "고정 스트레치"돼 있다(왼쪽·오른쪽이 모두 0으로 고정) -- 이 상태에서는 grid-template-
-  // columns의 minmax 최소값을 아무리 키워도 트랙이 이 고정 박스 밖으로 넘치지 않고
-  // 그냥 눌려서(compress) 반영이 안 된다(재현 확인: --schedule-cell-width를 키워도
-  // 실제 렌더 너비가 그대로였다). 사용자 지정 너비가 있을 때만 오른쪽 고정을 풀고
-  // 실제 width(칸수×너비)를 명시해, 컨테이너보다 넓어지면 .monthly-log-body의
-  // overflow-x:auto가 가로 스크롤을 만들게 한다. 기본값(null)이면 원래의 inset:0
-  // 스트레치 방식 그대로 반응형으로 되돌아간다.
-  function applyMonthlyLogScheduleCellWidthToGridEl(grid, width) {
-    if (width == null) {
-      grid.style.removeProperty('--schedule-cell-width');
-      grid.style.removeProperty('width');
-      grid.style.removeProperty('right');
-    } else {
-      grid.style.setProperty('--schedule-cell-width', width + 'px');
-      grid.style.width = (width * MONTHLY_LOG_SCHEDULE_GRID_COLUMNS) + 'px';
-      grid.style.right = 'auto';
-    }
-  }
-
-  function applyMonthlyLogScheduleCellWidthToDom() {
-    var width = getMonthlyLogScheduleCellWidth();
-    document.querySelectorAll('.monthly-log-schedule-grid').forEach(function (grid) {
-      applyMonthlyLogScheduleCellWidthToGridEl(grid, width);
-    });
-    positionMonthlyLogScheduleLabels();
-    positionMonthlyLogColumnDividers();
-  }
-
-  function resetMonthlyLogScheduleCellWidth() {
-    if (state.monthlyLogScheduleCellWidth == null) {
-      announce('날짜 칸 너비는 이미 기본값입니다.');
-      return;
-    }
-    state.monthlyLogScheduleCellWidth = null;
-    applyMonthlyLogScheduleCellWidthToDom();
-    savePreferences();
-    announce('날짜 칸 너비를 기본값으로 되돌렸습니다.');
-  }
-
-  function resetMonthlyLogRowAndCellSizeForVisibleMonth() {
-    resetMonthlyLogRowHeightsForVisibleMonth();
-    resetMonthlyLogScheduleCellWidth();
-  }
-
-  // 요구사항: 빈 행/열에 남은 사용자 지정 크기는 기본 반응형 크기로 복귀한다.
-  // 일정 격자 계획(buildMonthlyLogScheduleGridPlan)이 다시 계산될 때마다 호출해,
-  // 이제 그 날짜에 일정이 하나도 없으면 그 날짜의 커스텀 행 높이를 지우고,
-  // 현재 보이는 달 전체에 일정이 하나도 없으면 커스텀 셀 너비도 지운다.
-  function pruneEmptyMonthlyLogSizeCustomizations(entries, bounds) {
-    var changed = false;
-    if (state.monthlyLogRowHeights && Object.keys(state.monthlyLogRowHeights).length) {
-      var occupiedDates = {};
-      entries.forEach(function (entry) {
-        var cursor = parseLocalDate(entry.visibleStart);
-        var last = parseLocalDate(entry.visibleEnd);
-        while (cursor <= last) {
-          occupiedDates[formatLocalDate(cursor)] = true;
-          cursor.setDate(cursor.getDate() + 1);
-        }
-      });
-      Object.keys(state.monthlyLogRowHeights).forEach(function (dateStr) {
-        if (dateStr < bounds.start || dateStr > bounds.end) return; // 보이지 않는 달은 건드리지 않는다.
-        if (occupiedDates[dateStr]) return;
-        delete state.monthlyLogRowHeights[dateStr];
-        changed = true;
-      });
-    }
-    if (changed) savePreferences();
-    return changed;
-  }
-
   // 다일 일정 제목은 날짜별 조각 중 가운데 조각 하나에만 존재한다. 렌더 뒤 실제
   // 첫 조각~마지막 조각의 픽셀 중앙을 계산해 그 제목을 정확한 막대 중앙으로 옮긴다.
   function positionMonthlyLogScheduleLabels() {
@@ -22520,32 +22131,6 @@ if (typeBtn) {
     if (pathCount) rows.appendChild(svg);
   }
 
-  function onMonthlyLogRowsWheel(e) {
-    // 기존 Ctrl+휠(행 높이)은 그대로 유지하고, Shift+휠(가로 셀 너비)을 추가한다.
-    if (e.shiftKey && !e.ctrlKey) {
-      e.preventDefault();
-      e.stopPropagation();
-      var currentWidth = getMonthlyLogScheduleCellWidth();
-      if (currentWidth == null) currentWidth = getMonthlyLogAutoScheduleCellWidth();
-      // Ctrl+휠과 같은 감각: 위로 굴리면 확대(너비 증가), 아래로 굴리면 축소.
-      var widthDirection = e.deltaY < 0 ? 1 : -1;
-      setMonthlyLogScheduleCellWidth(currentWidth + widthDirection * MONTHLY_LOG_SCHEDULE_CELL_WIDTH_STEP);
-      return;
-    }
-    if (!e.ctrlKey) return;
-    var row = e.target && e.target.closest ? e.target.closest('.monthly-log-row[data-date]') : null;
-    if (!row) return;
-    e.preventDefault();
-    e.stopPropagation();
-    var dateStr = row.dataset.date;
-    var current = getMonthlyLogRowHeight(dateStr);
-    // 브라우저 확대/축소와 같은 감각: Ctrl+휠 위 = 확대(행 높이 증가), 아래 = 축소.
-    var direction = e.deltaY < 0 ? 1 : -1;
-    var next = setMonthlyLogRowHeight(dateStr, current + direction * MONTHLY_LOG_ROW_HEIGHT_STEP);
-    row.style.setProperty('--monthly-log-row-height', next + 'px');
-    row.dataset.rowHeight = String(next);
-    positionMonthlyLogScheduleLabels();
-  }
   function buildMonthlyLogScheduleGridPlan() {
     var bounds = getMonthlyLogVisibleMonthBounds();
     var needsSave = false;
@@ -22659,7 +22244,6 @@ if (typeBtn) {
     });
 
     if (needsSave) scheduleMonthlyLogPlanSave();
-    pruneEmptyMonthlyLogSizeCustomizations(entries, bounds);
     return {
       bounds: bounds,
       entries: entries,
@@ -22769,7 +22353,6 @@ if (typeBtn) {
     grid.className = 'monthly-log-schedule-grid';
     grid.dataset.date = dateStr;
     grid.style.setProperty('--schedule-grid-columns', String(MONTHLY_LOG_SCHEDULE_GRID_COLUMNS));
-    applyMonthlyLogScheduleCellWidthToGridEl(grid, getMonthlyLogScheduleCellWidth());
 
     for (var column = 0; column < MONTHLY_LOG_SCHEDULE_GRID_COLUMNS; column++) {
       var cell = document.createElement('span');
@@ -23134,9 +22717,6 @@ if (typeBtn) {
     var row = document.createElement('div');
     row.className = 'monthly-log-row';
     row.dataset.date = dateStr;
-    var monthlyLogRowHeight = getMonthlyLogRowHeight(dateStr);
-    row.dataset.rowHeight = String(monthlyLogRowHeight);
-    row.style.setProperty('--monthly-log-row-height', monthlyLogRowHeight + 'px');
     if (annotation.isPublicHoliday) row.classList.add('is-holiday');
     else if (dow === 0) row.classList.add('is-sun');
     else if (dow === 6) row.classList.add('is-sat');
@@ -23237,20 +22817,6 @@ if (typeBtn) {
       frag.appendChild(buildMonthlyLogRow(formatLocalDate(new Date(year, month, day)), day));
     }
     container.replaceChildren(frag);
-    getMonthlyLogDividerRatios().forEach(function (ratio, index) {
-      var columnDivider = document.createElement('div');
-      columnDivider.className = 'monthly-log-column-divider';
-      columnDivider.dataset.dividerIndex = String(index);
-      columnDivider.setAttribute('role', 'separator');
-      columnDivider.setAttribute('aria-orientation', 'vertical');
-      columnDivider.setAttribute('aria-valuemin', '12');
-      columnDivider.setAttribute('aria-valuemax', '88');
-      columnDivider.setAttribute('aria-label', 'Monthly Log ' + (index + 1) + '번째 칸 너비 조절');
-      columnDivider.tabIndex = 0;
-      columnDivider.addEventListener('pointerdown', onMonthlyLogColumnDividerPointerDown);
-      container.appendChild(columnDivider);
-    });
-    applyMonthlyLogLaneLayout();
     requestAnimationFrame(positionMonthlyLogScheduleLabels);
     // 행 자체를 통째로 새로 만들었으므로, 확정된 날짜 범위(state.selectedDateRange)가
     // 있다면 새 DOM에도 다시 클래스를 입혀야 한다(미니 달력의 renderCalendarRangeSelection과
@@ -23917,7 +23483,6 @@ if (typeBtn) {
       rows.addEventListener('pointerdown', onMonthlyLogScheduleSegmentPointerDown, true);
       rows.addEventListener('pointerdown', onMonthlyLogScheduleGridPointerDown);
       rows.addEventListener('contextmenu', onMonthlyLogScheduleGridContextMenu);
-      rows.addEventListener('wheel', onMonthlyLogRowsWheel, { passive: false });
       wireItemListMarqueeDelegation(rows);
     }
     document.querySelectorAll('.monthly-log-nav-btn[data-monthly-nav]').forEach(function (btn) {
@@ -23936,10 +23501,7 @@ if (typeBtn) {
     if (!window._monthlyLogLaneResizeWired) {
       window._monthlyLogLaneResizeWired = true;
       window.addEventListener('resize', function () {
-        if (state.currentView === 'calendar') {
-          applyMonthlyLogLaneLayout();
-          positionMonthlyLogScheduleLabels();
-        }
+        if (state.currentView === 'calendar') positionMonthlyLogScheduleLabels();
       });
     }
   }
@@ -26837,13 +26399,6 @@ originalEndTime: state.timeDraft.endTime || null,
     if (!activeMonthlyLogMenu) return;
     var lunarItem = activeMonthlyLogMenu.el.querySelector('[data-monthly-log-menu-action="lunar"]');
     if (lunarItem) lunarItem.setAttribute('aria-checked', String(!!state.lunarEnabled));
-    var addColumnBtn = activeMonthlyLogMenu.el.querySelector('[data-monthly-log-divider-control="add"]');
-    var removeColumnBtn = activeMonthlyLogMenu.el.querySelector('[data-monthly-log-divider-control="remove"]');
-    var dividerCount = getMonthlyLogDividerRatios().length;
-    if (addColumnBtn) addColumnBtn.disabled = dividerCount >= MONTHLY_LOG_COLUMN_DIVIDER_MAX;
-    if (removeColumnBtn) removeColumnBtn.disabled = dividerCount === 0;
-    var dividerCountLabel = activeMonthlyLogMenu.el.querySelector('[data-monthly-log-divider-count="true"]');
-    if (dividerCountLabel) dividerCountLabel.textContent = '세로 구분선 ' + dividerCount + '/' + MONTHLY_LOG_COLUMN_DIVIDER_MAX;
     var hideCompletedItem = activeMonthlyLogMenu.el.querySelector('[data-monthly-log-menu-action="hide-completed"]');
     if (hideCompletedItem) hideCompletedItem.setAttribute('aria-checked', String(!!state.monthlyLogHideCompleted));
   }
@@ -26903,15 +26458,6 @@ originalEndTime: state.timeDraft.endTime || null,
         savePreferences();
         renderMonthlyLogRows();
         renderMonthlyLogMenuState();
-      } else if (action === 'reset-row-heights') {
-        resetMonthlyLogRowHeightsForVisibleMonth();
-        closeMonthlyLogMenu(true);
-      } else if (action === 'reset-cell-width') {
-        resetMonthlyLogScheduleCellWidth();
-        closeMonthlyLogMenu(true);
-      } else if (action === 'reset-cell-size') {
-        resetMonthlyLogRowAndCellSizeForVisibleMonth();
-        closeMonthlyLogMenu(true);
       }
     }
   }
@@ -26947,84 +26493,6 @@ originalEndTime: state.timeDraft.endTime || null,
       closeMonthlyLogMenu(true);
     });
     menu.appendChild(lunarItem);
-
-    // Monthly Log 본문 세로 구분선: −로 제거, ＋로 추가한다. 달력과 이번 달
-    // 할 일 패널 사이 경계선은 이 설정과 무관하며 항상 드래그 가능하다.
-    var dividerControl = document.createElement('div');
-    dividerControl.className = 'monthly-log-divider-control';
-    dividerControl.setAttribute('role', 'group');
-    dividerControl.setAttribute('aria-label', 'Monthly Log 세로 구분선');
-    var dividerControlLabel = document.createElement('span');
-    dividerControlLabel.textContent = '세로 구분선 ' + getMonthlyLogDividerRatios().length + '/' + MONTHLY_LOG_COLUMN_DIVIDER_MAX;
-    dividerControlLabel.dataset.monthlyLogDividerCount = 'true';
-    var removeDividerBtn = document.createElement('button');
-    removeDividerBtn.type = 'button';
-    removeDividerBtn.className = 'monthly-log-divider-control-btn';
-    removeDividerBtn.dataset.monthlyLogDividerControl = 'remove';
-    removeDividerBtn.textContent = '−';
-    removeDividerBtn.title = '가장 오른쪽 세로 구분선을 하나 제거합니다.';
-    removeDividerBtn.disabled = getMonthlyLogDividerRatios().length === 0;
-    removeDividerBtn.addEventListener('click', function (e) {
-      e.stopPropagation();
-      setMonthlyLogColumnDividerCount(getMonthlyLogDividerRatios().length - 1);
-    });
-    var addDividerBtn = document.createElement('button');
-    addDividerBtn.type = 'button';
-    addDividerBtn.className = 'monthly-log-divider-control-btn';
-    addDividerBtn.dataset.monthlyLogDividerControl = 'add';
-    addDividerBtn.textContent = '＋';
-    addDividerBtn.title = '세로 구분선을 추가합니다. 최대 6개까지 만들고 각 선을 끌어 위치를 조절할 수 있습니다.';
-    addDividerBtn.disabled = getMonthlyLogDividerRatios().length >= MONTHLY_LOG_COLUMN_DIVIDER_MAX;
-    addDividerBtn.addEventListener('click', function (e) {
-      e.stopPropagation();
-      setMonthlyLogColumnDividerCount(getMonthlyLogDividerRatios().length + 1);
-    });
-    dividerControl.appendChild(dividerControlLabel);
-    dividerControl.appendChild(removeDividerBtn);
-    dividerControl.appendChild(addDividerBtn);
-    menu.appendChild(dividerControl);
-
-    var resetRowHeightsItem = document.createElement('div');
-    resetRowHeightsItem.className = 'monthly-log-menu-item menu-item-has-help';
-    resetRowHeightsItem.setAttribute('role', 'menuitem');
-    resetRowHeightsItem.dataset.monthlyLogMenuAction = 'reset-row-heights';
-    resetRowHeightsItem.dataset.help = 'Ctrl + 마우스 휠로 늘리거나 줄인 현재 달의 날짜 칸 높이만 기본값으로 되돌립니다.';
-    resetRowHeightsItem.title = resetRowHeightsItem.dataset.help;
-    resetRowHeightsItem.tabIndex = -1;
-    resetRowHeightsItem.textContent = '날짜칸 높이 초기화';
-    resetRowHeightsItem.addEventListener('click', function () {
-      resetMonthlyLogRowHeightsForVisibleMonth();
-      closeMonthlyLogMenu(true);
-    });
-    menu.appendChild(resetRowHeightsItem);
-
-    var resetCellWidthItem = document.createElement('div');
-    resetCellWidthItem.className = 'monthly-log-menu-item menu-item-has-help';
-    resetCellWidthItem.setAttribute('role', 'menuitem');
-    resetCellWidthItem.dataset.monthlyLogMenuAction = 'reset-cell-width';
-    resetCellWidthItem.dataset.help = 'Shift + 마우스 휠로 늘리거나 줄인 가로 셀 너비만 기본값(반응형)으로 되돌립니다.';
-    resetCellWidthItem.title = resetCellWidthItem.dataset.help;
-    resetCellWidthItem.tabIndex = -1;
-    resetCellWidthItem.textContent = '날짜칸 너비 초기화';
-    resetCellWidthItem.addEventListener('click', function () {
-      resetMonthlyLogScheduleCellWidth();
-      closeMonthlyLogMenu(true);
-    });
-    menu.appendChild(resetCellWidthItem);
-
-    var resetBothSizeItem = document.createElement('div');
-    resetBothSizeItem.className = 'monthly-log-menu-item menu-item-has-help';
-    resetBothSizeItem.setAttribute('role', 'menuitem');
-    resetBothSizeItem.dataset.monthlyLogMenuAction = 'reset-cell-size';
-    resetBothSizeItem.dataset.help = '현재 달의 날짜 칸 높이와 가로 셀 너비를 모두 기본값으로 되돌립니다.';
-    resetBothSizeItem.title = resetBothSizeItem.dataset.help;
-    resetBothSizeItem.tabIndex = -1;
-    resetBothSizeItem.textContent = '날짜칸 초기화';
-    resetBothSizeItem.addEventListener('click', function () {
-      resetMonthlyLogRowAndCellSizeForVisibleMonth();
-      closeMonthlyLogMenu(true);
-    });
-    menu.appendChild(resetBothSizeItem);
 
     var cleanupCompletedItem = document.createElement('div');
     cleanupCompletedItem.className = 'monthly-log-menu-item menu-item-has-help';
@@ -27761,14 +27229,7 @@ function wireMonthlyInboxMenuButtons() {
     state.calendarWeekStartsOn = loaded.calendarWeekStartsOn;
     state.calendarMonthlySplitRatio = loaded.calendarMonthlySplitRatio;
     state.monthlySplitDividerVisible = true;
-    state.monthlyLogColumnDividerRatios = Array.isArray(loaded.monthlyLogColumnDividerRatios)
-      ? loaded.monthlyLogColumnDividerRatios.slice()
-      : (loaded.monthlyLogColumnDividerEnabled ? [loaded.monthlyLogColumnDividerRatio] : []);
-    state.monthlyLogColumnDividerEnabled = state.monthlyLogColumnDividerRatios.length > 0;
-    state.monthlyLogColumnDividerRatio = state.monthlyLogColumnDividerRatios[0] || loaded.monthlyLogColumnDividerRatio;
     state.monthlyLogHideCompleted = loaded.monthlyLogHideCompleted;
-    state.monthlyLogRowHeights = loaded.monthlyLogRowHeights || {};
-    state.monthlyLogScheduleCellWidth = loaded.monthlyLogScheduleCellWidth == null ? null : loaded.monthlyLogScheduleCellWidth;
     state.defaultInputMode = loaded.defaultInputMode || 'task';
     state.autoRolloverEnabled = loaded.autoRolloverEnabled !== false;
     state.inputMode = state.defaultInputMode;
