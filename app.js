@@ -138,12 +138,9 @@
   // Shift+휠 가로 셀 너비 조절 -- 18칸 격자 한 칸의 픽셀 너비. null이면 기존과 동일하게
   // 컨테이너 폭을 18등분하는 반응형 너비를 그대로 쓴다(요구사항: 기본은 반응형 유지).
   var MONTHLY_LOG_SCHEDULE_CELL_WIDTH_KEY = STORAGE_PREFIX + 'monthlyLogScheduleCellWidth';
-  // Round D: Monthly Log는 기존 18칸 자유 배치와 실제 24시간 시간축을 병존시킨다.
-  // 기본값은 기존 데이터와 조작을 전혀 바꾸지 않는 자유 배치 모드다.
-  var MONTHLY_LOG_VIEW_MODE_KEY = STORAGE_PREFIX + 'monthlyLogViewMode';
-  var MONTHLY_LOG_VIEW_MODE_LANES = 'lanes';
-  var MONTHLY_LOG_VIEW_MODE_TIME = 'time';
-  var MONTHLY_LOG_TIME_SNAP_MINUTES = 15;
+  // Monthly Calendar v1: 24시간 보기는 제거했다. Monthly Log 달력 본체는 보기 모드가
+  // 하나뿐이므로 monthlyLogViewMode 상태와 STORAGE_PREFIX+'monthlyLogViewMode' 키는
+  // 더 이상 읽지도 쓰지도 않는다(기존 저장값은 롤백을 위해 그대로 남겨 둔다).
   var DEFAULT_INPUT_MODE_KEY = STORAGE_PREFIX + 'defaultInputMode';
   var AUTO_ROLLOVER_ENABLED_KEY = STORAGE_PREFIX + 'autoRolloverEnabled';
   var MONTHLY_LOG_SCHEDULE_CELL_WIDTH_MIN = 28;
@@ -244,8 +241,6 @@
     monthlyLogRowHeights: {},
     // Shift+휠로 조절하는 18칸 격자 한 칸의 가로 너비(px). null=기존과 동일한 반응형.
     monthlyLogScheduleCellWidth: null,
-    // 'lanes'=기존 18칸 자유 배치, 'time'=00:00~24:00 실제 시간축.
-    monthlyLogViewMode: MONTHLY_LOG_VIEW_MODE_LANES,
     // 빠른 입력 기본 유형과 자동 이월 사용 여부. 기존 사용자는 각각 task/true로 유지된다.
     defaultInputMode: 'task',
     autoRolloverEnabled: true,
@@ -1019,10 +1014,6 @@ endDateDraftActive: false,
       rawMonthlyLogScheduleCellWidth <= MONTHLY_LOG_SCHEDULE_CELL_WIDTH_MAX)
       ? rawMonthlyLogScheduleCellWidth
       : null;
-    var rawMonthlyLogViewMode = safeGet(MONTHLY_LOG_VIEW_MODE_KEY);
-    var monthlyLogViewMode = rawMonthlyLogViewMode === MONTHLY_LOG_VIEW_MODE_TIME
-      ? MONTHLY_LOG_VIEW_MODE_TIME
-      : MONTHLY_LOG_VIEW_MODE_LANES;
     var rawDefaultInputMode = safeGet(DEFAULT_INPUT_MODE_KEY);
     var defaultInputMode = (rawDefaultInputMode === 'schedule' || rawDefaultInputMode === 'memo')
       ? rawDefaultInputMode
@@ -1055,7 +1046,6 @@ endDateDraftActive: false,
       monthlyLogHideCompleted: monthlyLogHideCompleted,
       monthlyLogRowHeights: monthlyLogRowHeights,
       monthlyLogScheduleCellWidth: monthlyLogScheduleCellWidth,
-      monthlyLogViewMode: monthlyLogViewMode,
       defaultInputMode: defaultInputMode,
       autoRolloverEnabled: autoRolloverEnabled,
       calendarWeekStartsOn: calendarWeekStartsOn,
@@ -1142,7 +1132,6 @@ endDateDraftActive: false,
       localStorage.setItem(MONTHLY_LOG_ROW_HEIGHTS_KEY, JSON.stringify(state.monthlyLogRowHeights || {}));
       if (state.monthlyLogScheduleCellWidth == null) localStorage.removeItem(MONTHLY_LOG_SCHEDULE_CELL_WIDTH_KEY);
       else localStorage.setItem(MONTHLY_LOG_SCHEDULE_CELL_WIDTH_KEY, String(state.monthlyLogScheduleCellWidth));
-      localStorage.setItem(MONTHLY_LOG_VIEW_MODE_KEY, state.monthlyLogViewMode === MONTHLY_LOG_VIEW_MODE_TIME ? MONTHLY_LOG_VIEW_MODE_TIME : MONTHLY_LOG_VIEW_MODE_LANES);
       localStorage.setItem(DEFAULT_INPUT_MODE_KEY, state.defaultInputMode || 'task');
       localStorage.setItem(AUTO_ROLLOVER_ENABLED_KEY, String(state.autoRolloverEnabled !== false));
       reportStorageSuccessIfRecovering('preferences');
@@ -5371,7 +5360,7 @@ handleItemPointerSelect(
   }
 
   function onItemListPointerDown(e) {
-    if (e.target && e.target.closest && e.target.closest('.monthly-log-schedule-grid-host, .monthly-log-time-track, .monthly-log-time-all-day')) return;
+    if (e.target && e.target.closest && e.target.closest('.monthly-log-schedule-grid-host')) return;
     if (e.pointerType === 'mouse' && e.button !== 0) return;
     if (dragState || itemMarqueeSelectionState) return;
     // 휴지통 진단: Daily/Weekly('today')와 휴지통('trash') 모두 같은 marquee 선택
@@ -23239,15 +23228,6 @@ if (typeBtn) {
     var container = document.getElementById('monthly-log-rows');
     if (!container) return;
     monthlyLogScheduleGridPlan = buildMonthlyLogScheduleGridPlan();
-    if (
-      state.monthlyLogViewMode === MONTHLY_LOG_VIEW_MODE_TIME &&
-      window.DotDotPlannerTimeView &&
-      typeof window.DotDotPlannerTimeView.render === 'function'
-    ) {
-      window.DotDotPlannerTimeView.render(window.DotDotPlannerBridge);
-      return;
-    }
-    container.classList.remove('is-time-mode');
     var monthStart = parseLocalDate(state.monthlyLogViewMonth);
     var year = monthStart.getFullYear();
     var month = monthStart.getMonth();
@@ -23289,11 +23269,6 @@ if (typeBtn) {
     var inboxTitle = document.getElementById('monthly-inbox-title');
     if (monthLabel) monthLabel.textContent = label + ' 달력';
     if (inboxTitle) inboxTitle.textContent = label + ' 할일';
-    document.querySelectorAll('[data-monthly-view-mode]').forEach(function (btn) {
-      var active = btn.dataset.monthlyViewMode === state.monthlyLogViewMode;
-      btn.classList.toggle('active', active);
-      btn.setAttribute('aria-pressed', String(active));
-    });
   }
 
   function renderMonthlyLog() {
@@ -23820,7 +23795,7 @@ if (typeBtn) {
       }
       var monthlyItem = findItemById(itemEl.dataset.itemId);
       if (monthlyItem) {
-        var isScheduleSegment = itemEl.classList.contains('monthly-log-schedule-segment') || itemEl.classList.contains('monthly-log-time-event');
+        var isScheduleSegment = itemEl.classList.contains('monthly-log-schedule-segment');
         var noModifier = !e.ctrlKey && !e.metaKey && !e.shiftKey;
         if (isScheduleSegment && noModifier) {
           // 한 번 클릭은 즉시 선택되고 짧은 지연 뒤 상세를 연다. 같은 위치를 더블클릭하면
@@ -27794,7 +27769,6 @@ function wireMonthlyInboxMenuButtons() {
     state.monthlyLogHideCompleted = loaded.monthlyLogHideCompleted;
     state.monthlyLogRowHeights = loaded.monthlyLogRowHeights || {};
     state.monthlyLogScheduleCellWidth = loaded.monthlyLogScheduleCellWidth == null ? null : loaded.monthlyLogScheduleCellWidth;
-    state.monthlyLogViewMode = loaded.monthlyLogViewMode || MONTHLY_LOG_VIEW_MODE_LANES;
     state.defaultInputMode = loaded.defaultInputMode || 'task';
     state.autoRolloverEnabled = loaded.autoRolloverEnabled !== false;
     state.inputMode = state.defaultInputMode;
@@ -27886,10 +27860,7 @@ wireMonthlyPanelToggle();
   window.DotDotPlannerBridge = {
     state: state,
     constants: {
-      STORAGE_PREFIX: STORAGE_PREFIX,
-      VIEW_MODE_LANES: MONTHLY_LOG_VIEW_MODE_LANES,
-      VIEW_MODE_TIME: MONTHLY_LOG_VIEW_MODE_TIME,
-      TIME_SNAP_MINUTES: MONTHLY_LOG_TIME_SNAP_MINUTES
+      STORAGE_PREFIX: STORAGE_PREFIX
     },
     addCalendarDays: addCalendarDays,
     differenceInCalendarDays: differenceInCalendarDays,
