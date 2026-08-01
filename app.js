@@ -1885,22 +1885,23 @@ endDateDraftActive: false,
     renderApp();
   }
 
-  // 카드/행에 프로젝트 표시를 최소한으로 적용한다(요구사항 -- 작은 색 점 또는 얇은 왼쪽
-  // 테두리). 그룹 멤버 행(.group-member-row)의 왼쪽 테두리 기법을 그대로 재사용하되,
-  // 프로젝트 전용 변수(--project-accent)를 따로 둬 그룹 강조와 섞이지 않게 한다. 이름은
-  // 본문에 항상 쓰지 않고 title 속성(네이티브 tooltip)으로만 확인할 수 있게 한다.
-  function applyProjectAccent(rowEl, entity) {
-    if (!rowEl) return;
+  // 제목 앞에 프로젝트를 나타내는 작은 원 하나만 만든다(요구사항 -- 그룹의 왼쪽 선과는
+  // 완전히 다른 채널, 배지·추가 배경·테두리 없음). 프로젝트가 없으면 null을 돌려주고
+  // 호출자는 아무것도 넣지 않는다(점 자리조차 만들지 않음). 실제 DOM 엘리먼트라 title
+  // (호버 툴팁)과 aria-label(접근성 이름)을 직접 가질 수 있다 -- 그룹색과 같아도 자동
+  // 변경 없이 프로젝트 고유 색을 그대로 쓴다. sizeClass는 'is-lg'(Daily/Weekly 6px)
+  // 또는 'is-sm'(Monthly 4px)만 받는다.
+  function buildProjectDot(entity, sizeClass) {
     var project = entity && entity.projectId ? findProjectById(entity.projectId) : null;
-    if (project) {
-      rowEl.dataset.hasProject = 'true';
-      rowEl.style.setProperty('--project-accent', project.color || 'var(--lav)');
-      rowEl.title = project.name;
-    } else {
-      delete rowEl.dataset.hasProject;
-      rowEl.style.removeProperty('--project-accent');
-      rowEl.removeAttribute('title');
-    }
+    if (!project) return null;
+    var dot = document.createElement('span');
+    dot.className = 'project-dot ' + sizeClass;
+    dot.style.setProperty('--project-accent', project.color || 'var(--lav)');
+    dot.tabIndex = 0;
+    dot.setAttribute('role', 'img');
+    dot.setAttribute('aria-label', '프로젝트: ' + project.name);
+    dot.title = project.name;
+    return dot;
   }
 
   // 최종 감사(2026-07-27) 7: 드래그 커밋(reorderItemsWithinDate) 직후, 같은
@@ -3230,6 +3231,10 @@ titleTextEl.className = 'row-title-text';
 titleTextEl.textContent = item.text;
 if (item.instanceGroupId) titleTextEl.classList.add('is-instance-linked');
 
+// 점은 .row-title-text 밖(형제)에 둔다 -- 실시간 편집 미리보기(previewInstanceTitleWhileTyping)가
+// .row-title-text.textContent를 통째로 덮어써서, 점을 그 안에 넣으면 타이핑 중 사라진다.
+var projectDot = buildProjectDot(item, 'is-lg');
+if (projectDot) titleEl.appendChild(projectDot);
 titleEl.appendChild(titleTextEl); // textContent만 사용 (XSS 방지)
     var detailBadge = buildCardDetailBadge(item, false);
     if (detailBadge) titleEl.appendChild(detailBadge);
@@ -3267,7 +3272,6 @@ titleEl.appendChild(titleTextEl); // textContent만 사용 (XSS 방지)
     }
     row.appendChild(arrow);
     row.appendChild(createSelectGutterOverlay(item, 'daily', state.selectedDate, 'select-gutter'));
-    applyProjectAccent(row, item);
     return row;
   }
 
@@ -3319,16 +3323,24 @@ titleEl.appendChild(titleTextEl); // textContent만 사용 (XSS 방지)
     title.textContent = item.text; // 실제 데이터는 자르지 않음, 표시만 CSS ellipsis
     title.title = item.text; // 마우스 오버 시 전체 문장 확인 가능
 
+    // 점을 .week-item-title 밖(래퍼의 형제)에 둔다 -- previewInstanceTitleWhileTyping이
+    // .week-item-title.textContent를 통째로 덮어써서, 점을 그 안에 넣으면 타이핑 중 사라진다.
+    // 래퍼가 li의 남는 폭 트랙을 그대로 이어받아 체크박스/기호 정렬에는 영향이 없다.
+    var titleCell = document.createElement('span');
+    titleCell.className = 'week-title-cell';
+    var projectDot = buildProjectDot(item, 'is-lg');
+    if (projectDot) titleCell.appendChild(projectDot);
+    titleCell.appendChild(title);
+
     li.appendChild(createWeeklyDragHandle(item, columnDate));
     li.appendChild(checkboxButton(item, columnDate));
     li.appendChild(typeMenuButton(item, 'week-symbol-btn', columnDate));
-    li.appendChild(title);
+    li.appendChild(titleCell);
     li.appendChild(createSelectGutterOverlay(item, 'weekly', columnDate, 'week-select-gutter'));
     // 6차 6: 카드 폭이 좁아 grid 트랙에 끼워 넣지 않고, 이미 position:relative인 li
     // 위에 절대 위치로 겹쳐 그린다 — 제목 트랙 너비·체크박스/기호 정렬을 전혀 바꾸지 않는다.
     var detailBadge = buildCardDetailBadge(item, true);
     if (detailBadge) li.appendChild(detailBadge);
-    applyProjectAccent(li, item);
     return li;
   }
 
@@ -20876,8 +20888,16 @@ function buildMonthlyInboxDividerRow(item) {
     if (item.instanceGroupId) title.classList.add('is-instance-linked');
     title.textContent = item.text;
     title.title = item.text;
-   
-    row.appendChild(title);
+
+    // 점을 .monthly-item-title 밖(래퍼의 형제)에 둔다 -- previewInstanceTitleWhileTyping이
+    // .monthly-item-title.textContent를 통째로 덮어쓴다. 래퍼는 grid의 4번째 트랙
+    // (minmax(0,1fr))을 title 대신 그대로 이어받아 드래그/체크박스/삭제 트랙엔 영향이 없다.
+    var titleCell = document.createElement('span');
+    titleCell.className = 'monthly-item-title-cell';
+    var projectDot = buildProjectDot(item, 'is-sm');
+    if (projectDot) titleCell.appendChild(projectDot);
+    titleCell.appendChild(title);
+    row.appendChild(titleCell);
 
     // 상세 열기 -- 이 원본에 실제 배치(placement)가 하나라도 있으면 그 배치의 기존 상세
     // drawer를 그대로 연다(원본 전용 drawer를 새로 만들지 않고 기존 걸 재사용 -- description
@@ -20894,7 +20914,6 @@ function buildMonthlyInboxDividerRow(item) {
     delBtn.textContent = '×';
     row.appendChild(delBtn);
 
-    applyProjectAccent(row, item);
     return row;
   }
 

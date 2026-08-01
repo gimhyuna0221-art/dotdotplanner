@@ -1847,25 +1847,33 @@ body.dnd-active .group-drag{cursor:grabbing}
 .group-member-row{margin-left:20px;border-color:color-mix(in srgb,var(--group-accent,var(--lav)) 48%,var(--line2)) !important;border-left-width:3px !important;border-left-color:var(--group-accent,var(--lav)) !important;background-color:color-mix(in srgb,var(--group-accent,var(--lav)) 3%,var(--bg-card))}
 .group-member-row:hover{background-color:color-mix(in srgb,var(--group-accent,var(--lav)) 8%,var(--bg-hover))}
 
-/* 프로젝트(전역 소속) -- 카드 표시는 그룹 멤버 행과 같은 왼쪽 테두리 기법을 재사용하되
-   전용 변수(--project-accent)를 써서 그룹 강조와 섞이지 않게 한다(요구사항: 얇은 왼쪽
-   테두리, 이름은 상시 노출하지 않고 title 속성의 네이티브 tooltip로만 확인). 그룹이
-   이미 왼쪽 테두리를 쓰는 행(.group-member-row)에서는 그룹 표시가 우선한다. */
-.task[data-has-project="true"]:not(.group-member-row),
-.week-card li[data-has-project="true"]:not(.group-member-row),
-.monthly-item-row[data-has-project="true"]:not(.group-member-row){
-  border-left-width:3px;
-  border-left-color:var(--project-accent,var(--lav));
+/* 프로젝트(전역 소속) -- 그룹 표시(왼쪽 선)와 완전히 다른 채널을 쓴다: 제목 앞의 작은
+   원 하나뿐이다(요구사항: 그룹색은 왼쪽 선 전용, 프로젝트색은 원 전용이라 같은 색이어도
+   서로 덮거나 자동으로 바뀌지 않는다). 프로젝트가 없는 항목은 buildProjectDot()이
+   null을 돌려줘 이 엘리먼트 자체가 DOM에 없다 -- 점 자리도, 간격도 생기지 않는다.
+   실제 DOM 엘리먼트라 title(호버 툴팁)·aria-label(접근성 이름)·tabindex(키보드 포커스)를
+   가질 수 있다(::before로는 불가능). 배지·추가 배경·테두리 색은 만들지 않는다 --
+   테두리는 배경 대비용 1px 고정 색(var(--line2))뿐이고 채움색만 프로젝트색이다. */
+.project-dot{
+  flex:none;
+  display:inline-block;
+  border-radius:50%;
+  background:var(--project-accent,var(--lav));
+  border:1px solid var(--line2);
+  vertical-align:middle;
+  cursor:default;
 }
-/* 그룹 멤버 행이어도 프로젝트의 짧은 왼쪽 표시는 유지한다(요구사항: 그룹 스타일이
-   프로젝트 표시를 덮어쓰지 않게 한다). Daily/Weekly에만 적용하고, 이번 달 할 일
-   (.monthly-item-row)은 대상에서 제외해 기존 동작을 그대로 둔다. 그룹 헤더/컨테이너의
-   그룹 색상 자체는 바꾸지 않는다 -- 개별 항목의 border-left-color만 되찾아온다. */
-.task.group-member-row[data-has-project="true"],
-.week-card li.group-member-row[data-has-project="true"]{
-  border-left-width:3px !important;
-  border-left-color:var(--project-accent,var(--lav)) !important;
-}
+.project-dot:focus-visible{outline:2px solid var(--lav);outline-offset:2px}
+/* Daily·Weekly는 6px, Monthly는 4px(요구사항) -- 점-제목 간격은 margin-right 한 값으로만
+   통일해서, li/grid의 다른 gap과 겹쳐 항목마다 어긋나는 일이 없게 한다. */
+.project-dot.is-lg{width:6px;height:6px;margin-right:5px}
+.project-dot.is-sm{width:4px;height:4px;margin-right:4px}
+/* 점을 제목 텍스트(.row-title-text/.week-item-title/.monthly-item-title) 밖의 래퍼에
+   두는 이유는 app.js 쪽 주석 참고 -- 실시간 편집 미리보기가 텍스트 엘리먼트의
+   textContent를 통째로 덮어써서, 점이 그 안에 있으면 타이핑 중 사라지기 때문이다.
+   래퍼는 각 화면에서 제목이 원래 차지하던 폭 트랙을 그대로 이어받는다. */
+.week-title-cell{display:flex;align-items:center;min-width:0;flex:1 1 auto}
+.monthly-item-title-cell{display:flex;align-items:center;min-width:0}
 /* 상세 패널의 프로젝트 선택기 -- openGroupMenu의 .type-menu/.group-color-swatch류를
    그대로 재사용한다. */
 .project-menu{min-width:180px}
