@@ -16962,9 +16962,10 @@ var calendarCell =
       ) : null;
       if (scheduleColumn !== null) dragState.monthlyScheduleSnappedColumn = scheduleColumn;
       dragState.overScheduleColumn = scheduleColumn;
-      if (scheduleGridHost && scheduleColumn !== null) {
+      // v1: 열 개념이 없어졌으므로 날짜 칸 전체를 드롭 대상으로 강조한다.
+      if (scheduleGridHost) {
         scheduleGridHost.classList.add('drop-target-schedule-grid');
-        scheduleGridHost.style.setProperty('--schedule-drop-column', String(scheduleColumn));
+        if (scheduleColumn !== null) scheduleGridHost.style.setProperty('--schedule-drop-column', String(scheduleColumn));
       }
     } else {
       // 12: 허용되지 않은 영역 위에서는 placeholder를 마지막 유효 위치에 그대로 둔다.
@@ -21553,6 +21554,9 @@ if (typeBtn) {
   // 않고, 전체 기간의 중앙에 세로 제목을 딱 한 번만 표시한다. 일반 할 일/메모/구분선은
   // 이 달력 영역에 렌더하지 않고 오른쪽 "이번 달 할 일"과 Today/Weekly에서 관리한다.
   var MONTHLY_LOG_SCHEDULE_GRID_COLUMNS = 18;
+  // Monthly Calendar v1: 7열 × 5~6주 그리드. 모든 주 행은 같은 높이이고, 날짜 칸의
+  // 이벤트 슬롯 수는 S=3 고정이다(+N 초과 표시 영역은 슬롯을 차지하지 않는 별도 1줄).
+  var MONTHLY_LOG_DAY_SLOT_COUNT = 3;
   var monthlyLogScheduleGridPlan = null;
   var monthlyLogPendingScheduleColumnByDate = {};
   var monthlyLogScheduleCellSelection = null; // { startDate, endDate, column }
@@ -21586,13 +21590,13 @@ if (typeBtn) {
     return isMonthlyLogSchedule(item) && !!item.endDate && item.endDate > item.date;
   }
 
+  // v1: 화면에 실제로 그려지는 범위는 그 달이 아니라 7열 그리드의 첫 칸~마지막 칸이다.
+  // 이전·다음 달 칸에도 일정이 보여야 하므로 배치 계획도 이 범위를 기준으로 만든다.
   function getMonthlyLogVisibleMonthBounds() {
-    var monthDate = parseLocalDate(state.monthlyLogViewMonth);
-    var year = monthDate.getFullYear();
-    var month = monthDate.getMonth();
+    var layout = buildMonthlyLogWeekStarts();
     return {
-      start: formatLocalDate(new Date(year, month, 1)),
-      end: formatLocalDate(new Date(year, month, daysInMonthFromParts(year, month)))
+      start: layout.starts[0],
+      end: addCalendarDays(layout.starts[layout.starts.length - 1], 6)
     };
   }
 
@@ -22131,6 +22135,23 @@ if (typeBtn) {
     };
   }
 
+  // v1 그리드용: 18칸 열 배정(column) 결과와 무관하게 그 날짜를 지나는 모든 일정을
+  // 돌려준다. 다일 일정의 주 단위 슬롯 패킹은 후속 단계에서 다루므로, 지금은 기간이
+  // 걸친 날짜마다 같은 항목을 한 번씩 보여준다.
+  function getMonthlyLogEntriesCoveringDate(dateStr) {
+    if (!monthlyLogScheduleGridPlan) return [];
+    return monthlyLogScheduleGridPlan.entries.filter(function (entry) {
+      return entry.visibleStart <= dateStr && dateStr <= entry.visibleEnd;
+    }).sort(function (a, b) {
+      if (a.duration !== b.duration) return b.duration - a.duration;
+      if (a.visibleStart !== b.visibleStart) return a.visibleStart < b.visibleStart ? -1 : 1;
+      var ac = Number(a.item.createdAt) || 0;
+      var bc = Number(b.item.createdAt) || 0;
+      if (ac !== bc) return ac - bc;
+      return String(a.item.id).localeCompare(String(b.item.id));
+    });
+  }
+
   function getMonthlyLogScheduleEntriesForDate(dateStr) {
     if (!monthlyLogScheduleGridPlan) return [];
     return monthlyLogScheduleGridPlan.entries.filter(function (entry) {
@@ -22221,52 +22242,80 @@ if (typeBtn) {
     wrap.appendChild(input);
     return wrap;
   }
-  function buildMonthlyLogScheduleGrid(dateStr) {
+  // Monthly Calendar v1 날짜 칸 본문. 드롭 계약(.monthly-log-schedule-grid-host >
+  // .monthly-log-schedule-drop-lane)과 인라인 입력은 그대로 유지하고, 18칸 격자 대신
+  // 슬롯 3개 스택 + 고정 초과 표시 영역 1줄을 만든다.
+  function buildMonthlyLogDayBody(dateStr) {
     var host = document.createElement('div');
     host.className = 'monthly-log-row-lanes monthly-log-schedule-grid-host';
     host.dataset.date = dateStr;
     host.tabIndex = -1;
 
-    var grid = document.createElement('div');
-    grid.className = 'monthly-log-schedule-grid';
-    grid.dataset.date = dateStr;
-    grid.style.setProperty('--schedule-grid-columns', String(MONTHLY_LOG_SCHEDULE_GRID_COLUMNS));
+    var slots = document.createElement('div');
+    slots.className = 'monthly-log-row-items monthly-log-lane monthly-log-schedule-drop-lane monthly-log-day-slots';
+    slots.dataset.date = dateStr;
 
-    for (var column = 0; column < MONTHLY_LOG_SCHEDULE_GRID_COLUMNS; column++) {
-      var cell = document.createElement('span');
-      cell.className = 'monthly-log-schedule-grid-cell';
-      cell.dataset.date = dateStr;
-      cell.dataset.scheduleColumn = String(column);
-      cell.style.gridColumn = String(column + 1);
-      cell.setAttribute('aria-label', formatAnnounceDate(dateStr) + ', ' + (column + 1) + '번째 일정 칸');
-      grid.appendChild(cell);
-    }
-
-    getMonthlyLogScheduleEntriesForDate(dateStr).forEach(function (entry) {
-      grid.appendChild(buildMonthlyLogScheduleSegment(entry, dateStr));
+    var entries = getMonthlyLogEntriesCoveringDate(dateStr);
+    var shown = entries.length > MONTHLY_LOG_DAY_SLOT_COUNT
+      ? entries.slice(0, MONTHLY_LOG_DAY_SLOT_COUNT)
+      : entries;
+    shown.forEach(function (entry) {
+      slots.appendChild(buildMonthlyLogDayChip(entry, dateStr));
     });
+    host.appendChild(slots);
 
-    var hiddenCount = monthlyLogScheduleGridPlan && monthlyLogScheduleGridPlan.hiddenCountByDate[dateStr];
-    if (hiddenCount) {
-      var overflow = document.createElement('span');
-      overflow.className = 'monthly-log-schedule-overflow';
-      overflow.textContent = '+' + hiddenCount;
-      overflow.title = (monthlyLogScheduleGridPlan.hiddenTitlesByDate[dateStr] || []).join(' · ');
-      overflow.setAttribute('aria-label', '숨겨진 일정 ' + hiddenCount + '개');
-      grid.appendChild(overflow);
+    // 초과 표시 영역은 +N이 없어도 항상 자리를 차지한다(모든 주 행 동일 높이 원칙).
+    var overflow = document.createElement('div');
+    overflow.className = 'monthly-log-day-overflow';
+    var hiddenCount = entries.length - shown.length;
+    if (hiddenCount > 0) {
+      overflow.classList.add('has-overflow');
+      overflow.textContent = '+' + hiddenCount + '개';
+      overflow.title = entries.slice(shown.length).map(function (entry) {
+        return entry.item.text || '제목 없음';
+      }).join(' · ');
+      overflow.setAttribute('aria-label', formatAnnounceDate(dateStr) + ', 더 있는 일정 ' + hiddenCount + '개');
     }
+    host.appendChild(overflow);
 
-    host.appendChild(grid);
-    var dropLane = document.createElement('div');
-    dropLane.className = 'monthly-log-row-items monthly-log-lane monthly-log-schedule-drop-lane';
-    dropLane.dataset.date = dateStr;
-    host.appendChild(dropLane);
-
-    var selectedColumn = monthlyLogScheduleCellSelection && monthlyLogScheduleCellSelection.startDate === dateStr
-      ? monthlyLogScheduleCellSelection.column
-      : monthlyLogPendingScheduleColumnByDate[dateStr];
-    host.appendChild(buildMonthlyLogScheduleInputEl(dateStr, selectedColumn == null ? 0 : selectedColumn));
+    host.appendChild(buildMonthlyLogScheduleInputEl(dateStr, 0));
     return host;
+  }
+
+  function buildMonthlyLogDayChip(entry, dateStr) {
+    var item = entry.item;
+    var palette = entry.palette || MONTHLY_LOG_SCHEDULE_PALETTE[0];
+    var project = item.projectId ? findProjectById(item.projectId) : null;
+    var chip = document.createElement('div');
+    chip.className = 'monthly-log-item monthly-log-day-item';
+    chip.style.setProperty('--schedule-bg', project && project.color
+      ? 'color-mix(in srgb, ' + project.color + ' 16%, var(--bg-card))'
+      : palette.bg);
+    chip.style.setProperty('--schedule-border', project && project.color ? project.color : palette.border);
+    chip.style.setProperty('--schedule-text', project && project.color ? project.color : palette.text);
+    chip.dataset.itemId = item.id;
+    chip.dataset.occurrenceDate = dateStr;
+    chip.tabIndex = 0;
+    chip.setAttribute('role', 'button');
+    chip.setAttribute('aria-selected', 'false');
+    if (entry.duration > 1) {
+      chip.classList.add('is-multi-day');
+      chip.classList.toggle('continues-before', dateStr > entry.visibleStart || entry.continuesBefore);
+      chip.classList.toggle('continues-after', dateStr < entry.visibleEnd || entry.continuesAfter);
+    }
+    if (isOccurrenceCompleted(item, dateStr)) chip.classList.add('is-done');
+    chip.title = item.text + ' · ' + formatDotDate(item.date)
+      + (item.endDate && item.endDate !== item.date ? '–' + formatDotDate(item.endDate) : '')
+      + (project ? ' · ' + project.name : '');
+    chip.setAttribute('aria-label', item.text + ', ' + formatDotDate(item.date) + '부터 '
+      + formatDotDate(item.endDate || item.date) + '까지');
+    chip.appendChild(createMonthlyLogDragHandle(item, dateStr));
+    var title = document.createElement('span');
+    title.className = 'monthly-log-item-title';
+    if (item.instanceGroupId) title.classList.add('is-instance-linked');
+    title.textContent = item.text || '제목 없음';
+    chip.appendChild(title);
+    return chip;
   }
 
   function resolveMonthlyLogScheduleColumnAtPoint(el, x) {
@@ -22545,33 +22594,31 @@ if (typeBtn) {
     cancelMonthlyLogScheduleGridInteraction({ clearDraft:false });
   }
 
-  function buildMonthlyLogRow(dateStr, dayNum) {
+  function buildMonthlyLogRow(dateStr, dayNum, inCurrentMonth) {
     var d = parseLocalDate(dateStr);
     var dow = d.getDay();
     var annotation = getCalendarAnnotations(dateStr);
     var row = document.createElement('div');
     row.className = 'monthly-log-row';
     row.dataset.date = dateStr;
+    if (!inCurrentMonth) row.classList.add('is-outside-month');
     if (annotation.isPublicHoliday) row.classList.add('is-holiday');
     else if (dow === 0) row.classList.add('is-sun');
     else if (dow === 6) row.classList.add('is-sat');
-    // 주 구분선: 이 날짜가 (설정된 주 시작 요일 기준) 그 주의 첫 날일 때만, 매월 1일
-    // 행에는 붙이지 않는다(헤더와 중복 방지). 요일 정책은 state.calendarWeekStartsOn
-    // 하나로 미니 달력·Weekly 주 기준과 통일한다(getWeekStart).
-    if (dateStr === getWeekStart(dateStr, state.calendarWeekStartsOn) && dayNum !== 1) row.classList.add('is-week-start');
     if (dateStr === state.todayDate) row.classList.add('is-today');
-    // Monthly Log uses exact grid-cell and schedule-block selection; never outline a whole date row.
 
     var label = document.createElement('div');
     label.className = 'monthly-log-row-label';
-    label.title = 'Ctrl + 마우스 휠: 이 날짜 칸 높이 조절';
     var dayEl = document.createElement('span');
-    dayEl.textContent = String(dayNum).padStart(2, '0');
-    var weekdayEl = document.createElement('span');
-    weekdayEl.className = 'monthly-log-row-weekday';
-    weekdayEl.textContent = annotation.holidayName ? annotation.holidayName : WEEKDAY_KO[dow];
+    dayEl.className = 'monthly-log-day-num';
+    dayEl.textContent = String(dayNum);
     label.appendChild(dayEl);
-    label.appendChild(weekdayEl);
+    if (annotation.isPublicHoliday && annotation.holidayName) {
+      var holidayEl = document.createElement('span');
+      holidayEl.className = 'monthly-log-row-weekday';
+      holidayEl.textContent = annotation.holidayName;
+      label.appendChild(holidayEl);
+    }
     if (annotation.lunarVisible) {
       var lunarEl = document.createElement('span');
       lunarEl.className = 'monthly-log-row-lunar';
@@ -22581,42 +22628,78 @@ if (typeBtn) {
     row.appendChild(label);
 
     // Monthly Log 달력 본문에는 일정만 표시한다. 날짜별 일반 할 일/메모는 오른쪽
-    // '이번 달 할 일' 패널과 Today/Weekly에서 확인하고, 여기서는 기간과 겹침을 한눈에
-    // 읽을 수 있는 세로 블록 그리드만 렌더한다.
-    row.appendChild(buildMonthlyLogScheduleGrid(dateStr));
+    // '이번 달 할 일' 패널과 Today/Weekly에서 확인한다(할 일/메모 보기 필터는 후속 단계).
+    row.appendChild(buildMonthlyLogDayBody(dateStr));
 
     return row;
   }
 
-  // ---------------------------------------------------------------------
-  // Calendar 날짜 행 직접 입력 -- 행마다 항상 존재하는 인라인 입력(런타임에 "+" 버튼으로
-  // 열고 닫는 방식이 아니다). 클릭/포커스/타이핑은 전부 #monthly-log-rows 위임
-  // (handleMonthlyLogRowsClick/Keydown/FocusIn/FocusOut)이 처리하므로 행마다 개별
-  // 리스너를 달지 않는다. createItem()을 그대로 재사용해 Daily/Weekly와 즉시 동기화된다.
-  // ---------------------------------------------------------------------
-  // 날짜별로 마지막에 고른 종류를 기억해(세션 한정, 저장 안 함) Enter로 새 항목을 만든
+  // 7열 × 5~6주 그리드. 주 시작 요일은 state.calendarWeekStartsOn(미니 달력·Weekly와
+  // 동일 정책)을 따르고, 이전·다음 달 날짜도 회색 실제 셀로 그려 클릭·드롭을 허용한다.
+  function buildMonthlyLogWeekStarts() {
+    var monthStart = parseLocalDate(state.monthlyLogViewMonth);
+    var year = monthStart.getFullYear();
+    var month = monthStart.getMonth();
+    var firstDate = formatLocalDate(new Date(year, month, 1));
+    var lastDate = formatLocalDate(new Date(year, month, daysInMonthFromParts(year, month)));
+    var cursor = getWeekStart(firstDate, state.calendarWeekStartsOn);
+    var starts = [];
+    while (cursor <= lastDate && starts.length < 6) {
+      starts.push(cursor);
+      cursor = addCalendarDays(cursor, 7);
+    }
+    // 2월이 정확히 4주에 들어맞는 해가 있어도 달마다 화면 높이가 흔들리지 않도록
+    // 최소 5주를 유지한다(모든 주 행 동일 높이 원칙의 연장).
+    while (starts.length < 5) {
+      starts.push(cursor);
+      cursor = addCalendarDays(cursor, 7);
+    }
+    return { starts: starts, monthKey: state.monthlyLogViewMonth.slice(0, 7) };
+  }
+
+  function buildMonthlyLogWeekdayHead() {
+    var head = document.createElement('div');
+    head.className = 'monthly-log-weekday-head';
+    var startsOn = state.calendarWeekStartsOn === 1 ? 1 : 0;
+    for (var i = 0; i < 7; i++) {
+      var dow = (startsOn + i) % 7;
+      var cell = document.createElement('span');
+      cell.className = 'monthly-log-weekday-cell';
+      if (dow === 0) cell.classList.add('is-sun');
+      else if (dow === 6) cell.classList.add('is-sat');
+      cell.textContent = WEEKDAY_KO[dow];
+      head.appendChild(cell);
+    }
+    return head;
+  }
+
   function renderMonthlyLogRows() {
     var container = document.getElementById('monthly-log-rows');
     if (!container) return;
     monthlyLogScheduleGridPlan = buildMonthlyLogScheduleGridPlan();
-    var monthStart = parseLocalDate(state.monthlyLogViewMonth);
-    var year = monthStart.getFullYear();
-    var month = monthStart.getMonth();
-    var total = daysInMonthFromParts(year, month);
+    var layout = buildMonthlyLogWeekStarts();
     var frag = document.createDocumentFragment();
-    for (var day = 1; day <= total; day++) {
-      frag.appendChild(buildMonthlyLogRow(formatLocalDate(new Date(year, month, day)), day));
-    }
+    frag.appendChild(buildMonthlyLogWeekdayHead());
+    layout.starts.forEach(function (weekStart) {
+      var weekRow = document.createElement('div');
+      weekRow.className = 'monthly-log-week-row';
+      weekRow.dataset.weekStart = weekStart;
+      for (var i = 0; i < 7; i++) {
+        var dateStr = addCalendarDays(weekStart, i);
+        var cellDate = parseLocalDate(dateStr);
+        weekRow.appendChild(buildMonthlyLogRow(
+          dateStr,
+          cellDate.getDate(),
+          dateStr.slice(0, 7) === layout.monthKey
+        ));
+      }
+      frag.appendChild(weekRow);
+    });
     container.replaceChildren(frag);
-    requestAnimationFrame(positionMonthlyLogScheduleLabels);
     // 행 자체를 통째로 새로 만들었으므로, 확정된 날짜 범위(state.selectedDateRange)가
     // 있다면 새 DOM에도 다시 클래스를 입혀야 한다(미니 달력의 renderCalendarRangeSelection과
     // 같은 필요성).
     renderMonthlyLogRangeSelection();
-    requestAnimationFrame(function () {
-      positionMonthlyLogScheduleLabels();
-      renderMonthlyLogScheduleDraftSelection(false);
-    });
   }
 
   function renderMonthlyLogHeader() {
@@ -23174,14 +23257,16 @@ if (typeBtn) {
       }
       return;
     }
-    // 격자와 격자 입력은 자체 포인터 로직이 처리한다. 행 전체 날짜 선택/입력으로
-    // 새지 않게 여기서 종료한다.
-    if (e.target.closest('.monthly-log-schedule-grid-host')) return;
-    var row = e.target.closest('.monthly-log-row');
+    // 인라인 입력 자체를 누른 경우는 입력이 직접 처리한다.
+    if (e.target.closest('.monthly-log-inline-add')) return;
+    // 날짜 칸의 빈 곳을 누르면 그 날짜의 인라인 입력을 연다(v1: 18칸 격자 드래그로
+    // 입력을 열던 흐름을 대체한다). 날짜 숫자는 날짜 범위 선택이 담당한다.
+    var row = e.target.closest('.monthly-log-row[data-date]');
     if (row && !e.target.closest('.monthly-log-row-label')) {
       clearMonthlyLogScheduleDraftSelection();
       clearItemSelection();
       markLastActiveListDate(row.dataset.date);
+      focusMonthlyLogRowInput(row.dataset.date);
     }
   }
   function handleMonthlyLogRowsKeydown(e) {

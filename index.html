@@ -1530,12 +1530,11 @@ body.desc-block-dnd-active .desc-block-add{
 .monthly-log-body::-webkit-scrollbar{width:9px}
 .monthly-log-body::-webkit-scrollbar-track{background:var(--scrollbar-track,transparent)}
 .monthly-log-body::-webkit-scrollbar-thumb{background:var(--scrollbar-thumb);border-radius:99px}
-.monthly-log-rows{display:flex;flex-direction:column;position:relative}
+.monthly-log-rows{display:flex;flex-direction:column;position:relative;padding:0 24px 20px}
 /* 날짜 행: 왼쪽 날짜·요일(고정 폭) + 오른쪽 압축 항목 목록. 종이 Monthly Log의 가로줄을
    기존 --line 선 굵기로 재현한다. min-height로 "읽을 수 있는 최소 높이"를 보장한다. */
-.monthly-log-row{display:flex;align-items:stretch;gap:10px;min-height:38px;height:38px;padding:0 32px;border-bottom:1px solid var(--line);position:relative}
+.monthly-log-row{display:flex;flex-direction:column;gap:2px;min-width:0;min-height:0;padding:3px 4px 2px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);position:relative;overflow:hidden}
 /* 일요일 행 위쪽의 조금 더 굵은 주 구분선 -- 1일 행에는 붙이지 않는다(JS에서 판정). */
-.monthly-log-row.is-week-start{border-top:2px solid var(--line2)}
 .monthly-log-row.is-today{background:rgba(var(--lav-rgb),.08)}
 .monthly-log-row.is-selected-date{box-shadow:inset 0 0 0 2px var(--lav)}
 .monthly-log-row.is-selected-date .monthly-log-row-label{color:var(--lav)}
@@ -1547,14 +1546,14 @@ body.desc-block-dnd-active .desc-block-add{
    range-selected-start/-middle/-end/-single 클래스를 그대로 쓰고 CSS만 바꾼다. */
 .monthly-log-row.range-preview .monthly-log-row-label,.monthly-log-row.range-selected-start .monthly-log-row-label,.monthly-log-row.range-selected-middle .monthly-log-row-label,.monthly-log-row.range-selected-end .monthly-log-row-label,.monthly-log-row.range-selected-single .monthly-log-row-label{color:var(--lav);background:var(--lav-soft);border-radius:7px}
 .monthly-log-row.range-selected-start .monthly-log-row-label,.monthly-log-row.range-selected-end .monthly-log-row-label,.monthly-log-row.range-selected-single .monthly-log-row-label{font-weight:800;box-shadow:inset 0 0 0 2px var(--lav)}
-.monthly-log-row-label{flex:0 0 48px;min-width:0;position:relative;display:flex;align-items:center;gap:4px;font-size:13px;font-weight:700;color:var(--ink);padding-top:0;font-variant-numeric:tabular-nums;cursor:pointer;user-select:none;z-index:45}
+.monthly-log-row-label{flex:0 0 auto;min-width:0;position:relative;display:flex;align-items:center;gap:4px;height:18px;font-size:12px;font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums;cursor:pointer;user-select:none;z-index:45;overflow:hidden}
 .monthly-log-row-weekday{font-size:12px;font-weight:700;color:var(--muted)}
 .monthly-log-row.is-sun .monthly-log-row-label{color:var(--sun)}
 .monthly-log-row.is-sun .monthly-log-row-weekday{color:var(--sun)}
 .monthly-log-row.is-sat .monthly-log-row-label{color:var(--sat)}
 .monthly-log-row.is-sat .monthly-log-row-weekday{color:var(--sat)}
-.monthly-log-row-lanes{flex:1 1 auto;min-width:0;display:grid;grid-template-columns:minmax(0,1fr);gap:0;align-items:start}
-.monthly-log-row-items{min-width:0;display:flex;flex-wrap:wrap;align-items:center;align-content:flex-start;gap:5px 12px;min-height:24px}
+.monthly-log-row-lanes{flex:1 1 auto;min-width:0;min-height:0;display:flex;flex-direction:column;position:relative}
+.monthly-log-row-items{min-width:0;display:flex;flex-direction:column;align-items:stretch;gap:2px}
 .monthly-log-item{display:inline-flex;align-items:center;gap:5px;max-width:240px;cursor:pointer;border-radius:6px;padding:2px 4px;margin:-2px -4px;font-size:12.5px;font-weight:650;color:var(--ink);position:relative}
 .monthly-log-item.divider-item-row{flex:1 0 100%;max-width:none;cursor:default}
 .monthly-log-item:hover,.monthly-log-item:focus-visible{background:var(--bg-hover);outline:none}
@@ -1605,8 +1604,8 @@ body.desc-block-dnd-active .desc-block-add{
 .monthly-log-schedule-segment:hover .monthly-log-schedule-drag,.monthly-log-schedule-segment:focus-within .monthly-log-schedule-drag,.monthly-log-schedule-segment.is-selected .monthly-log-schedule-drag{opacity:1!important}
 .monthly-log-schedule-overflow{position:absolute;right:4px;top:50%;transform:translateY(-50%);min-width:25px;height:20px;padding:0 6px;border:1px solid rgba(var(--lav-rgb),.32);border-radius:4px;background:var(--bg-card);color:var(--lav);font-size:10px;font-weight:800;z-index:30}
 .monthly-log-schedule-drop-lane{position:absolute!important;inset:0!important;min-height:0!important;opacity:0!important;pointer-events:none!important;overflow:hidden!important}
-.monthly-log-schedule-grid-host.drop-target-schedule-grid::after{content:"";position:absolute;top:0;bottom:0;left:calc(var(--schedule-drop-column)*100%/18);width:calc(100%/18);background:rgba(var(--lav-rgb),.12);box-shadow:inset 0 0 0 2px rgba(var(--lav-rgb),.5);pointer-events:none;z-index:40}
-.monthly-log-schedule-inline-add{position:absolute;left:calc((var(--schedule-input-column) + .06)*100%/18);top:50%;transform:translateY(-50%);width:min(250px,calc(100% - ((var(--schedule-input-column) + .06)*100%/18) - 6px));height:32px;padding:0 8px;border:1px solid rgba(var(--lav-rgb),.52);border-radius:6px;background:var(--bg-card);box-shadow:0 5px 16px var(--overlay-shadow);opacity:0;pointer-events:none;z-index:95}
+.monthly-log-schedule-grid-host.drop-target-schedule-grid::after{content:"";position:absolute;inset:0;background:rgba(var(--lav-rgb),.12);box-shadow:inset 0 0 0 2px rgba(var(--lav-rgb),.5);pointer-events:none;z-index:40}
+.monthly-log-schedule-inline-add{position:absolute;left:2px;right:2px;bottom:2px;padding:0 4px;height:20px;border:1px solid rgba(var(--lav-rgb),.52);border-radius:5px;background:var(--bg-card);box-shadow:0 4px 12px var(--overlay-shadow);opacity:0;pointer-events:none;z-index:95}
 .monthly-log-schedule-grid-host.is-schedule-input-active .monthly-log-schedule-inline-add,.monthly-log-schedule-inline-add.is-active{opacity:1;pointer-events:auto}
 .monthly-log-schedule-inline-add .monthly-log-row-input{width:100%;height:30px;border:0;background:transparent;outline:0;font-size:12px}
 .monthly-log-row-input{flex:1 1 auto;min-width:60px}
@@ -2211,36 +2210,6 @@ body.dnd-active .group-drag{cursor:grabbing}
 .monthly-log-schedule-segment.is-selected{
   filter:none!important;
 }
-/* The create editor stays inside the selected grid cell instead of covering neighboring columns. */
-.monthly-log-schedule-inline-add{
-  left:calc(var(--schedule-input-column)*100%/18 + 1px)!important;
-  top:1px!important;
-  transform:none!important;
-  width:calc(100%/18 - 2px)!important;
-  max-width:calc(100%/18 - 2px)!important;
-  height:calc(100% - 2px)!important;
-  min-height:0!important;
-  padding:2px!important;
-  border-radius:0!important;
-  box-shadow:none!important;
-  overflow:hidden!important;
-  box-sizing:border-box!important;
-}
-.monthly-log-schedule-inline-add .monthly-log-row-input{
-  width:100%!important;
-  height:100%!important;
-  min-width:0!important;
-  padding:2px!important;
-  box-sizing:border-box!important;
-  font-size:10px!important;
-  line-height:1.05!important;
-  text-align:center!important;
-  overflow:hidden!important;
-}
-.monthly-log-schedule-inline-add .monthly-log-row-input::placeholder{
-  color:var(--faint);
-  font-size:9px;
-}
 
 
 
@@ -2250,21 +2219,6 @@ body.dnd-active .group-drag{cursor:grabbing}
 }
 #monthly-log-rows .monthly-log-row.is-selected-date .monthly-log-row-label{
   color:inherit!important;
-}
-.monthly-log-schedule-inline-add{
-  width:calc(var(--schedule-input-span,1)*100%/18 - 2px)!important;
-  max-width:calc(var(--schedule-input-span,1)*100%/18 - 2px)!important;
-  z-index:110!important;
-  background:rgba(255,255,255,.96)!important;
-}
-.monthly-log-schedule-inline-add .monthly-log-row-input{
-  padding:4px 8px!important;
-  font-size:11px!important;
-  text-align:center!important;
-  white-space:nowrap!important;
-}
-.monthly-log-schedule-inline-add .monthly-log-row-input::placeholder{
-  font-size:11px!important;
 }
 .monthly-log-schedule-segment .monthly-log-schedule-drag{
   opacity:0!important;
@@ -2351,6 +2305,34 @@ body.dnd-active .group-drag{cursor:grabbing}
 .system-banner-btn:hover{background:rgba(255,255,255,.45)}
 .system-banner-info .system-banner-btn{background:var(--bg-card);color:var(--ink);border:1px solid var(--line2)}
 .system-banner-info .system-banner-btn:hover{background:var(--bg-hover)}
+/* ==================== Monthly Calendar v1: 7열 x 5~6주 그리드 ==================== */
+.monthly-log-weekday-head{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));border-bottom:1px solid var(--line2);position:sticky;top:0;z-index:40;background:var(--bg-card)}
+.monthly-log-weekday-cell{padding:6px 0 5px;text-align:center;font-size:11.5px;font-weight:750;color:var(--muted);letter-spacing:.02em}
+.monthly-log-weekday-cell.is-sun{color:var(--sun)}
+.monthly-log-weekday-cell.is-sat{color:var(--sat)}
+.monthly-log-week-row{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));height:104px;min-height:104px;border-left:1px solid var(--line)}
+.monthly-log-row.is-outside-month{background:color-mix(in srgb,var(--bg-input) 55%,transparent)}
+.monthly-log-row.is-outside-month .monthly-log-row-label{color:var(--text-disabled)}
+.monthly-log-row.is-outside-month .monthly-log-day-item{opacity:.62}
+.monthly-log-row.is-today .monthly-log-day-num{background:var(--lav);color:#fff;border-radius:99px}
+.monthly-log-day-num{display:inline-grid;place-items:center;min-width:18px;height:18px;padding:0 4px;line-height:1}
+.monthly-log-row-lunar{font-size:9.5px;font-weight:650;color:var(--muted)}
+.monthly-log-day-slots{flex:0 0 auto;height:60px;overflow:hidden}
+.monthly-log-day-item{display:flex!important;align-items:center;gap:3px;width:100%;max-width:none!important;height:18px;margin:0!important;padding:0 4px!important;border:1px solid var(--schedule-border);border-radius:4px;background:var(--schedule-bg);color:var(--schedule-text);font-size:11px;font-weight:700;line-height:1;overflow:hidden;box-sizing:border-box}
+.monthly-log-day-item .monthly-log-item-title{min-width:0;flex:1 1 auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.monthly-log-day-item.is-multi-day.continues-before{border-left-style:dashed;border-top-left-radius:0;border-bottom-left-radius:0}
+.monthly-log-day-item.is-multi-day.continues-after{border-right-style:dashed;border-top-right-radius:0;border-bottom-right-radius:0}
+.monthly-log-day-item.is-done{opacity:.55}
+.monthly-log-day-item.is-done .monthly-log-item-title{text-decoration:line-through}
+.monthly-log-day-item.is-selected{outline:2px solid var(--lav);outline-offset:-1px}
+.monthly-log-day-item .monthly-log-drag{width:9px;flex:none}
+.monthly-log-day-overflow{flex:0 0 auto;height:14px;padding:0 4px;font-size:10px;font-weight:750;color:transparent;line-height:14px;overflow:hidden;user-select:none}
+.monthly-log-day-overflow.has-overflow{color:var(--lav);cursor:default}
+.monthly-log-body{overflow-x:hidden}
+.monthly-log-schedule-grid-host{display:flex!important;flex-direction:column;overflow:hidden!important}
+.monthly-log-day-slots.monthly-log-schedule-drop-lane{position:static!important;inset:auto!important;opacity:1!important;pointer-events:auto!important}
+.monthly-log-day-item.monthly-log-item:hover,.monthly-log-day-item.monthly-log-item:focus-visible{background:var(--schedule-bg);filter:brightness(.97);outline:none}
+.monthly-log-item.monthly-log-day-item.is-selected{background:var(--schedule-bg);box-shadow:none;outline:2px solid var(--lav);outline-offset:-1px}
 </style>
   <link rel="stylesheet" href="./dotdot-extensions.css" />
 </head>
