@@ -1477,57 +1477,6 @@ endDateDraftActive: false,
       return it.date <= date && date <= end;
     });
   }
-  // Monthly Calendar v1: 세로 구분선을 제거해 칸은 항상 1개다. lane 관련 저장 필드
-  // (monthlyLogLaneIndexByDate 등)는 다음 단계에서 정리한다.
-  function getMonthlyLogLaneCount() {
-    return 1;
-  }
-
-
-
-  function getMonthlyLogLaneAt(item, date) {
-    if (!item || !date) return 0;
-    var laneCount = getMonthlyLogLaneCount();
-    var lane = 0;
-    if (item.monthlyLogLaneIndexByDate && typeof item.monthlyLogLaneIndexByDate === 'object') {
-      lane = Number(item.monthlyLogLaneIndexByDate[date]) || 0;
-    } else if (item.monthlyLogLaneByDate && typeof item.monthlyLogLaneByDate === 'object' && item.monthlyLogLaneByDate[date] === 'right') {
-      lane = 1;
-    }
-    return Math.max(0, Math.min(laneCount - 1, lane));
-  }
-
-  function setMonthlyLogLaneAt(item, date, lane) {
-    if (!item || !date) return false;
-    var laneCount = getMonthlyLogLaneCount();
-    var nextLane = Math.max(0, Math.min(laneCount - 1, Number(lane) || 0));
-    var currentLane = getMonthlyLogLaneAt(item, date);
-    if (currentLane === nextLane) return false;
-    if (!item.monthlyLogLaneIndexByDate || typeof item.monthlyLogLaneIndexByDate !== 'object') item.monthlyLogLaneIndexByDate = {};
-    if (nextLane > 0) item.monthlyLogLaneIndexByDate[date] = nextLane;
-    else delete item.monthlyLogLaneIndexByDate[date];
-    if (!Object.keys(item.monthlyLogLaneIndexByDate).length) item.monthlyLogLaneIndexByDate = null;
-    // 새 구조로 쓴 날짜는 구버전 right 플래그를 제거한다.
-    if (item.monthlyLogLaneByDate && typeof item.monthlyLogLaneByDate === 'object') {
-      delete item.monthlyLogLaneByDate[date];
-      if (!Object.keys(item.monthlyLogLaneByDate).length) item.monthlyLogLaneByDate = null;
-    }
-    item.updatedAt = Date.now();
-    return true;
-  }
-
-  function normalizeMonthlyLogLaneIndexes() {
-    var maxLane = getMonthlyLogLaneCount() - 1;
-    state.items.forEach(function (item) {
-      if (!item.monthlyLogLaneIndexByDate || typeof item.monthlyLogLaneIndexByDate !== 'object') return;
-      Object.keys(item.monthlyLogLaneIndexByDate).forEach(function (date) {
-        var value = Math.max(0, Math.min(maxLane, Number(item.monthlyLogLaneIndexByDate[date]) || 0));
-        if (value > 0) item.monthlyLogLaneIndexByDate[date] = value;
-        else delete item.monthlyLogLaneIndexByDate[date];
-      });
-      if (!Object.keys(item.monthlyLogLaneIndexByDate).length) item.monthlyLogLaneIndexByDate = null;
-    });
-  }
 
   function getTrashItems() {
     return state.items.filter(function (it) { return !!it.deletedAt; });
@@ -2031,7 +1980,7 @@ endDateDraftActive: false,
 
   // ---------------------------------------------------------------------
   // 그룹 헤더 UI -- Daily/Weekly/Monthly Log가 공유하는 단일 빌더. buildRowFn(item)만
-  // 화면마다 다르게 넘기면(createDailyItemRow/createWeeklyItemRow/buildMonthlyLogItemEl)
+  // 화면마다 다르게 넘기면(createDailyItemRow/createWeeklyItemRow 등)
   // 나머지 그룹 렌더 로직(순서·접힘·중첩 없음)은 한 곳에만 구현된다.
   // ---------------------------------------------------------------------
   // 최종 감사(2026-07-27) 8: context/sourceDate는 헤더의 드래그 핸들이 onDragHandlePointerDown을
@@ -16693,11 +16642,7 @@ overContext: null,
     dragState.anchorRow.classList.contains('monthly-log-schedule-segment')
   ) {
     var sourceRow = dragState.anchorRow.closest('.monthly-log-row[data-date]');
-    var sourceLane = sourceRow && sourceRow.querySelector(
-      '.monthly-log-row-items[data-lane-index="' +
-      String(getMonthlyLogLaneAt(findItemById(dragState.anchorRow.dataset.itemId), dragState.sourceDate)) +
-      '"]'
-    );
+    var sourceLane = sourceRow && sourceRow.querySelector('.monthly-log-row-items');
     if (sourceLane) {
       initialParent = sourceLane;
       initialBefore = sourceLane.firstElementChild;
@@ -16948,28 +16893,8 @@ overContext: null,
     }
     if (!row) return null;
     var scheduleHost = row.querySelector(':scope > .monthly-log-schedule-grid-host');
-    if (scheduleHost) {
-      return scheduleHost.querySelector(':scope > .monthly-log-schedule-drop-lane');
-    }
-    var laneEls = Array.prototype.slice.call(row.querySelectorAll(':scope > .monthly-log-row-lanes > .monthly-log-row-items'));
-    if (!laneEls.length) return null;
-    var nearest = null;
-    var nearestDistance = Infinity;
-    laneEls.forEach(function (laneEl) {
-      var rect = laneEl.getBoundingClientRect();
-      if (x >= rect.left && x <= rect.right) {
-        nearest = laneEl;
-        nearestDistance = -1;
-        return;
-      }
-      if (nearestDistance < 0) return;
-      var distance = x < rect.left ? rect.left - x : x - rect.right;
-      if (distance < nearestDistance) {
-        nearestDistance = distance;
-        nearest = laneEl;
-      }
-    });
-    return nearest;
+    if (!scheduleHost) return null;
+    return scheduleHost.querySelector(':scope > .monthly-log-schedule-drop-lane');
   }
 
   function updateDropTarget(x, y) {
@@ -17015,7 +16940,6 @@ var calendarCell =
     clearCalendarDropHighlight();
 
     var targetContext, targetDate, targetList;
-    dragState.overLane = null;
     if (dailyDropList) {
       targetContext = 'daily'; targetDate = state.selectedDate; targetList = dailyDropList;
     } else if (weeklyUl) {
@@ -17030,7 +16954,6 @@ var calendarCell =
       var monthlyLogRowEl = monthlyLogRowItems.closest('.monthly-log-row[data-date]');
       if (!monthlyLogRowEl) { dragState.pointerCurrentlyValid = false; clearColumnHighlight(); return; }
       targetContext = 'monthly-log'; targetDate = monthlyLogRowEl.dataset.date; targetList = monthlyLogRowItems;
-      dragState.overLane = Number(monthlyLogRowItems.dataset.laneIndex) || 0;
       var scheduleGridHost = monthlyLogRowEl.querySelector('.monthly-log-schedule-grid-host');
       var scheduleColumn = scheduleGridHost ? resolveMonthlyLogScheduleSnappedColumnAtPoint(
         scheduleGridHost,
@@ -17272,11 +17195,8 @@ var calendarCell =
   // 바뀐 항목의 updatedAt)만 갱신한다(스펙: "이동"과 "순서 변경"은 서로 다른 연산).
   // dropPosition은 placeholder 로직이 항상 "이 항목 앞" 또는 "끝"만 계산하므로
   // 'before' | 'end' 두 가지만 쓴다.
-  function reorderItemsWithinDate(itemIds, date, overItemId, dropPosition, monthlyLogLane) {
-    var hasMonthlyLane = monthlyLogLane !== null && monthlyLogLane !== undefined;
-    var all = getItemsForDate(date).filter(function (it) {
-      return !hasMonthlyLane || getMonthlyLogLaneAt(it, date) === Number(monthlyLogLane);
-    }).sort(function (a, b) { return a.order - b.order; });
+  function reorderItemsWithinDate(itemIds, date, overItemId, dropPosition) {
+    var all = getItemsForDate(date).sort(function (a, b) { return a.order - b.order; });
     var movingSet = {};
     itemIds.forEach(function (id) { movingSet[id] = true; });
     var moving = all.filter(function (it) { return movingSet[it.id]; });
@@ -17609,7 +17529,6 @@ projectId: master.projectId || null,
     var rows = Array.prototype.slice.call(laneEl.querySelectorAll(':scope > [data-item-id]:not(.drag-source-hidden)'))
       .filter(function (row) { return !movingSet[row.dataset.itemId]; });
     var intent = {
-      lane: Number(laneEl.dataset.laneIndex) || 0,
       scheduleColumn: ds.monthlyScheduleSnappedColumn !== null && ds.monthlyScheduleSnappedColumn !== undefined
         ? clampMonthlyLogScheduleColumn(ds.monthlyScheduleSnappedColumn)
         : resolveMonthlyLogScheduleColumnAtPoint(laneEl.closest('.monthly-log-schedule-grid-host') || laneEl, x),
@@ -17644,23 +17563,11 @@ projectId: master.projectId || null,
   }
 
   function commitDrop(ds) {
-    // Monthly Log의 칸 이동은 선택한 항목에만 적용한다. 드롭 대상 날짜의 다른 항목은
-    // 커밋 전 칸을 스냅샷해 두고 마지막에 복원해, 반대쪽 카드가 대신 넘어가는 회귀를 막는다.
-    var monthlyLogLaneSnapshot = null;
-    if (ds && ds.overContext === 'monthly-log' && ds.overDate) {
-      var movingLaneIds = {};
-      (ds.draggedItemIds || []).forEach(function (id) { movingLaneIds[id] = true; });
-      monthlyLogLaneSnapshot = {};
-      getItemsForDate(ds.overDate).forEach(function (item) {
-        if (!movingLaneIds[item.id]) monthlyLogLaneSnapshot[item.id] = getMonthlyLogLaneAt(item, ds.overDate);
-      });
-    }
     // Monthly Log는 최종 포인터 위치를 우선하고, 좌표 판정이 불가능한 예외에만
     // placeholder의 실제 다음 항목을 fallback으로 사용한다.
     if (ds && ds.overContext === 'monthly-log') {
       var finalMonthlyIntent = resolveMonthlyLogDropIntentAtPoint(ds);
       if (finalMonthlyIntent) {
-        ds.overLane = finalMonthlyIntent.lane;
         ds.overScheduleColumn = finalMonthlyIntent.scheduleColumn;
         ds.overItemId = finalMonthlyIntent.overItemId;
         ds.dropPosition = finalMonthlyIntent.dropPosition;
@@ -17720,7 +17627,6 @@ projectId: master.projectId || null,
 
       if (ds.overContext === 'monthly-log') {
         movedRegularItems.forEach(function (item) {
-          setMonthlyLogLaneAt(item, ds.overDate, Number(ds.overLane) || 0);
           if (item.type === 'schedule' && ds.overScheduleColumn !== null && ds.overScheduleColumn !== undefined) {
             setMonthlyLogScheduleColumn(item, ds.overScheduleColumn);
           }
@@ -17731,8 +17637,7 @@ projectId: master.projectId || null,
         movedRegularItems.map(function (item) { return item.id; }),
         ds.overDate,
         ds.overItemId,
-        ds.dropPosition,
-        ds.overContext === 'monthly-log' ? (Number(ds.overLane) || 0) : null
+        ds.dropPosition
       );
 
       mutated = true;
@@ -17928,7 +17833,6 @@ projectId: master.projectId || null,
            */
           if (ds.overContext === 'monthly-log') {
             touched.forEach(function (item) {
-              setMonthlyLogLaneAt(item, ds.overDate, Number(ds.overLane) || 0);
               if (item.type === 'schedule' && ds.overScheduleColumn !== null && ds.overScheduleColumn !== undefined) {
                 setMonthlyLogScheduleColumn(item, ds.overScheduleColumn);
               }
@@ -17939,8 +17843,7 @@ projectId: master.projectId || null,
               ids,
               ds.overDate,
               ds.overItemId,
-              ds.dropPosition,
-              ds.overContext === 'monthly-log' ? (Number(ds.overLane) || 0) : null
+              ds.dropPosition
             );
             syncGroupMembershipAfterReorder(ids, ds.overDate);
           }
@@ -17986,7 +17889,6 @@ projectId: master.projectId || null,
 
         if (ds.overContext === 'monthly-log') {
           touched.forEach(function (item) {
-            if (setMonthlyLogLaneAt(item, ds.overDate, Number(ds.overLane) || 0)) classificationChanged = true;
             if (item && item.type === 'schedule' && ds.overScheduleColumn !== null && ds.overScheduleColumn !== undefined) {
               if (setMonthlyLogScheduleColumn(item, ds.overScheduleColumn)) classificationChanged = true;
             }
@@ -17996,8 +17898,7 @@ projectId: master.projectId || null,
           ids,
           ds.overDate,
           ds.overItemId,
-          ds.dropPosition,
-          ds.overContext === 'monthly-log' ? (Number(ds.overLane) || 0) : null
+          ds.dropPosition
         );
         var groupMembershipChanged = syncGroupMembershipAfterReorder(ids, ds.overDate);
 
@@ -18029,14 +17930,6 @@ projectId: master.projectId || null,
     state.rolloverExpanded = true;
   }
   } finally {
-    if (monthlyLogLaneSnapshot && ds && ds.overDate) {
-      var restoredMonthlyLogLane = false;
-      Object.keys(monthlyLogLaneSnapshot).forEach(function (id) {
-        var item = findItemById(id);
-        if (item && setMonthlyLogLaneAt(item, ds.overDate, monthlyLogLaneSnapshot[id])) restoredMonthlyLogLane = true;
-      });
-      if (restoredMonthlyLogLane) saveItems();
-    }
     cleanupDragDom(ds);
     dragState = null;
     renderApp();
@@ -21655,20 +21548,6 @@ if (typeBtn) {
   // 날짜당 표시 개수 제한은 없다(모든 항목을 표시, 아래 buildMonthlyLogRow 참고).
   // ---------------------------------------------------------------------
 
-  // Monthly Log 전용 구분선 행. 그룹 카운트에서는 제외되지만, 드래그와 칸 이동은
-  // 일반 항목과 같은 occurrence 기준으로 동작한다.
-  function buildMonthlyLogDividerRow(item, dateStr) {
-    var el = document.createElement('div');
-    el.className = 'monthly-log-item divider-item-row';
-    el.dataset.itemId = item.id;
-    el.dataset.occurrenceDate = dateStr;
-    el.dataset.monthlyLogLane = String(getMonthlyLogLaneAt(item, dateStr));
-    el.setAttribute('aria-selected', 'false');
-    el.appendChild(createMonthlyLogDragHandle(item, dateStr));
-    el.appendChild(buildDividerLine());
-    return el;
-  }
-
   // Monthly Log 일정 전용 눈금 그리드. 날짜는 세로축, 일정은 가로 눈금의 한 열을
   // 차지하는 세로 색상 블록으로 표현한다. 다일 일정은 날짜별로 같은 제목을 반복하지
   // 않고, 전체 기간의 중앙에 세로 제목을 딱 한 번만 표시한다. 일반 할 일/메모/구분선은
@@ -22287,7 +22166,6 @@ if (typeBtn) {
       segment.dataset.scheduleLinkKey = scheduleLinkKey;
       segment.classList.add('is-linked-schedule');
     }
-    segment.dataset.monthlyLogLane = '0';
     segment.style.gridColumn = String(entry.column + 1);
     segment.style.setProperty('--schedule-duration-days', String(entry.visibleDays));
     segment.tabIndex = 0;
@@ -22381,7 +22259,6 @@ if (typeBtn) {
     host.appendChild(grid);
     var dropLane = document.createElement('div');
     dropLane.className = 'monthly-log-row-items monthly-log-lane monthly-log-schedule-drop-lane';
-    dropLane.dataset.laneIndex = '0';
     dropLane.dataset.date = dateStr;
     host.appendChild(dropLane);
 
@@ -22668,48 +22545,6 @@ if (typeBtn) {
     cancelMonthlyLogScheduleGridInteraction({ clearDraft:false });
   }
 
-  function appendMonthlyLogItemMenuButton(parent, item) {
-    var menuBtn = document.createElement('button');
-    menuBtn.type = 'button';
-    menuBtn.className = 'arrow monthly-log-item-menu-btn';
-    menuBtn.dataset.action = 'monthly-log-item-menu';
-    menuBtn.dataset.itemId = item.id;
-    menuBtn.setAttribute('aria-haspopup', 'menu');
-    menuBtn.setAttribute('aria-expanded', 'false');
-    menuBtn.setAttribute('aria-label', '항목 메뉴: ' + item.text);
-    menuBtn.textContent = '→';
-    menuBtn.addEventListener('click', function (e) {
-      e.stopPropagation();
-      if (activeMoveMenu && activeMoveMenu.anchorItemId === item.id) { closeMoveDateMenu(); return; }
-      openMoveDateMenu([item.id], menuBtn);
-    });
-    parent.appendChild(menuBtn);
-  }
-
-  function buildMonthlyLogItemEl(item, dateStr) {
-    if (item.type === 'divider') return buildMonthlyLogDividerRow(item, dateStr);
-    var el = document.createElement('div');
-    el.className = 'monthly-log-item';
-    el.dataset.itemId = item.id;
-    el.dataset.occurrenceDate = dateStr;
-    el.dataset.monthlyLogLane = String(getMonthlyLogLaneAt(item, dateStr));
-    el.tabIndex = 0;
-    el.setAttribute('role', 'button');
-    el.setAttribute('aria-selected', 'false');
-    if (isOccurrenceCompleted(item, dateStr)) el.classList.add('is-done');
-    el.appendChild(createMonthlyLogDragHandle(item, dateStr));
-    el.appendChild(checkboxButton(item, dateStr));
-    el.appendChild(typeMenuButton(item, 'monthly-log-item-type-btn', dateStr));
-    var title = document.createElement('span');
-    title.className = 'monthly-log-item-title';
-    if (item.instanceGroupId) title.classList.add('is-instance-linked');
-    title.textContent = item.text;
-    title.title = item.text;
-    el.appendChild(title);
-    appendMonthlyLogItemMenuButton(el, item);
-    return el;
-  }
-
   function buildMonthlyLogRow(dateStr, dayNum) {
     var d = parseLocalDate(dateStr);
     var dow = d.getDay();
@@ -22760,50 +22595,6 @@ if (typeBtn) {
   // 리스너를 달지 않는다. createItem()을 그대로 재사용해 Daily/Weekly와 즉시 동기화된다.
   // ---------------------------------------------------------------------
   // 날짜별로 마지막에 고른 종류를 기억해(세션 한정, 저장 안 함) Enter로 새 항목을 만든
-  // 뒤 같은 행에서 같은 종류로 계속 입력할 수 있게 한다. 처음 만드는 행은 기본 schedule.
-  var monthlyLogRowLastType = {};
-
-  function buildMonthlyLogRowInputEl(dateStr) {
-    var wrap = document.createElement('span');
-    wrap.className = 'monthly-log-inline-add';
-    wrap.dataset.date = dateStr;
-
-    var mode = monthlyLogRowLastType[dateStr] || 'schedule';
-
-    var modesWrap = document.createElement('span');
-    modesWrap.className = 'week-inline-modes';
-    modesWrap.setAttribute('role', 'group');
-    modesWrap.setAttribute('aria-label', '입력 종류');
-
-    WEEKLY_INLINE_MODES.forEach(function (cfg) {
-      var btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = 'week-inline-mode';
-      btn.dataset.action = 'monthly-row-mode';
-      btn.dataset.type = cfg.type;
-      btn.dataset.date = dateStr;
-      btn.setAttribute('aria-pressed', String(cfg.type === mode));
-      btn.setAttribute('aria-label', cfg.label);
-      var icon = document.createElement('span');
-      icon.className = cfg.icon;
-      btn.appendChild(icon);
-      modesWrap.appendChild(btn);
-    });
-
-    var input = document.createElement('input');
-    input.type = 'text';
-    input.className = 'week-inline-input monthly-log-row-input';
-    input.dataset.date = dateStr;
-    input.dataset.mode = mode;
-    input.autocomplete = 'off';
-    input.setAttribute('aria-label', formatAnnounceDate(dateStr) + ' 항목 추가');
-    input.addEventListener('focus', function () { markLastActiveListDate(dateStr); }); // 3단계: Weekly 인라인 입력과 같은 패턴.
-
-    wrap.appendChild(modesWrap);
-    wrap.appendChild(input);
-    return wrap;
-  }
-
   function renderMonthlyLogRows() {
     var container = document.getElementById('monthly-log-rows');
     if (!container) return;
@@ -23335,14 +23126,6 @@ if (typeBtn) {
   function handleMonthlyLogRowsClick(e) {
     if (suppressNextItemGutterClick) { suppressNextItemGutterClick = false; return; }
     if (e.target.closest('.group-header')) return;
-    var modeBtn = e.target.closest('[data-action="monthly-row-mode"]');
-    if (modeBtn) {
-      var wrap = modeBtn.closest('.monthly-log-inline-add');
-      var input = wrap ? wrap.querySelector('.monthly-log-row-input') : null;
-      monthlyLogRowLastType[modeBtn.dataset.date] = modeBtn.dataset.type;
-      if (input) { input.dataset.mode = modeBtn.dataset.type; input.focus(); }
-      return;
-    }
     var checkboxBtn = e.target.closest('[data-action="toggle-complete"]');
     if (checkboxBtn) { e.stopPropagation(); toggleItemCompleted(checkboxBtn.dataset.itemId, checkboxBtn.dataset.occurrenceDate); return; }
     var typeBtn = e.target.closest('[data-action="type-menu"]');
@@ -23498,8 +23281,8 @@ if (typeBtn) {
     });
     wireMonthlyLogTitleWheel();
     wireMonthlySplitDivider();
-    if (!window._monthlyLogLaneResizeWired) {
-      window._monthlyLogLaneResizeWired = true;
+    if (!window._monthlyLogResizeWired) {
+      window._monthlyLogResizeWired = true;
       window.addEventListener('resize', function () {
         if (state.currentView === 'calendar') positionMonthlyLogScheduleLabels();
       });
