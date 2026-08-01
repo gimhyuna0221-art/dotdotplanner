@@ -127,6 +127,11 @@
   // 'monthlyLogRowHeights'/'monthlyLogScheduleCellWidth' 키는 더 이상 읽지도 쓰지도
   // 않는다(기존 저장값은 롤백을 위해 그대로 남겨 둔다).
   var MONTHLY_LOG_HIDE_COMPLETED_KEY = STORAGE_PREFIX + 'monthlyLogHideCompleted';
+  // 요구사항: Monthly 달력 본체는 기본으로 일정만 보여준다(끌 수 없음). 할 일/메모는
+  // 각각 사용자가 켰을 때만 그 날짜 칸에 함께 나타난다 -- 우측 "이달의 할 일" 패널과는
+  // 무관한 별도 표시 설정이다.
+  var MONTHLY_LOG_SHOW_TASKS_KEY = STORAGE_PREFIX + 'monthlyLogShowTasks';
+  var MONTHLY_LOG_SHOW_MEMOS_KEY = STORAGE_PREFIX + 'monthlyLogShowMemos';
   // Daily/Weekly의 완료 항목 숨기기는 각 보기의 표시 상태만 바꾸며 항목 데이터는 유지한다.
   var DAILY_HIDE_COMPLETED_KEY = STORAGE_PREFIX + 'dailyHideCompleted';
   var WEEKLY_HIDE_COMPLETED_KEY = STORAGE_PREFIX + 'weeklyHideCompleted';
@@ -220,6 +225,8 @@
     // 달력↔이번 달 할 일 패널의 경계는 넓은 화면에서 항상 표시한다.
     monthlySplitDividerVisible: true,
     monthlyLogHideCompleted: false,
+    monthlyLogShowTasks: false,
+    monthlyLogShowMemos: false,
     // 빠른 입력 기본 유형과 자동 이월 사용 여부. 기존 사용자는 각각 task/true로 유지된다.
     defaultInputMode: 'task',
     autoRolloverEnabled: true,
@@ -954,6 +961,8 @@ endDateDraftActive: false,
     var dailyHideCompleted = safeGet(DAILY_HIDE_COMPLETED_KEY) === 'true';
     var weeklyHideCompleted = safeGet(WEEKLY_HIDE_COMPLETED_KEY) === 'true';
     var monthlyLogHideCompleted = safeGet(MONTHLY_LOG_HIDE_COMPLETED_KEY) === 'true';
+    var monthlyLogShowTasks = safeGet(MONTHLY_LOG_SHOW_TASKS_KEY) === 'true';
+    var monthlyLogShowMemos = safeGet(MONTHLY_LOG_SHOW_MEMOS_KEY) === 'true';
     var rawDefaultInputMode = safeGet(DEFAULT_INPUT_MODE_KEY);
     var defaultInputMode = (rawDefaultInputMode === 'schedule' || rawDefaultInputMode === 'memo')
       ? rawDefaultInputMode
@@ -981,6 +990,8 @@ endDateDraftActive: false,
       groups: groups,
       monthlySplitDividerVisible: monthlySplitDividerVisible,
       monthlyLogHideCompleted: monthlyLogHideCompleted,
+      monthlyLogShowTasks: monthlyLogShowTasks,
+      monthlyLogShowMemos: monthlyLogShowMemos,
       defaultInputMode: defaultInputMode,
       autoRolloverEnabled: autoRolloverEnabled,
       calendarWeekStartsOn: calendarWeekStartsOn,
@@ -1061,6 +1072,8 @@ endDateDraftActive: false,
       localStorage.setItem(CALENDAR_MONTHLY_SPLIT_RATIO_KEY, String(state.calendarMonthlySplitRatio));
       localStorage.setItem(MONTHLY_SPLIT_DIVIDER_VISIBLE_KEY, 'true');
       localStorage.setItem(MONTHLY_LOG_HIDE_COMPLETED_KEY, String(state.monthlyLogHideCompleted));
+      localStorage.setItem(MONTHLY_LOG_SHOW_TASKS_KEY, String(state.monthlyLogShowTasks));
+      localStorage.setItem(MONTHLY_LOG_SHOW_MEMOS_KEY, String(state.monthlyLogShowMemos));
       localStorage.setItem(DEFAULT_INPUT_MODE_KEY, state.defaultInputMode || 'task');
       localStorage.setItem(AUTO_ROLLOVER_ENABLED_KEY, String(state.autoRolloverEnabled !== false));
       reportStorageSuccessIfRecovering('preferences');
@@ -1905,10 +1918,15 @@ endDateDraftActive: false,
   }
 
   // 커스텀 인라인 툴팁 -- 브라우저 기본 title에 기대지 않고, hover 또는 keyboard focus
-  // 즉시(지연 애니메이션 없이) 표시한다. data-tooltip-text가 붙은 엘리먼트라면 어디서든
-  // (프로젝트 점, Monthly 그룹 표시, Search 결과의 유형 기호/점/그룹선 등) 같은 문법으로
-  // 동작한다 -- 공유 엘리먼트 하나를 재사용하고, 위치는 매번 대상을 기준으로 다시
-  // 계산한다. pointerleave/blur/Escape에서 닫는다.
+  // 즉시(지연 애니메이션 없이) 표시한다. 공유 엘리먼트 하나를 재사용하고, 위치는 매번
+  // 대상을 기준으로 다시 계산하며, pointerleave/blur/Escape에서 닫는다. 두 형태를 같은
+  // 배선(pointerover/focusin으로 열고 pointerleave/blur/Escape로 닫음)으로 지원한다:
+  // - data-tooltip-text: 한 줄 설명(프로젝트 점, Monthly 그룹 표시, Search의 유형
+  //   기호/점/그룹선 등 -- 비대화형 엘리먼트에 role="img"+tabIndex를 함께 부여한다).
+  // - data-tooltip-label(+선택 data-tooltip-kbd): "설명 + 단축키" 2단, 꼬리표 달린
+  //   카드형(아이콘 전용 버튼용 -- 앱 전체 icon-only 버튼이 이 형태로 통일한다). 대상은
+  //   이미 포커스 가능한 실제 <button>이므로 role/tabIndex는 건드리지 않고, 기존
+  //   aria-label이 없을 때만 채운다(더 구체적인 라벨을 덮어쓰지 않음).
   function applyInlineTooltip(el, tooltipText, ariaLabel) {
     if (!el) return el;
     el.tabIndex = 0;
@@ -1917,102 +1935,199 @@ endDateDraftActive: false,
     el.dataset.tooltipText = tooltipText;
     return el;
   }
+  function applyIconButtonTooltip(el, label, kbd) {
+    if (!el) return el;
+    el.dataset.tooltipLabel = label;
+    if (kbd) el.dataset.tooltipKbd = kbd;
+    else delete el.dataset.tooltipKbd;
+    if (!el.hasAttribute('aria-label')) el.setAttribute('aria-label', label);
+    return el;
+  }
   var inlineTooltipEl = null;
   var inlineTooltipTarget = null;
+  // 툴팁이 닫혀 있을 때는 [role="tooltip"] 노드가 화면(DOM)에 하나도 남지 않아야 한다
+  // (요구사항) -- 그래서 hidden 토글이 아니라 매번 새로 만들고 숨길 때 통째로 제거한다.
+  // 항상 한 개만 존재하도록, 만들기 직전에 남아 있을 수 있는 이전 노드를 먼저 지운다.
   function ensureInlineTooltipEl() {
-    if (inlineTooltipEl) return inlineTooltipEl;
+    if (inlineTooltipEl && inlineTooltipEl.isConnected) return inlineTooltipEl;
+    document.querySelectorAll('#inline-tooltip, .project-dot-tooltip[role="tooltip"]').forEach(function (el) { el.remove(); });
     var el = document.createElement('div');
     el.id = 'inline-tooltip';
     el.className = 'project-dot-tooltip';
     el.setAttribute('role', 'tooltip');
-    el.hidden = true;
     document.body.appendChild(el);
     inlineTooltipEl = el;
     return el;
   }
   function showInlineTooltip(targetEl) {
+    var label = targetEl.dataset.tooltipLabel;
     var text = targetEl.dataset.tooltipText;
-    if (!text) return;
+    if (!label && !text) return;
+    // 요구사항: 새 툴팁을 열기 전에 기존 것을 반드시 먼저 제거한다 -- 그래야 이전
+    // 트리거에 aria-describedby가 남지 않는다.
+    if (inlineTooltipTarget && inlineTooltipTarget !== targetEl) hideInlineTooltip();
     var tip = ensureInlineTooltipEl();
-    tip.textContent = text;
-    tip.hidden = false;
+    tip.replaceChildren();
+    tip.classList.toggle('is-kbd-tooltip', !!label);
+    if (label) {
+      var labelEl = document.createElement('span');
+      labelEl.className = 'inline-tooltip-label';
+      labelEl.textContent = label;
+      tip.appendChild(labelEl);
+      var kbd = targetEl.dataset.tooltipKbd;
+      if (kbd) {
+        var kbdEl = document.createElement('span');
+        kbdEl.className = 'inline-tooltip-kbd';
+        kbdEl.textContent = kbd;
+        tip.appendChild(kbdEl);
+      }
+      var tail = document.createElement('span');
+      tail.className = 'inline-tooltip-tail';
+      tip.appendChild(tail);
+    } else {
+      tip.textContent = text;
+    }
     var r = targetEl.getBoundingClientRect();
     var tipRect = tip.getBoundingClientRect();
     var top = r.top - tipRect.height - 6;
-    if (top < 4) top = r.bottom + 6;
+    var placeBelow = top < 4;
+    if (placeBelow) top = r.bottom + 6;
+    tip.classList.toggle('is-below', placeBelow);
     var left = r.left + r.width / 2 - tipRect.width / 2;
     left = Math.max(4, Math.min(left, window.innerWidth - tipRect.width - 4));
     // position:fixed라 뷰포트 기준 좌표를 그대로 쓴다(스크롤 오프셋을 더하지 않음).
     tip.style.top = Math.round(top) + 'px';
     tip.style.left = Math.round(left) + 'px';
+    if (label) {
+      var tailEl = tip.querySelector('.inline-tooltip-tail');
+      if (tailEl) {
+        var tailLeft = Math.max(10, Math.min(tipRect.width - 10, (r.left + r.width / 2) - left));
+        tailEl.style.left = Math.round(tailLeft) + 'px';
+      }
+    }
     targetEl.setAttribute('aria-describedby', 'inline-tooltip');
     inlineTooltipTarget = targetEl;
   }
+  // 조건 없이 항상 완전히 정리한다 -- 이전 구현은 "이미 hidden이면 return"이라 어떤
+  // 경로로든 hidden과 target이 어긋나면 target 참조가 영원히 남는 위험이 있었다.
   function hideInlineTooltip() {
-    if (!inlineTooltipEl || inlineTooltipEl.hidden) return;
-    inlineTooltipEl.hidden = true;
     if (inlineTooltipTarget) inlineTooltipTarget.removeAttribute('aria-describedby');
     inlineTooltipTarget = null;
+    inlineTooltipEl = null;
+    // 트리거가 이미 detach된 뒤라면 위 removeAttribute가 닿지 않으므로, 화면에 남은
+    // 참조와 툴팁 노드를 셀렉터로 한 번 더 훑어 지운다(항상 0개 보장).
+    document.querySelectorAll('[aria-describedby="inline-tooltip"]').forEach(function (el) {
+      el.removeAttribute('aria-describedby');
+    });
+    document.querySelectorAll('#inline-tooltip, .project-dot-tooltip[role="tooltip"]').forEach(function (el) { el.remove(); });
+  }
+  var INLINE_TOOLTIP_SELECTOR = '[data-tooltip-text], [data-tooltip-label]';
+  // 툴팁이 화면에 남던 문제의 원인 두 가지를 함께 고친다:
+  // (a) pointerenter/pointerleave는 버블링하지 않아 캡처 위임을 써야 했는데, 그러면
+  //     트리거의 "자식"에서 난 leave도 closest()로 트리거를 찾아내 아직 트리거 위에
+  //     있는데도 숨기고(반대로 자식 사이 이동마다 다시 열고) 상태가 실제 hover와
+  //     어긋났다. 이제 버블링하는 pointerover/pointerout을 쓰고, out은 relatedTarget이
+  //     그 트리거 밖으로 나갔을 때만 숨긴다 -- 트리거 내부 이동은 무시된다.
+  // (b) 클릭 후 재렌더/포커스 유지로 트리거가 사라져도 leave가 오지 않는 경로가 있어
+  //     stale 툴팁이 남았다 -- pointerdown에서 즉시 숨기고, 트리거가 DOM에서 떨어지면
+  //     MutationObserver가 정리한다.
+  function isKeyboardFocusVisible(el) {
+    try { return el.matches(':focus-visible'); } catch (e) { return false; }
   }
   function wireInlineTooltips() {
     document.addEventListener('pointerover', function (e) {
-      var t = e.target.closest && e.target.closest('[data-tooltip-text]');
-      if (t) showInlineTooltip(t);
+      var t = e.target.closest && e.target.closest(INLINE_TOOLTIP_SELECTOR);
+      if (t) { if (t !== inlineTooltipTarget) showInlineTooltip(t); }
+      else if (inlineTooltipTarget) hideInlineTooltip();
     });
-    // pointerleave/blur는 버블링하지 않으므로 캡처 단계에서 위임한다.
-    document.addEventListener('pointerleave', function (e) {
-      var t = e.target.closest && e.target.closest('[data-tooltip-text]');
-      if (t) hideInlineTooltip();
+    document.addEventListener('pointerout', function (e) {
+      var t = e.target.closest && e.target.closest(INLINE_TOOLTIP_SELECTOR);
+      if (!t) return;
+      // 같은 트리거 내부(자식 -> 자식/부모)로의 이동이면 계속 hover 중이므로 무시한다.
+      // relatedTarget이 null이면 창/문서 밖으로 나간 것이라 숨긴다.
+      var to = e.relatedTarget;
+      if (to && t.contains(to)) return;
+      hideInlineTooltip();
+    });
+    // 최종 안전망(요구사항): pointerout/pointerleave에만 의존하지 않는다. 포인터가
+    // 움직였는데 현재 활성 트리거가 그 포인터 경로(=이벤트 타겟의 조상 체인)에 없고
+    // 키보드 포커스(:focus-visible)도 아니면 즉시 숨긴다. 재렌더로 트리거가 교체돼
+    // pointerout이 아예 오지 않는 경로까지 여기서 모두 걷힌다. 툴팁이 없을 때는 첫
+    // 줄에서 바로 빠져나가므로 비용이 사실상 0이다.
+    document.addEventListener('pointermove', function (e) {
+      var t = inlineTooltipTarget;
+      if (!t) return;
+      if (!t.isConnected) { hideInlineTooltip(); return; }
+      if (t === e.target || t.contains(e.target)) return;
+      if (isKeyboardFocusVisible(t)) return;
+      hideInlineTooltip();
     }, true);
+    // 클릭하는 순간 숨긴다 -- 마우스 클릭으로 남는 포커스가 툴팁을 붙잡아 두지 않게
+    // 하고(요구사항), 클릭으로 열린 메뉴/팝오버 위에 툴팁이 겹쳐 남는 것도 막는다.
+    document.addEventListener('pointerdown', function () {
+      if (inlineTooltipTarget) hideInlineTooltip();
+    }, true);
+    document.addEventListener('wheel', function () {
+      if (inlineTooltipTarget) hideInlineTooltip();
+    }, true);
+    document.addEventListener('visibilitychange', function () {
+      if (inlineTooltipTarget) hideInlineTooltip();
+    });
+    // 키보드 Tab 포커스(:focus-visible)에서만 focus 툴팁을 띄운다.
     document.addEventListener('focusin', function (e) {
-      var t = e.target.closest && e.target.closest('[data-tooltip-text]');
-      if (t) showInlineTooltip(t);
+      var t = e.target.closest && e.target.closest(INLINE_TOOLTIP_SELECTOR);
+      if (t && isKeyboardFocusVisible(t)) showInlineTooltip(t);
     });
-    document.addEventListener('blur', function (e) {
-      var t = e.target.closest && e.target.closest('[data-tooltip-text]');
-      if (t) hideInlineTooltip();
-    }, true);
+    document.addEventListener('focusout', function (e) {
+      var t = e.target.closest && e.target.closest(INLINE_TOOLTIP_SELECTOR);
+      if (t && t === inlineTooltipTarget) hideInlineTooltip();
+    });
     document.addEventListener('keydown', function (e) {
       if (e.key === 'Escape' && inlineTooltipTarget) hideInlineTooltip();
     });
+    // 스크롤은 버블링하지 않는 스크롤 컨테이너도 잡아야 하므로 캡처 단계에서 듣는다.
+    document.addEventListener('scroll', function () {
+      if (inlineTooltipTarget) hideInlineTooltip();
+    }, true);
+    // 탭 전환·창 포커스 상실 시에는 pointerout이 오지 않을 수 있다.
+    window.addEventListener('blur', function () {
+      if (inlineTooltipTarget) hideInlineTooltip();
+    });
+    // 트리거가 재렌더로 DOM에서 제거되면(예: 그룹 접기로 헤더가 통째로 다시 그려짐,
+    // 모달·팝오버 닫힘) pointerout/focusout이 애초에 발생하지 않는 detached 엘리먼트에
+    // 대고 툴팁이 계속 떠 있던 문제를 여기서 정리한다.
+    if (window.MutationObserver) {
+      var inlineTooltipCleanupObserver = new MutationObserver(function () {
+        if (inlineTooltipTarget && !inlineTooltipTarget.isConnected) hideInlineTooltip();
+      });
+      inlineTooltipCleanupObserver.observe(document.body, { childList: true, subtree: true });
+    }
   }
 
-  // 최종 감사(2026-07-27) 7: 드래그 커밋(reorderItemsWithinDate) 직후, 같은
+  // 최종 감사(2026-07-27) 7 + 후속 수정: 드래그 커밋(reorderItemsWithinDate) 직후, 같은
   // withHistoryTransaction 안에서 호출한다(그래야 편입/이탈이 드래그 자체와 한 Undo
-  // 단계로 묶인다). 각 이동 항목의 "커밋 후 최종 이웃"을 보고: 이미 그룹이 있는데 더 이상
-  // 그 그룹의 이웃이 아니면 이탈시키고, 그룹이 없는데 펼쳐진 그룹의 이웃이 되면 편입시킨다
-  // (divider/접힌 그룹/중첩 그룹은 제외 -- 요구사항 3/4/7).
-  function syncGroupMembershipAfterReorder(itemIds, date) {
+  // 단계로 묶인다). 그룹 편입 여부는 더 이상 "커밋 후 최종 이웃의 groupId"로 추론하지
+  // 않는다(양옆이 우연히 어떤 그룹에 속했는지만으로는 "그 그룹의 헤더/멤버 영역 안에
+  // 실제로 드롭했는지"와 "그냥 그 옆을 지나쳤을 뿐인지"를 구분할 수 없어, 인접 그룹으로
+  // 잘못 빨려 들어가는 문제가 있었다). 대신 드래그 중 updateDropTarget이 포인터가 실제로
+  // 있던 화면 영역(그 그룹 헤더 rect 기준, resolveDropGroupIdAtPoint)으로 이미 판정해 둔
+  // dragState.overGroupId를 그대로 적용한다 -- 이동한 모든 항목(다중 선택 포함)이 한
+  // 블록으로 같은 targetGroupId를 받는다. targetGroupId가 null이면 독립 항목이 되고,
+  // 기존에 다른 그룹 멤버였어도(재편입 포함) 이 한 값으로 통일해 설정한다.
+  function syncGroupMembershipAfterReorder(itemIds, date, targetGroupId) {
     if (!date) return false;
     var changed = false;
-    var siblings = getItemsForDate(date).slice().sort(function (a, b) { return a.order - b.order; });
-    var movingSet = {};
-    itemIds.forEach(function (id) { movingSet[id] = true; });
+    var normalizedTarget = targetGroupId || null;
+    if (normalizedTarget) {
+      var group = findGroupById(normalizedTarget);
+      if (!group || groupScope(group) !== 'date' || group.collapsed || group.date !== date) normalizedTarget = null;
+    }
     itemIds.forEach(function (id) {
-      var idx = siblings.findIndex(function (it) { return it.id === id; });
-      if (idx === -1) return;
-      var item = siblings[idx];
-      var currentGroupId = getItemGroupIdAt(item, 'weekly', date);
-      var rawPrev = idx > 0 ? siblings[idx - 1] : null;
-      var rawNext = idx < siblings.length - 1 ? siblings[idx + 1] : null;
-      var prevGroupId = rawPrev ? getItemGroupIdAt(rawPrev, 'weekly', date) : null;
-      var nextGroupId = rawNext ? getItemGroupIdAt(rawNext, 'weekly', date) : null;
-
-      if (currentGroupId) {
-        var stillAdjacent = prevGroupId === currentGroupId || nextGroupId === currentGroupId;
-        if (!stillAdjacent) {
-          setItemGroupIdAt(item, 'weekly', date, null);
-          changed = true;
-        }
-        return;
-      }
-      var prev = rawPrev && !movingSet[rawPrev.id] ? rawPrev : null;
-      var next = rawNext && !movingSet[rawNext.id] ? rawNext : null;
-      var candidateGroupId = (next && getItemGroupIdAt(next, 'weekly', date)) || (prev && getItemGroupIdAt(prev, 'weekly', date)) || null;
-      if (!candidateGroupId) return;
-      var group = findGroupById(candidateGroupId);
-      if (group && groupScope(group) === 'date' && !group.collapsed && group.date === date) {
-        setItemGroupIdAt(item, 'weekly', date, candidateGroupId);
+      var item = findItemById(id);
+      if (!item) return;
+      var currentGroupId = getItemGroupIdAt(item, 'weekly', date) || null;
+      if (normalizedTarget !== currentGroupId) {
+        setItemGroupIdAt(item, 'weekly', date, normalizedTarget);
         changed = true;
       }
     });
@@ -2152,6 +2267,7 @@ endDateDraftActive: false,
     chevron.className = 'group-chevron';
     chevron.setAttribute('aria-label', (group.collapsed ? '펼치기' : '접기') + ': ' + group.name);
     chevron.setAttribute('aria-expanded', String(!group.collapsed));
+    // 툴팁 없음: ▾/▸ 화살표는 접기·펼치기라는 의미가 자명하다(요구사항).
     chevron.addEventListener('click', function (e) {
       e.stopPropagation();
       toggleGroupCollapsed(group.id);
@@ -2164,6 +2280,7 @@ endDateDraftActive: false,
     folderIcon.setAttribute('aria-label', '그룹 색상 변경: ' + group.name);
     folderIcon.setAttribute('aria-haspopup', 'menu');
     folderIcon.setAttribute('aria-expanded', 'false');
+    // 툴팁 없음: 색상 스와치 자체가 곧 그 의미다(요구사항 -- 첨부 이미지 1의 사례).
     folderIcon.addEventListener('click', function (e) {
       e.stopPropagation();
       openGroupMenu(group.id, folderIcon);
@@ -2192,6 +2309,7 @@ endDateDraftActive: false,
     menuBtn.setAttribute('aria-expanded', 'false');
     menuBtn.setAttribute('aria-label', '그룹 메뉴: ' + group.name);
     menuBtn.textContent = '···';
+    applyIconButtonTooltip(menuBtn, '옵션');
     menuBtn.addEventListener('click', function (e) {
       e.stopPropagation();
       openGroupMenu(group.id, menuBtn);
@@ -16531,6 +16649,10 @@ overContext: null,
       overDate: null,
       overItemId: null,
       dropPosition: null,
+      // 요구사항: 그룹 편입 여부는 인접 항목 groupId 추론이 아니라 실제 드롭 영역(포인터가
+      // 그 그룹 헤더 rect 위/아래 어디였는지)으로 판정한다 -- updateDropTarget이 매
+      // pointermove마다 다시 계산해 채운다(resolveDropGroupIdAtPoint).
+      overGroupId: null,
       pointerCurrentlyValid: false,
       handle: handle,
       anchorRow: anchorRow,
@@ -17034,6 +17156,7 @@ var calendarCell =
       dragState.overDate = calendarCell.dataset.date;
       dragState.overItemId = null;
       dragState.dropPosition = null;
+      dragState.overGroupId = null;
       return;
     }
     clearCalendarDropHighlight();
@@ -17130,6 +17253,29 @@ var calendarCell =
     dragState.overDate = targetDate;
     dragState.overItemId = insertBeforeEl ? insertBeforeEl.dataset.itemId : null;
     dragState.dropPosition = insertBeforeEl ? 'before' : 'end';
+    dragState.overGroupId = (targetContext === 'daily' || targetContext === 'weekly' || targetContext === 'monthly-inbox')
+      ? resolveDropGroupIdAtPoint(targetList, targetContext, targetDate, insertBeforeEl, y)
+      : null;
+  }
+
+  // 요구사항: 그룹 편입 여부를 인접 항목의 groupId로 추론하지 않고, 실제 드롭 "영역"으로
+  // 판정한다. insertBeforeEl이 없으면(목록 맨 끝) 항상 독립이다(마지막 그룹 아래 =
+  // 독립+맨 끝). insertBeforeEl이 그룹 멤버가 아니면(일반 항목 또는 애초에 못 찾음) 그
+  // 자리는 그룹 안이 아니므로 독립이다. insertBeforeEl이 그룹 멤버이면, 그 그룹의 헤더
+  // rect 맨 위(top)를 기준으로 포인터 y가 그보다 위(=아직 헤더 시작 전, 즉 이전 그룹/
+  // 일반 항목과 이 그룹 "사이"의 빈 틈)이면 독립, 헤더 자신을 포함해 그 아래(=헤더 위,
+  // 멤버 사이 전부)면 그 그룹 내부로 편입한다 -- 헤더 rect 전체를 "내부"로 치는 것은
+  // "그룹 헤더 드롭 = 편입" 요구사항 때문이다.
+  function resolveDropGroupIdAtPoint(targetList, context, date, insertBeforeEl, y) {
+    if (!insertBeforeEl) return null;
+    var item = findItemById(insertBeforeEl.dataset.itemId) || findMonthlyItemById(insertBeforeEl.dataset.itemId);
+    if (!item) return null;
+    var groupId = getItemGroupIdAt(item, context === 'monthly-inbox' ? 'monthly-inbox' : 'weekly', date);
+    if (!groupId) return null;
+    var headerEl = targetList.querySelector(':scope > .group-header[data-group-id="' + groupId + '"]');
+    if (!headerEl) return null;
+    var headerTop = headerEl.getBoundingClientRect().top;
+    return y >= headerTop ? groupId : null;
   }
 
   function activateDrag() {
@@ -17935,7 +18081,7 @@ projectId: master.projectId || null,
               ds.overItemId,
               ds.dropPosition
             );
-            syncGroupMembershipAfterReorder(ids, ds.overDate);
+            syncGroupMembershipAfterReorder(ids, ds.overDate, ds.overGroupId);
           }
         }
       });
@@ -17983,7 +18129,7 @@ projectId: master.projectId || null,
           ds.overItemId,
           ds.dropPosition
         );
-        var groupMembershipChanged = syncGroupMembershipAfterReorder(ids, ds.overDate);
+        var groupMembershipChanged = syncGroupMembershipAfterReorder(ids, ds.overDate, ds.overGroupId);
 
         mutated = classificationChanged || reordered || groupMembershipChanged;
       });
@@ -19312,8 +19458,12 @@ projectId: master.projectId || null,
     return year + '-' + String(month).padStart(2, '0');
   }
 
-  function restoreYearMonthTitleDisplay(titleEl, year, month) {
-    titleEl.textContent = year + '년 ' + month + '월';
+  // 타이틀 표시 문구는 호출부마다 다르다(미니 달력 "2026년 8월" vs Monthly Log
+  // "2026년 8월 달력") -- target이 formatTitle을 주면 그것을 쓰고, 없으면 기본 형식.
+  function restoreYearMonthTitleDisplay(titleEl, year, month, target) {
+    titleEl.textContent = (target && target.formatTitle)
+      ? target.formatTitle(year, month)
+      : (year + '년 ' + month + '월');
   }
 
   // "2026-13"·불완전한 연도 등은 null -- Enter 확정을 막는 유일한 판정 기준.
@@ -19512,7 +19662,7 @@ projectId: master.projectId || null,
     if (!committed && (ctx.year !== ctx.originalYear || ctx.month !== ctx.originalMonth)) {
       ctx.target.applyMonth(ctx.originalYear, ctx.originalMonth);
     }
-    restoreYearMonthTitleDisplay(ctx.titleEl, year, month);
+    restoreYearMonthTitleDisplay(ctx.titleEl, year, month, ctx.target);
     ctx.titleEl.setAttribute('aria-expanded', 'false');
     ctx.titleEl.focus();
   }
@@ -19774,6 +19924,8 @@ projectId: master.projectId || null,
         var d = parseLocalDate(state.monthlyLogViewMonth);
         return { year: d.getFullYear(), month: d.getMonth() + 1 };
       },
+      // 이 화면의 타이틀은 "달력" 접미사가 붙는다(renderMonthlyLogHeader와 같은 문구).
+      formatTitle: function (year, month) { return year + '년 ' + month + '월 달력'; },
       applyMonth: function (year, month) {
         var next = new Date(year, month - 1, 1);
         state.monthlyLogViewMonth = formatLocalDate(next);
@@ -19784,6 +19936,11 @@ projectId: master.projectId || null,
     };
   }
 
+  // 요구사항(재수정): 월 표시 영역 하나가 "YYYY-MM 인라인 입력 + 그 아래 연·월 휠"을
+  // 함께 여는 단일 컨트롤이다(미니 달력 .cal-title과 완전히 같은 openYearMonthEditor를
+  // 그대로 재사용 -- 별도 chevron 트리거로 분리하지 않는다). 입력이 곧바로 사라지던
+  // 원인은 이 배선이 아니라 renderMonthlyLogHeader에 편집 중 가드가 없던 것이었고,
+  // 그 쪽에서 고쳤다(위 renderMonthlyLogHeader 주석 참고).
   function wireMonthlyLogTitleWheel() {
     var titleEl = document.getElementById('monthly-log-month-label');
     if (!titleEl || titleEl._yearMonthWheelWired) return;
@@ -19793,12 +19950,18 @@ projectId: master.projectId || null,
     titleEl.setAttribute('aria-haspopup', 'dialog');
     titleEl.setAttribute('aria-expanded', 'false');
     titleEl.setAttribute('aria-label', '연도·월 선택');
+    // 편집 중(활성 상태)에는 클릭이 어디서 나든(입력창 안 클릭이 titleEl까지 버블링돼
+    // 올라온다) 다시 열지 않는다 -- 그렇지 않으면 입력 안을 클릭할 때마다 편집기가
+    // 토글로 닫혀버린다(미니 달력 쪽과 동일한 가드).
     titleEl.addEventListener('click', function () {
       if (activeYearMonthWheel && activeYearMonthWheel.titleEl === titleEl) return;
       openYearMonthEditor(titleEl, makeMonthlyLogTitleWheelTarget());
     });
     titleEl.addEventListener('keydown', function (e) {
-      if ((e.key === 'Enter' || e.key === ' ') && !activeYearMonthWheel) { e.preventDefault(); openYearMonthEditor(titleEl, makeMonthlyLogTitleWheelTarget()); }
+      if ((e.key === 'Enter' || e.key === ' ') && !activeYearMonthWheel) {
+        e.preventDefault();
+        openYearMonthEditor(titleEl, makeMonthlyLogTitleWheelTarget());
+      }
     });
   }
 
@@ -19966,64 +20129,15 @@ projectId: master.projectId || null,
     if (state.monthlyPanelOpen) closeMonthlyPanel(); else openMonthlyPanel();
   }
 
-  // 커스텀 DOM 툴팁(title 속성이 아니다 -- role="tooltip", 호버/키보드 포커스에서 보이고
-  // 벗어나면 닫힌다). 기본은 버튼 위쪽에 작은 꼬리와 함께 표시하고, 위쪽 공간이 부족하면
-  // 아래로, 좌우로 넘치면 뷰포트 안으로 보정한다.
-  var activeMonthlyToggleTooltip = null;
-
-  function hideMonthlyToggleTooltip() {
-    if (!activeMonthlyToggleTooltip) return;
-    activeMonthlyToggleTooltip.remove();
-    activeMonthlyToggleTooltip = null;
-  }
-
-  function showMonthlyToggleTooltip(anchorEl) {
-    if (activeMonthlyToggleTooltip) return;
-    var tip = document.createElement('div');
-    tip.className = 'monthly-toggle-tooltip';
-    tip.setAttribute('role', 'tooltip');
-    tip.id = 'monthly-panel-tooltip';
-
-    var label = document.createElement('span');
-    label.className = 'monthly-toggle-tooltip-label';
-    label.textContent = '이번달 할 일';
-    var kbd = document.createElement('span');
-    kbd.className = 'monthly-toggle-tooltip-kbd';
-    kbd.textContent = 'Ctrl+Shift+/';
-    var tail = document.createElement('span');
-    tail.className = 'monthly-toggle-tooltip-tail';
-    tip.appendChild(label);
-    tip.appendChild(kbd);
-    tip.appendChild(tail);
-    document.body.appendChild(tip);
-
-    var rect = anchorEl.getBoundingClientRect();
-    var tipRect = tip.getBoundingClientRect();
-    var top = rect.top - tipRect.height - 10;
-    var placeBelow = top < 8;
-    if (placeBelow) top = rect.bottom + 10;
-    var left = rect.left + rect.width / 2 - tipRect.width / 2;
-    var vw = window.innerWidth;
-    if (left < 8) left = 8;
-    if (left + tipRect.width > vw - 8) left = vw - tipRect.width - 8;
-    tip.style.top = top + 'px';
-    tip.style.left = left + 'px';
-    tip.classList.toggle('is-below', placeBelow);
-    var tailLeft = Math.max(10, Math.min(tipRect.width - 10, (rect.left + rect.width / 2) - left));
-    tail.style.left = tailLeft + 'px';
-
-    activeMonthlyToggleTooltip = tip;
-  }
-
   function wireMonthlyPanelToggle() {
     var toggle = document.getElementById('monthly-panel-toggle');
     if (toggle && !toggle._monthlyToggleWired) {
       toggle._monthlyToggleWired = true;
-      toggle.addEventListener('click', function () { toggleMonthlyPanel(); hideMonthlyToggleTooltip(); });
-      toggle.addEventListener('mouseenter', function () { showMonthlyToggleTooltip(toggle); });
-      toggle.addEventListener('mouseleave', hideMonthlyToggleTooltip);
-      toggle.addEventListener('focus', function () { showMonthlyToggleTooltip(toggle); });
-      toggle.addEventListener('blur', hideMonthlyToggleTooltip);
+      // 요구사항: icon-only 버튼 툴팁은 앱 전체 공용 시스템(data-tooltip-label/kbd,
+      // wireInlineTooltips)으로 통일한다 -- 이 버튼 전용 커스텀 hover/focus 배선과
+      // 툴팁 DOM은 더 이상 따로 두지 않는다.
+      applyIconButtonTooltip(toggle, '이번달 할 일', 'Ctrl+Shift+/');
+      toggle.addEventListener('click', function () { toggleMonthlyPanel(); hideInlineTooltip(); });
     }
     var closeBtn = document.getElementById('today-monthly-panel-close');
     if (closeBtn && !closeBtn._monthlyCloseWired) {
@@ -21645,68 +21759,116 @@ if (typeBtn) {
   var MONTHLY_LOG_SCHEDULE_GRID_COLUMNS = 18;
   // Monthly Calendar v1: 7열 × 5~6주 그리드. 모든 주 행은 같은 높이이고, 날짜 칸의
   // 이벤트 슬롯 수는 S=3 고정이다(+N 초과 표시 영역은 슬롯을 차지하지 않는 별도 1줄).
-  // 이벤트 슬롯 수 S는 고정값이 아니라 주 행의 실제 이벤트 영역 높이에서 계산한다.
+  // 이벤트 슬롯 수 S는 고정값이 아니라 "그 주 행"의 실제 이벤트 영역 높이에서 계산한다
+  // (요구사항: 행마다 따로 조절하므로 S도 주 행별로 따로 갖는다).
   // 행 높이·칩 높이는 그대로 두고, 남는 세로 공간만큼 슬롯을 더 쓴다.
   var MONTHLY_LOG_DAY_SLOT_MIN = 3;
-  var MONTHLY_LOG_DAY_SLOT_MAX = 8;
   var MONTHLY_LOG_DAY_SLOT_HEIGHT = 18; // .monthly-log-day-item / .monthly-log-week-segment 높이
   var MONTHLY_LOG_DAY_SLOT_GAP = 2;     // .monthly-log-row-items의 세로 gap
   // 슬롯 영역에서 빼야 하는 고정 크롬: 칸 위 여백(3) + 날짜 줄(18) + 날짜-본문 간격(2)
-  // + 고정 +N 영역(14) + 칸 아래 여백(2).
-  var MONTHLY_LOG_DAY_FIXED_CHROME = 39;
-  var monthlyLogDaySlotCount = MONTHLY_LOG_DAY_SLOT_MIN;
+  // + 칸 아래 여백(2). +N 영역(14px)은 더 이상 여기 항상 포함하지 않는다 -- 이 값이
+  // 계산하는 건 "+N이 전혀 없다고 가정했을 때"의 최대 슬롯 수(slotCountFull)이고,
+  // buildMonthlyLogScheduleGridPlan/packMonthlyLogWeek이 그 주에 실제로 넘치는 날이
+  // 있을 때만 슬롯을 하나 줄여(-1) +N 한 줄이 들어갈 자리를 그때그때 마련한다(요구사항:
+  // 안 넘치면 +N 자리를 아예 선예약하지 않는다).
+  var MONTHLY_LOG_DAY_FIXED_CHROME = 25;
+  var monthlyLogDaySlotCountByWeek = {}; // weekStart(YYYY-MM-DD) -> S
   var monthlyLogSlotSyncGuard = false;
 
-  function getMonthlyLogDaySlotCount() { return monthlyLogDaySlotCount; }
+  function getMonthlyLogDaySlotCount(weekStart) {
+    var v = monthlyLogDaySlotCountByWeek[weekStart];
+    return typeof v === 'number' ? v : MONTHLY_LOG_DAY_SLOT_MIN;
+  }
 
+  // S = floor((실제 행 높이 - 고정 크롬(날짜 줄 등) - 여백) / 실제 칩 높이(칩+gap)).
+  // 과거에는 여기 위쪽 상한(MONTHLY_LOG_DAY_SLOT_MAX=8)이 있어, 행을 아무리 키워도
+  // S가 6~7에서 멈추고 +N이 안 사라지는 버그가 있었다(요구사항) -- 행 높이 자체가 이미
+  // MONTHLY_LOG_ROW_H_MAX(320px, 휠 기능 쪽 상수, 여기서 건드리지 않음)로 제한돼 있으므로
+  // 이 함수에는 별도 상한을 두지 않는다.
   function computeMonthlyLogDaySlotCount(rowHeight) {
     var available = rowHeight - MONTHLY_LOG_DAY_FIXED_CHROME;
     var per = MONTHLY_LOG_DAY_SLOT_HEIGHT + MONTHLY_LOG_DAY_SLOT_GAP;
     var count = Math.floor((available + MONTHLY_LOG_DAY_SLOT_GAP) / per);
     if (!isFinite(count)) count = MONTHLY_LOG_DAY_SLOT_MIN;
-    return Math.max(MONTHLY_LOG_DAY_SLOT_MIN, Math.min(MONTHLY_LOG_DAY_SLOT_MAX, count));
+    return Math.max(MONTHLY_LOG_DAY_SLOT_MIN, count);
   }
 
-  // 실제로 그려진 주 행 높이를 재서 S를 갱신한다. 값이 바뀐 경우에만 true를 돌려주고,
-  // 호출자가 그때만 다시 렌더한다(모든 주 행은 같은 높이이므로 첫 행만 재면 된다).
-  function syncMonthlyLogDaySlotCount() {
+  // 실제로 그려진 "모든" 주 행 높이를 각각 재서 S를 갱신한다(행마다 높이가 다를 수
+  // 있으므로 첫 행만으로는 부족하다). 하나라도 바뀌면 true -- 호출자가 그때만 다시 그린다.
+  function syncMonthlyLogDaySlotCounts() {
     var container = document.getElementById('monthly-log-rows');
-    var weekRow = container && container.querySelector('.monthly-log-week-row');
-    if (!weekRow) return false;
-    var height = weekRow.getBoundingClientRect().height;
-    if (!height) return false;
-    var next = computeMonthlyLogDaySlotCount(height);
-    if (next === monthlyLogDaySlotCount) return false;
-    monthlyLogDaySlotCount = next;
-    return true;
+    if (!container) return false;
+    var rows = container.querySelectorAll('.monthly-log-week-row');
+    var changed = false;
+    rows.forEach(function (weekRowEl) {
+      var weekStart = weekRowEl.dataset.weekStart;
+      if (!weekStart) return;
+      var height = weekRowEl.getBoundingClientRect().height;
+      if (!height) return;
+      var next = computeMonthlyLogDaySlotCount(height);
+      if (next !== monthlyLogDaySlotCountByWeek[weekStart]) {
+        monthlyLogDaySlotCountByWeek[weekStart] = next;
+        changed = true;
+      }
+    });
+    return changed;
   }
 
   // ---------------------------------------------------------------------
-  // Monthly 달력 크기 조절 -- 7열 그리드 전용 새 구현(옛 18레인 컬럼 좌표 시스템과는
-  // 무관). 달력 본체(#monthly-log-body) 위에서만 Ctrl+휠(행 높이)/Shift+휠(칸 너비)로
-  // 모든 주 행/모든 날짜 칸을 동일하게 확대·축소한다. 기본값은 그대로 auto-fit이고,
-  // 사용자가 한 번이라도 조작하면 그 값을 --monthly-row-h/--monthly-col-w에 담아
-  // localStorage에 저장해 월 이동·새로고침에도 유지한다.
+  // Monthly 달력 크기 조절 -- 7열 그리드 전용 구현(옛 18레인 컬럼 좌표 시스템과는 무관).
+  // 달력 본체(#monthly-log-body) 위에서 포인터가 있는 위치만 조절한다: Ctrl+휠은 포인터가
+  // 놓인 "그 주 행"의 높이만, Shift+휠은 포인터가 놓인 "그 요일 열" 하나의 너비만 바꾼다.
+  // 다른 행/열은 그대로 auto-fit을 유지한다. 값은 월(YYYY-MM) + weekStart(행) 또는
+  // 월 + weekdayIndex(열) 기준으로 localStorage에 저장해 월 이동·새로고침에도 유지한다.
   // ---------------------------------------------------------------------
   var MONTHLY_LOG_ROW_H_MIN = 104, MONTHLY_LOG_ROW_H_MAX = 320, MONTHLY_LOG_ROW_H_STEP = 8;
   var MONTHLY_LOG_COL_W_MIN = 120, MONTHLY_LOG_COL_W_MAX = 420, MONTHLY_LOG_COL_W_STEP = 16;
   var MONTHLY_LOG_SIZE_STORAGE_KEY = STORAGE_PREFIX + 'monthlyLogCustomSize';
-  var monthlyLogCustomRowH = null; // null = auto-fit(기본)
-  var monthlyLogCustomColW = null;
+  // { 'YYYY-MM': { rows: { weekStart: px }, cols: { '0'..'6': px } } } -- 이전 버전의
+  // 전역 단일 rowH/colW 포맷은 더 이상 읽지 않는다(달마다/행·열마다 따로 저장하는
+  // 새 포맷으로 교체됐다).
+  var monthlyLogCustomSizeByMonth = {};
   var monthlyLogSizeSettleRaf = null;
+  var monthlyLogSizeRenderPending = false;
+
+  function getMonthlyLogCurrentMonthKey() { return state.monthlyLogViewMonth.slice(0, 7); }
 
   function snapMonthlySize(value, min, max, step) {
     var snapped = min + Math.round((value - min) / step) * step;
     return Math.max(min, Math.min(max, snapped));
   }
 
-  function measureMonthlyLogRowHeight() {
-    var row = document.querySelector('#monthly-log-rows .monthly-log-week-row');
+  function getMonthlyLogCustomRowH(monthKey, weekStart) {
+    var entry = monthlyLogCustomSizeByMonth[monthKey];
+    var v = entry && entry.rows[weekStart];
+    return typeof v === 'number' ? v : null;
+  }
+  function getMonthlyLogCustomColW(monthKey, colIndex) {
+    var entry = monthlyLogCustomSizeByMonth[monthKey];
+    var v = entry && entry.cols[colIndex];
+    return typeof v === 'number' ? v : null;
+  }
+  function setMonthlyLogCustomRowH(monthKey, weekStart, px) {
+    var entry = monthlyLogCustomSizeByMonth[monthKey];
+    if (!entry) entry = monthlyLogCustomSizeByMonth[monthKey] = { rows: {}, cols: {} };
+    entry.rows[weekStart] = px;
+  }
+  function setMonthlyLogCustomColW(monthKey, colIndex, px) {
+    var entry = monthlyLogCustomSizeByMonth[monthKey];
+    if (!entry) entry = monthlyLogCustomSizeByMonth[monthKey] = { rows: {}, cols: {} };
+    entry.cols[colIndex] = px;
+  }
+
+  function measureMonthlyLogRowHeight(rowEl) {
+    var row = rowEl || document.querySelector('#monthly-log-rows .monthly-log-week-row');
     var h = row ? row.getBoundingClientRect().height : 0;
     return h ? snapMonthlySize(h, MONTHLY_LOG_ROW_H_MIN, MONTHLY_LOG_ROW_H_MAX, MONTHLY_LOG_ROW_H_STEP) : MONTHLY_LOG_ROW_H_MIN;
   }
-  function measureMonthlyLogColWidth() {
-    var cell = document.querySelector('#monthly-log-rows .monthly-log-weekday-cell');
+  function measureMonthlyLogColWidth(colIndex) {
+    var selector = colIndex != null
+      ? '#monthly-log-rows .monthly-log-weekday-cell[data-col-index="' + colIndex + '"]'
+      : '#monthly-log-rows .monthly-log-weekday-cell';
+    var cell = document.querySelector(selector);
     var w = cell ? cell.getBoundingClientRect().width : 0;
     return w ? snapMonthlySize(w, MONTHLY_LOG_COL_W_MIN, MONTHLY_LOG_COL_W_MAX, MONTHLY_LOG_COL_W_STEP) : MONTHLY_LOG_COL_W_MIN;
   }
@@ -21716,43 +21878,81 @@ if (typeBtn) {
       var raw = localStorage.getItem(MONTHLY_LOG_SIZE_STORAGE_KEY);
       if (!raw) return;
       var parsed = JSON.parse(raw);
-      if (parsed && typeof parsed.rowH === 'number') {
-        monthlyLogCustomRowH = snapMonthlySize(parsed.rowH, MONTHLY_LOG_ROW_H_MIN, MONTHLY_LOG_ROW_H_MAX, MONTHLY_LOG_ROW_H_STEP);
-      }
-      if (parsed && typeof parsed.colW === 'number') {
-        monthlyLogCustomColW = snapMonthlySize(parsed.colW, MONTHLY_LOG_COL_W_MIN, MONTHLY_LOG_COL_W_MAX, MONTHLY_LOG_COL_W_STEP);
-      }
+      if (!parsed || typeof parsed !== 'object') return;
+      Object.keys(parsed).forEach(function (monthKey) {
+        var m = parsed[monthKey];
+        if (!m || typeof m !== 'object') return;
+        var entry = { rows: {}, cols: {} };
+        if (m.rows) Object.keys(m.rows).forEach(function (k) {
+          var v = Number(m.rows[k]);
+          if (isFinite(v)) entry.rows[k] = snapMonthlySize(v, MONTHLY_LOG_ROW_H_MIN, MONTHLY_LOG_ROW_H_MAX, MONTHLY_LOG_ROW_H_STEP);
+        });
+        if (m.cols) Object.keys(m.cols).forEach(function (k) {
+          var v = Number(m.cols[k]);
+          if (isFinite(v)) entry.cols[k] = snapMonthlySize(v, MONTHLY_LOG_COL_W_MIN, MONTHLY_LOG_COL_W_MAX, MONTHLY_LOG_COL_W_STEP);
+        });
+        if (Object.keys(entry.rows).length || Object.keys(entry.cols).length) {
+          monthlyLogCustomSizeByMonth[monthKey] = entry;
+        }
+      });
     } catch (e) {}
   }
   function saveMonthlyLogCustomSize() {
     try {
-      if (monthlyLogCustomRowH == null && monthlyLogCustomColW == null) {
-        localStorage.removeItem(MONTHLY_LOG_SIZE_STORAGE_KEY);
-      } else {
-        localStorage.setItem(MONTHLY_LOG_SIZE_STORAGE_KEY, JSON.stringify({ rowH: monthlyLogCustomRowH, colW: monthlyLogCustomColW }));
-      }
+      var hasAny = Object.keys(monthlyLogCustomSizeByMonth).some(function (k) {
+        var e = monthlyLogCustomSizeByMonth[k];
+        return e && (Object.keys(e.rows).length || Object.keys(e.cols).length);
+      });
+      if (!hasAny) localStorage.removeItem(MONTHLY_LOG_SIZE_STORAGE_KEY);
+      else localStorage.setItem(MONTHLY_LOG_SIZE_STORAGE_KEY, JSON.stringify(monthlyLogCustomSizeByMonth));
     } catch (e) {}
   }
-  // 컨테이너(#monthly-log-rows)는 매 렌더마다 자식만 교체될 뿐 그 자신은 유지되므로,
-  // 여기서 설정한 class/CSS 변수는 월 이동·재렌더에도 별도 재적용 없이 남아있다.
-  function applyMonthlyLogCustomSizeDom() {
+  // 주 행 하나에만 높이를 적용한다(다른 행은 건드리지 않음). px가 없으면 기존
+  // auto-fit(flex:1 1 0/min-height:104px, CSS 기본값) 그대로 되돌린다.
+  function applyMonthlyLogRowHeightDom(weekRowEl, px) {
+    if (!weekRowEl) return;
+    if (px != null) {
+      weekRowEl.style.flex = '0 0 ' + px + 'px';
+      weekRowEl.style.minHeight = px + 'px';
+    } else {
+      weekRowEl.style.removeProperty('flex');
+      weekRowEl.style.removeProperty('min-height');
+    }
+  }
+  // 헤더/모든 주 행/모든 다일 세그먼트 오버레이가 공유하는 7열 grid-template-columns.
+  // 커스텀값이 없는 열은 그대로 minmax(0,1fr)(auto-fit)로 남는다.
+  function buildMonthlyLogColumnTemplate(monthKey) {
+    var entry = monthlyLogCustomSizeByMonth[monthKey];
+    var parts = [];
+    for (var i = 0; i < 7; i++) {
+      var v = entry && entry.cols[i];
+      parts.push(typeof v === 'number' ? v + 'px' : 'minmax(0,1fr)');
+    }
+    return parts.join(' ');
+  }
+  // 요구사항: 다일 세그먼트 오버레이도 같은 grid-template-columns를 써야 날짜 칸과
+  // 어긋나지 않는다 -- 헤더/주 행/오버레이 세 종류 전부에 같은 문자열을 적용한다.
+  function applyMonthlyLogColumnTemplateDom() {
     var container = document.getElementById('monthly-log-rows');
     if (!container) return;
-    container.classList.toggle('has-custom-row-h', monthlyLogCustomRowH != null);
-    if (monthlyLogCustomRowH != null) container.style.setProperty('--monthly-row-h', monthlyLogCustomRowH + 'px');
-    else container.style.removeProperty('--monthly-row-h');
-    container.classList.toggle('has-custom-col-w', monthlyLogCustomColW != null);
-    if (monthlyLogCustomColW != null) container.style.setProperty('--monthly-col-w', monthlyLogCustomColW + 'px');
-    else container.style.removeProperty('--monthly-col-w');
+    var template = buildMonthlyLogColumnTemplate(getMonthlyLogCurrentMonthKey());
+    container.querySelectorAll('.monthly-log-weekday-head, .monthly-log-week-row, .monthly-log-week-segments').forEach(function (el) {
+      el.style.gridTemplateColumns = template;
+    });
   }
-  // 연속 휠 이벤트를 rAF 하나로 묶어, 값이 안정된 뒤 딱 한 번만 저장 + 슬롯 수(S) 재계산
-  // + (바뀐 경우에만) 다시 그린다 -- 휠마다 전체 앱을 재렌더하지 않는다(요구사항).
+  // 연속 휠 이벤트를 rAF 하나로 묶어, 값이 안정된 뒤 딱 한 번만 저장한다. 다시 그리는
+  // 것은 그 행의 슬롯 수(S)가 실제로 바뀌어 +N 표시가 달라질 때만 한다(휠마다 전체
+  // 목록을 재구성하지 않는다) -- 높이/열 너비 자체는 이미 이벤트 핸들러에서 즉시
+  // DOM에 반영돼 있으므로 시각적으로는 지연이 없다.
   function scheduleMonthlyLogSizeSettle() {
     if (monthlyLogSizeSettleRaf) return;
     monthlyLogSizeSettleRaf = requestAnimationFrame(function () {
       monthlyLogSizeSettleRaf = null;
       saveMonthlyLogCustomSize();
-      if (syncMonthlyLogDaySlotCount()) renderMonthlyLogRows();
+      if (monthlyLogSizeRenderPending) {
+        monthlyLogSizeRenderPending = false;
+        renderMonthlyLogRows();
+      }
       positionMonthlyLogScheduleLabels();
     });
   }
@@ -21760,16 +21960,40 @@ if (typeBtn) {
     if (state.currentView !== 'calendar') return;
     if (!e.ctrlKey && !e.shiftKey) return; // 두 조합키가 없으면 평소 스크롤 그대로 둔다.
     if (!document.getElementById('monthly-log-rows')) return;
-    e.preventDefault();
+    var monthKey = getMonthlyLogCurrentMonthKey();
     var dir = e.deltaY < 0 ? 1 : -1; // 휠 위쪽 = 확대.
     if (e.ctrlKey) {
-      var baseH = monthlyLogCustomRowH != null ? monthlyLogCustomRowH : measureMonthlyLogRowHeight();
-      monthlyLogCustomRowH = snapMonthlySize(baseH + dir * MONTHLY_LOG_ROW_H_STEP, MONTHLY_LOG_ROW_H_MIN, MONTHLY_LOG_ROW_H_MAX, MONTHLY_LOG_ROW_H_STEP);
+      var weekRowEl = e.target && e.target.closest && e.target.closest('.monthly-log-week-row');
+      if (!weekRowEl) return; // 포인터가 특정 주 행 위에 있을 때만 반응한다(요구사항).
+      e.preventDefault();
+      var weekStart = weekRowEl.dataset.weekStart;
+      var currentH = getMonthlyLogCustomRowH(monthKey, weekStart);
+      var baseH = currentH != null ? currentH : measureMonthlyLogRowHeight(weekRowEl);
+      var nextH = snapMonthlySize(baseH + dir * MONTHLY_LOG_ROW_H_STEP, MONTHLY_LOG_ROW_H_MIN, MONTHLY_LOG_ROW_H_MAX, MONTHLY_LOG_ROW_H_STEP);
+      setMonthlyLogCustomRowH(monthKey, weekStart, nextH);
+      applyMonthlyLogRowHeightDom(weekRowEl, nextH);
+      // S는 그 자리에서 바로 계산해 적용한다 -- +N이 즉시 반영되도록(요구사항).
+      // slotCountFull(예약 없는 최대치) 숫자 자체가 안 바뀌어도, 실제 +N 여부는
+      // packMonthlyLogWeek이 그 주의 항목 수까지 함께 봐서 결정하므로(예약 1칸을 뺄지
+      // 말지) 캐시된 slotCount 비교만으로는 "다시 그릴 필요 없음"을 안전하게 판단할 수
+      // 없다 -- 실제 높이가 바뀐 이상 이 행은 항상 다시 계산한다(요구사항: 이전 overflow
+      // 결과 캐시를 재사용하지 않는다).
+      var nextSlot = computeMonthlyLogDaySlotCount(nextH);
+      weekRowEl.style.setProperty('--monthly-slot-count', String(nextSlot));
+      monthlyLogDaySlotCountByWeek[weekStart] = nextSlot;
+      monthlyLogSizeRenderPending = true;
     } else {
-      var baseW = monthlyLogCustomColW != null ? monthlyLogCustomColW : measureMonthlyLogColWidth();
-      monthlyLogCustomColW = snapMonthlySize(baseW + dir * MONTHLY_LOG_COL_W_STEP, MONTHLY_LOG_COL_W_MIN, MONTHLY_LOG_COL_W_MAX, MONTHLY_LOG_COL_W_STEP);
+      var colEl = e.target && e.target.closest && e.target.closest('[data-col-index]');
+      if (!colEl) return; // 포인터가 특정 요일 열 위에 있을 때만 반응한다(요구사항).
+      e.preventDefault();
+      var colIndex = Number(colEl.dataset.colIndex);
+      if (!isFinite(colIndex)) return;
+      var currentW = getMonthlyLogCustomColW(monthKey, colIndex);
+      var baseW = currentW != null ? currentW : measureMonthlyLogColWidth(colIndex);
+      var nextW = snapMonthlySize(baseW + dir * MONTHLY_LOG_COL_W_STEP, MONTHLY_LOG_COL_W_MIN, MONTHLY_LOG_COL_W_MAX, MONTHLY_LOG_COL_W_STEP);
+      setMonthlyLogCustomColW(monthKey, colIndex, nextW);
+      applyMonthlyLogColumnTemplateDom();
     }
-    applyMonthlyLogCustomSizeDom();
     scheduleMonthlyLogSizeSettle();
   }
   function wireMonthlyLogSizeWheel() {
@@ -21778,13 +22002,16 @@ if (typeBtn) {
     body._monthlyLogSizeWheelWired = true;
     body.addEventListener('wheel', onMonthlyLogBodyWheel, { passive: false });
   }
-  // "달력 크기 초기화" -- 사용자 값과 localStorage를 모두 지우고 auto-fit으로 되돌린다.
+  // "달력 크기 초기화" -- 현재 월의 행·열 사용자값만 지우고(다른 달은 그대로) auto-fit으로
+  // 되돌린다. 지운 뒤에는 이번 달 주들의 캐시된 S도 버려 다음 렌더에서 실측하게 한다.
   function resetMonthlyLogCustomSize() {
-    monthlyLogCustomRowH = null;
-    monthlyLogCustomColW = null;
+    var monthKey = getMonthlyLogCurrentMonthKey();
+    delete monthlyLogCustomSizeByMonth[monthKey];
     saveMonthlyLogCustomSize();
-    applyMonthlyLogCustomSizeDom();
-    if (syncMonthlyLogDaySlotCount()) renderMonthlyLogRows();
+    buildMonthlyLogWeekStarts().starts.forEach(function (weekStart) {
+      delete monthlyLogDaySlotCountByWeek[weekStart];
+    });
+    renderMonthlyLogRows();
   }
 
   // 주 단위 다일 세그먼트 패킹의 안전 상한. 이 값을 넘는 슬롯은 만들지 않는다
@@ -21816,6 +22043,16 @@ if (typeBtn) {
 
   function isMonthlyLogSchedule(item) {
     return !!item && !item.deletedAt && item.type === 'schedule' && !!item.date;
+  }
+
+  // 요구사항: Monthly 달력 본체에 할 일/메모를 표시할지 결정하는 유형 필터(우측
+  // "이달의 할 일" 패널과는 무관). 날짜가 지정된 항목만 대상이며(monthlyItems가
+  // 아니라 state.items라 항상 date가 있다), type별로 각각의 표시 설정을 따른다.
+  function isMonthlyLogVisibleTaskOrMemo(item) {
+    if (!item || item.deletedAt || !item.date) return false;
+    if (item.type === 'task') return !!state.monthlyLogShowTasks;
+    if (item.type === 'memo') return !!state.monthlyLogShowMemos;
+    return false;
   }
 
   function isMonthlyLogMultiDaySchedule(item) {
@@ -22233,12 +22470,13 @@ if (typeBtn) {
   // - 주 단위로 다일 세그먼트를 먼저 슬롯에 패킹하고, 남은 슬롯을 단일 일정이 채운다.
   // - 슬롯 번호가 S를 넘긴 다일 세그먼트는 그 주 전체에서 숨기고, 지나는 날짜마다 +N에 센다.
   // - 위치는 저장하지 않는다. 렌더 중 item.updatedAt 변경이나 saveItems 호출도 하지 않는다.
-  function buildMonthlyLogScheduleGridPlan() {
-    var bounds = getMonthlyLogVisibleMonthBounds();
-    var layout = buildMonthlyLogWeekStarts();
-    var entries = state.items.filter(function (item) {
+  // 날짜 범위에 걸치는 항목을 entry로 만들고, 완료 숨기기 필터 + 기존 정렬(기간 긴 순 ->
+  // 시작 이른 순 -> 생성시각 -> id)을 적용한다. 일정/할 일/메모가 전부 이 헬퍼 하나를
+  // 공유하므로 정렬 규칙 자체는 복제하지 않는다.
+  function buildMonthlyLogEntriesFor(bounds, matchFn) {
+    return state.items.filter(function (item) {
       var end = item.endDate || item.date;
-      return isMonthlyLogSchedule(item) && item.date <= bounds.end && end >= bounds.start;
+      return matchFn(item) && item.date <= bounds.end && end >= bounds.start;
     }).map(function (item) {
       var endDate = item.endDate || item.date;
       return {
@@ -22261,6 +22499,22 @@ if (typeBtn) {
       if (ac !== bc) return ac - bc;
       return String(a.item.id).localeCompare(String(b.item.id));
     });
+  }
+
+  function buildMonthlyLogScheduleGridPlan() {
+    var bounds = getMonthlyLogVisibleMonthBounds();
+    var layout = buildMonthlyLogWeekStarts();
+    // 요구사항: 일정은 항상 표시(끌 수 없음)하고, 할 일/메모는 각각 켰을 때만 뒤에
+    // 이어붙인다. entries 배열 안에서 일정 그룹이 항상 앞서므로, 기존 패킹 알고리즘
+    // (아래, 변경 없음)이 첫 슬롯을 그대로 일정에 먼저 배정하고 할 일/메모는 남는
+    // 슬롯만 채운다 -- 패킹 코드 자체를 복제하거나 바꾸지 않는다.
+    var entries = buildMonthlyLogEntriesFor(bounds, isMonthlyLogSchedule);
+    if (state.monthlyLogShowTasks) {
+      entries = entries.concat(buildMonthlyLogEntriesFor(bounds, function (it) { return it.type === 'task' && isMonthlyLogVisibleTaskOrMemo(it); }));
+    }
+    if (state.monthlyLogShowMemos) {
+      entries = entries.concat(buildMonthlyLogEntriesFor(bounds, function (it) { return it.type === 'memo' && isMonthlyLogVisibleTaskOrMemo(it); }));
+    }
 
     assignMonthlyLogScheduleColors(entries);
 
@@ -22268,96 +22522,126 @@ if (typeBtn) {
     var byDate = {};
     layout.starts.forEach(function (weekStart) {
       var weekEnd = addCalendarDays(weekStart, 6);
-      var segments = entries.filter(function (entry) {
-        return entry.isMultiDay && entry.start <= weekEnd && entry.end >= weekStart;
-      }).map(function (entry) {
-        var segStart = entry.start < weekStart ? weekStart : entry.start;
-        var segEnd = entry.end > weekEnd ? weekEnd : entry.end;
-        return {
-          entry: entry,
-          item: entry.item,
-          segStart: segStart,
-          segEnd: segEnd,
-          continuesBefore: entry.start < segStart,
-          continuesAfter: entry.end > segEnd,
-          slot: -1
-        };
-      });
-
-      // 주 단위 인터벌 패킹. 정렬은 이미 기간 긴 순 -> 시작 이른 순이므로 위에서부터 채운다.
-      var occupancy = [];
-      segments.forEach(function (seg) {
-        var slot = 0;
-        while (slot < MONTHLY_LOG_WEEK_PACK_LIMIT) {
-          if (!occupancy[slot]) occupancy[slot] = [];
-          var blocked = occupancy[slot].some(function (other) {
-            return other.segStart <= seg.segEnd && other.segEnd >= seg.segStart;
-          });
-          if (!blocked) break;
-          slot++;
-        }
-        seg.slot = slot;
-        if (!occupancy[slot]) occupancy[slot] = [];
-        occupancy[slot].push(seg);
-      });
-
-      var slotCount = getMonthlyLogDaySlotCount();
-      var visibleSegments = segments.filter(function (seg) { return seg.slot < slotCount; });
-
-      for (var i = 0; i < 7; i++) {
-        var dateStr = addCalendarDays(weekStart, i);
-        var segmentsOnDate = segments.filter(function (seg) {
-          return seg.segStart <= dateStr && dateStr <= seg.segEnd;
-        });
-        var takenSlots = {};
-        segmentsOnDate.forEach(function (seg) {
-          if (seg.slot < slotCount) takenSlots[seg.slot] = true;
-        });
-        var singles = entries.filter(function (entry) {
-          return !entry.isMultiDay && entry.start === dateStr;
-        }).sort(function (a, b) {
-          var ao = Number(a.item.order);
-          var bo = Number(b.item.order);
-          if (isFinite(ao) && isFinite(bo) && ao !== bo) return ao - bo;
-          var ac = Number(a.item.createdAt) || 0;
-          var bc = Number(b.item.createdAt) || 0;
-          if (ac !== bc) return ac - bc;
-          return String(a.item.id).localeCompare(String(b.item.id));
-        });
-        var freeSlots = [];
-        for (var slotIndex = 0; slotIndex < slotCount; slotIndex++) {
-          if (!takenSlots[slotIndex]) freeSlots.push(slotIndex);
-        }
-        var placed = [];
-        var hiddenTitles = [];
-        singles.forEach(function (entry, index) {
-          if (index < freeSlots.length) placed.push({ entry: entry, slot: freeSlots[index] });
-          else hiddenTitles.push(entry.item.text || '제목 없음');
-        });
-        segmentsOnDate.forEach(function (seg) {
-          if (seg.slot >= slotCount) hiddenTitles.push(seg.item.text || '제목 없음');
-        });
-        // 보이는 개수 = 이 날짜에서 슬롯을 차지한 다일 세그먼트 + 실제로 배치된 단일 일정.
-        var total = segmentsOnDate.length + singles.length;
-        var shown = Object.keys(takenSlots).length + placed.length;
-        byDate[dateStr] = {
-          singles: placed,
-          takenSlots: takenSlots,
-          total: total,
-          overflow: Math.max(0, total - shown),
-          hiddenTitles: hiddenTitles,
-          // +N 팝오버 전용 -- 보이는/숨겨진 항목을 가리지 않은 이 날짜의 전체 단일 일정·
-          // 다일 세그먼트(이미 기존 정렬/슬롯 배정 순서). 패킹 규칙 자체는 바꾸지 않고
-          // 팝오버가 읽을 참조만 추가로 들고 있는다.
-          allSingles: singles,
-          allSegments: segmentsOnDate
-        };
+      // 요구사항: "+N" 자리는 정말 넘칠 때만 쓴다 -- 먼저 그 주 행의 실제 최대 슬롯 수
+      // (slotCountFull, 예약 없음)로 통째로 한 번 패킹해 보고, 7일 중 단 하루라도
+      // 넘치면(any date's hiddenTitles) 그때만 슬롯을 하나 줄여(slotCountFull-1) 그
+      // 자리에 +N 한 줄이 들어갈 여백을 만들고 다시 패킹한다. 아무 데도 안 넘치면
+      // slotCountFull 결과를 그대로 쓰고 +N 자리 자체를 만들지 않는다.
+      var slotCountFull = getMonthlyLogDaySlotCount(weekStart);
+      var packed = packMonthlyLogWeek(entries, weekStart, weekEnd, slotCountFull);
+      var anyOverflow = Object.keys(packed.byDate).some(function (d) { return packed.byDate[d].hiddenTitles.length > 0; });
+      // 실제로 쓰인 슬롯 수(reservation 유무 반영) -- CSS --monthly-slot-count와
+      // .monthly-log-day-slots 스페이서 채우기가 이 값을 그대로 따라야 슬롯 영역
+      // 높이와 실제 배치된 칩 수가 어긋나지 않는다(요구사항: 캐시/불일치 없이 즉시 반영).
+      var effectiveSlotCount = slotCountFull;
+      if (anyOverflow && slotCountFull > MONTHLY_LOG_DAY_SLOT_MIN) {
+        effectiveSlotCount = slotCountFull - 1;
+        packed = packMonthlyLogWeek(entries, weekStart, weekEnd, effectiveSlotCount);
       }
-
-      weeks.push({ start: weekStart, end: weekEnd, segments: visibleSegments });
+      Object.keys(packed.byDate).forEach(function (d) { byDate[d] = packed.byDate[d]; });
+      weeks.push({ start: weekStart, end: weekEnd, segments: packed.visibleSegments, slotCount: effectiveSlotCount });
     });
 
     return { bounds: bounds, entries: entries, weeks: weeks, byDate: byDate };
+  }
+
+  // buildMonthlyLogScheduleGridPlan에서 분리한 "주 하나를 주어진 slotCount로 패킹"하는
+  // 순수 계산 -- 다일 세그먼트 인터벌 패킹/정렬 우선순위는 기존 그대로이고, 바뀐 것은
+  // 이 함수가 이제 slotCount를 파라미터로 받아 같은 주를 필요하면 두 번(예약 없음 ->
+  // 넘치면 예약 있음) 돌릴 수 있게 된 것뿐이다.
+  function packMonthlyLogWeek(entries, weekStart, weekEnd, slotCount) {
+    var segments = entries.filter(function (entry) {
+      return entry.isMultiDay && entry.start <= weekEnd && entry.end >= weekStart;
+    }).map(function (entry) {
+      var segStart = entry.start < weekStart ? weekStart : entry.start;
+      var segEnd = entry.end > weekEnd ? weekEnd : entry.end;
+      return {
+        entry: entry,
+        item: entry.item,
+        segStart: segStart,
+        segEnd: segEnd,
+        continuesBefore: entry.start < segStart,
+        continuesAfter: entry.end > segEnd,
+        slot: -1
+      };
+    });
+
+    // 주 단위 인터벌 패킹. 정렬은 이미 기간 긴 순 -> 시작 이른 순이므로 위에서부터 채운다.
+    var occupancy = [];
+    segments.forEach(function (seg) {
+      var slot = 0;
+      while (slot < MONTHLY_LOG_WEEK_PACK_LIMIT) {
+        if (!occupancy[slot]) occupancy[slot] = [];
+        var blocked = occupancy[slot].some(function (other) {
+          return other.segStart <= seg.segEnd && other.segEnd >= seg.segStart;
+        });
+        if (!blocked) break;
+        slot++;
+      }
+      seg.slot = slot;
+      if (!occupancy[slot]) occupancy[slot] = [];
+      occupancy[slot].push(seg);
+    });
+
+    var visibleSegments = segments.filter(function (seg) { return seg.slot < slotCount; });
+    var byDate = {};
+
+    for (var i = 0; i < 7; i++) {
+      var dateStr = addCalendarDays(weekStart, i);
+      var segmentsOnDate = segments.filter(function (seg) {
+        return seg.segStart <= dateStr && dateStr <= seg.segEnd;
+      });
+      var takenSlots = {};
+      segmentsOnDate.forEach(function (seg) {
+        if (seg.slot < slotCount) takenSlots[seg.slot] = true;
+      });
+      var singles = entries.filter(function (entry) {
+        return !entry.isMultiDay && entry.start === dateStr;
+      }).sort(function (a, b) {
+        // 일정이 슬롯을 먼저 쓴다(요구사항) -- 타입 우선순위를 먼저 비교하고,
+        // 같은 타입 안에서는 기존 순서(order -> 생성시각 -> id)를 그대로 쓴다.
+        var aSchedule = a.item.type === 'schedule';
+        var bSchedule = b.item.type === 'schedule';
+        if (aSchedule !== bSchedule) return aSchedule ? -1 : 1;
+        var ao = Number(a.item.order);
+        var bo = Number(b.item.order);
+        if (isFinite(ao) && isFinite(bo) && ao !== bo) return ao - bo;
+        var ac = Number(a.item.createdAt) || 0;
+        var bc = Number(b.item.createdAt) || 0;
+        if (ac !== bc) return ac - bc;
+        return String(a.item.id).localeCompare(String(b.item.id));
+      });
+      var freeSlots = [];
+      for (var slotIndex = 0; slotIndex < slotCount; slotIndex++) {
+        if (!takenSlots[slotIndex]) freeSlots.push(slotIndex);
+      }
+      var placed = [];
+      var hiddenTitles = [];
+      singles.forEach(function (entry, index) {
+        if (index < freeSlots.length) placed.push({ entry: entry, slot: freeSlots[index] });
+        else hiddenTitles.push(entry.item.text || '제목 없음');
+      });
+      segmentsOnDate.forEach(function (seg) {
+        if (seg.slot >= slotCount) hiddenTitles.push(seg.item.text || '제목 없음');
+      });
+      // 보이는 개수 = 이 날짜에서 슬롯을 차지한 다일 세그먼트 + 실제로 배치된 단일 일정.
+      var total = segmentsOnDate.length + singles.length;
+      var shown = Object.keys(takenSlots).length + placed.length;
+      byDate[dateStr] = {
+        singles: placed,
+        takenSlots: takenSlots,
+        total: total,
+        overflow: Math.max(0, total - shown),
+        hiddenTitles: hiddenTitles,
+        // +N 팝오버 전용 -- 보이는/숨겨진 항목을 가리지 않은 이 날짜의 전체 단일 일정·
+        // 다일 세그먼트(이미 기존 정렬/슬롯 배정 순서). 패킹 규칙 자체는 바꾸지 않고
+        // 팝오버가 읽을 참조만 추가로 들고 있는다.
+        allSingles: singles,
+        allSegments: segmentsOnDate
+      };
+    }
+
+    return { visibleSegments: visibleSegments, byDate: byDate };
   }
 
   // 색은 항목에 저장하지 않는다. 저장돼 있던 monthlyLogScheduleColorIndex는 시작 후보로만
@@ -22455,12 +22739,17 @@ if (typeBtn) {
     }
     host.appendChild(slots);
 
-    // 초과 표시 영역은 +N이 없어도 항상 자리를 차지한다(모든 주 행 동일 높이 원칙).
-    var overflow = document.createElement('div');
-    overflow.className = 'monthly-log-day-overflow';
+    // 요구사항: "+N" 자리는 정말 넘칠 때만 만든다 -- 항상 만들어 두고 비어 있을 때
+    // color:transparent로 숨기던 이전 방식은 안 넘쳐도 14px 높이(슬롯 하나 못 되는
+    // 여백)를 항상 잡아먹어, 그만큼 실제 표시 가능한 칩 수를 줄이고 있었다(버그).
+    // buildMonthlyLogScheduleGridPlan/packMonthlyLogWeek이 이미 "이 주에 정말 넘치는
+    // 날이 있을 때만" slotCount를 하나 줄여 이 자리를 마련해 두므로, 여기서는 그 결과
+    // (day.overflow > 0)를 그대로 따르기만 하면 된다 -- 안 넘치면 엘리먼트 자체를 만들지
+    // 않는다.
     var hiddenCount = day ? day.overflow : 0;
     if (hiddenCount > 0) {
-      overflow.classList.add('has-overflow');
+      var overflow = document.createElement('div');
+      overflow.className = 'monthly-log-day-overflow has-overflow';
       overflow.textContent = '+' + hiddenCount + '개';
       overflow.title = (day.hiddenTitles || []).join(' · ');
       overflow.setAttribute('aria-label', formatAnnounceDate(dateStr) + ', 더 있는 일정 ' + hiddenCount + '개 -- 펼쳐서 전체 보기');
@@ -22471,8 +22760,8 @@ if (typeBtn) {
       overflow.tabIndex = 0;
       overflow.setAttribute('aria-haspopup', 'dialog');
       overflow.setAttribute('aria-expanded', 'false');
+      host.appendChild(overflow);
     }
-    host.appendChild(overflow);
 
     host.appendChild(buildMonthlyLogScheduleInputEl(dateStr, 0));
     return host;
@@ -22516,6 +22805,12 @@ if (typeBtn) {
     el.setAttribute('aria-label', item.text + ', ' + formatDotDate(item.date) + '부터 '
       + formatDotDate(item.endDate || item.date) + '까지');
     el.appendChild(createMonthlyLogDragHandle(item, dateStr));
+    // 요구사항: 할 일/메모가 일정과 같은 칸에 섞일 수 있으므로, Today와 같은 유형
+    // 기호(iconForType 재사용)로 구분한다.
+    var typeIconWrap = document.createElement('span');
+    typeIconWrap.className = 'monthly-log-item-type-icon';
+    typeIconWrap.appendChild(iconForType(item, dateStr));
+    el.appendChild(typeIconWrap);
     var title = document.createElement('span');
     title.className = 'monthly-log-item-title';
     if (item.instanceGroupId) title.classList.add('is-instance-linked');
@@ -22841,13 +23136,16 @@ if (typeBtn) {
     cancelMonthlyLogScheduleGridInteraction({ clearDraft:false });
   }
 
-  function buildMonthlyLogRow(dateStr, dayNum, inCurrentMonth) {
+  function buildMonthlyLogRow(dateStr, dayNum, inCurrentMonth, colIndex) {
     var d = parseLocalDate(dateStr);
     var dow = d.getDay();
     var annotation = getCalendarAnnotations(dateStr);
     var row = document.createElement('div');
     row.className = 'monthly-log-row';
     row.dataset.date = dateStr;
+    // Shift+휠로 요일 열 너비를 조절할 때, 포인터 아래 날짜 칸에서 바로 그 열의
+    // 인덱스(0~6, weekStart 기준 오프셋)를 읽기 위한 값이다.
+    row.dataset.colIndex = String(colIndex);
     if (!inCurrentMonth) row.classList.add('is-outside-month');
     if (annotation.isPublicHoliday) row.classList.add('is-holiday');
     else if (dow === 0) row.classList.add('is-sun');
@@ -22878,7 +23176,36 @@ if (typeBtn) {
     // '이번 달 할 일' 패널과 Today/Weekly에서 확인한다(할 일/메모 보기 필터는 후속 단계).
     row.appendChild(buildMonthlyLogDayBody(dateStr));
 
+    // 요구사항: +N이 없어도(행을 늘려 항목이 전부 보이는 날에도) 같은 전체 목록
+    // 팝오버를 열 수 있는 버튼. 항목이 하나도 없는 날짜에는 만들지 않는다.
+    var day = monthlyLogScheduleGridPlan && monthlyLogScheduleGridPlan.byDate[dateStr];
+    if (day && day.total > 0) {
+      row.appendChild(buildMonthlyLogDayListButton(dateStr));
+    }
+
     return row;
+  }
+
+  // openMonthlyLogOverflowPopover가 여는 "날짜 전체 목록" 팝오버로 통하는 두 번째
+  // 진입점. +N 배지와 완전히 같은 팝오버를 재사용하고(새 팝오버/로직 없음), overflow가
+  // 없어도 항상 열 수 있다는 점만 다르다. 데스크톱(hover:hover and pointer:fine, 넓은
+  // 화면)에서는 기본 숨김 -> 그 날짜 칸 hover/포커스에서만 보이고, 터치·좁은 화면에서는
+  // 항상 보인다(CSS, index.html .monthly-log-day-list-btn 참고).
+  function buildMonthlyLogDayListButton(dateStr) {
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'monthly-log-day-list-btn';
+    btn.dataset.action = 'open-day-list';
+    btn.dataset.date = dateStr;
+    btn.setAttribute('aria-haspopup', 'dialog');
+    btn.setAttribute('aria-expanded', 'false');
+    btn.setAttribute('aria-label', formatAnnounceDate(dateStr) + ' 전체 항목 보기');
+    applyIconButtonTooltip(btn, '전체 항목 보기');
+    var icon = document.createElement('span');
+    icon.className = 'ic-list';
+    icon.setAttribute('aria-hidden', 'true');
+    btn.appendChild(icon);
+    return btn;
   }
 
   // 7열 × 5~6주 그리드. 주 시작 요일은 state.calendarWeekStartsOn(미니 달력·Weekly와
@@ -22912,6 +23239,7 @@ if (typeBtn) {
       var dow = (startsOn + i) % 7;
       var cell = document.createElement('span');
       cell.className = 'monthly-log-weekday-cell';
+      cell.dataset.colIndex = String(i);
       if (dow === 0) cell.classList.add('is-sun');
       else if (dow === 6) cell.classList.add('is-sat');
       cell.textContent = WEEKDAY_KO[dow];
@@ -22925,39 +23253,50 @@ if (typeBtn) {
     if (!container) return;
     monthlyLogScheduleGridPlan = buildMonthlyLogScheduleGridPlan();
     var layout = buildMonthlyLogWeekStarts();
+    var monthKey = layout.monthKey;
     var frag = document.createDocumentFragment();
     frag.appendChild(buildMonthlyLogWeekdayHead());
     layout.starts.forEach(function (weekStart, weekIndex) {
       var weekRow = document.createElement('div');
       weekRow.className = 'monthly-log-week-row';
       weekRow.dataset.weekStart = weekStart;
+      // 이 주 행만의 커스텀 높이/슬롯 수(요구사항: 행마다 독립) -- 없으면 auto-fit 그대로.
+      applyMonthlyLogRowHeightDom(weekRow, getMonthlyLogCustomRowH(monthKey, weekStart));
+      // 다일 세그먼트는 날짜 칸 위에 겹치는 주 단위 오버레이가 그린다. 날짜 칸의
+      // 클릭·드롭 판정을 막지 않도록 오버레이 자체는 pointer-events:none이다.
+      var week = monthlyLogScheduleGridPlan && monthlyLogScheduleGridPlan.weeks[weekIndex];
+      // --monthly-slot-count는 반드시 이 주가 "실제로 쓴" 슬롯 수(week.slotCount --
+      // +N 예약 여부까지 반영된 값)를 따라야 한다. getMonthlyLogDaySlotCount(weekStart)는
+      // "+N이 전혀 없다고 가정한" 최대치(slotCountFull)라 그대로 쓰면 슬롯 영역 높이가
+      // 실제 배치된 칩 수보다 커져(혹은 +N 자리와 겹쳐) 어긋난다.
+      weekRow.style.setProperty('--monthly-slot-count', String(week ? week.slotCount : getMonthlyLogDaySlotCount(weekStart)));
       for (var i = 0; i < 7; i++) {
         var dateStr = addCalendarDays(weekStart, i);
         var cellDate = parseLocalDate(dateStr);
         weekRow.appendChild(buildMonthlyLogRow(
           dateStr,
           cellDate.getDate(),
-          dateStr.slice(0, 7) === layout.monthKey
+          dateStr.slice(0, 7) === layout.monthKey,
+          i
         ));
       }
-      // 다일 세그먼트는 날짜 칸 위에 겹치는 주 단위 오버레이가 그린다. 날짜 칸의
-      // 클릭·드롭 판정을 막지 않도록 오버레이 자체는 pointer-events:none이다.
-      var week = monthlyLogScheduleGridPlan && monthlyLogScheduleGridPlan.weeks[weekIndex];
       if (week) weekRow.appendChild(buildMonthlyLogWeekSegmentLayer(week));
       frag.appendChild(weekRow);
     });
-    container.style.setProperty('--monthly-slot-count', String(monthlyLogDaySlotCount));
     container.replaceChildren(frag);
+    // 헤더/모든 주 행/모든 다일 오버레이에 같은 7열 grid-template-columns를 적용한다
+    // (요구사항: 커스텀 열 너비가 있으면 그 열만 고정 px, 나머지는 그대로 auto-fit).
+    applyMonthlyLogColumnTemplateDom();
     // 행 자체를 통째로 새로 만들었으므로, 확정된 날짜 범위(state.selectedDateRange)가
     // 있다면 새 DOM에도 다시 클래스를 입혀야 한다(미니 달력의 renderCalendarRangeSelection과
     // 같은 필요성).
     renderMonthlyLogRangeSelection();
-    // 실제 배치가 끝난 뒤 한 번만 S를 재측정한다. 행 높이는 flex로 정해지고 슬롯 수에
-    // 좌우되지 않으므로, 값이 바뀌면 한 번 더 그리는 것으로 수렴한다.
+    // 실제 배치가 끝난 뒤 한 번만 각 행의 S를 재측정한다(auto-fit 행은 실측 전에는
+    // 정확한 높이를 모른다). 값이 바뀐 행이 있으면 한 번 더 그리는 것으로 수렴한다.
     if (!monthlyLogSlotSyncGuard) {
       requestAnimationFrame(function () {
         if (state.currentView !== 'calendar') return;
-        if (!syncMonthlyLogDaySlotCount()) return;
+        if (!syncMonthlyLogDaySlotCounts()) return;
         monthlyLogSlotSyncGuard = true;
         try { renderMonthlyLogRows(); } finally { monthlyLogSlotSyncGuard = false; }
       });
@@ -22969,7 +23308,16 @@ if (typeBtn) {
     var label = monthDate.getFullYear() + '년 ' + (monthDate.getMonth() + 1) + '월';
     var monthLabel = document.getElementById('monthly-log-month-label');
     var inboxTitle = document.getElementById('monthly-inbox-title');
-    if (monthLabel) monthLabel.textContent = label + ' 달력';
+    // 회귀 수정(원인): 연·월 편집기가 이 타이틀에서 열려 있는 동안은 절대 덮어쓰지 않는다.
+    // 편집기를 여는 순간 scrollColumnToValue -> scroll 이벤트 -> selectYearMonthWheelIndex ->
+    // commitYearMonthWheelSelection -> target.applyMonth -> renderMonthlyLog ->
+    // 여기(textContent 대입)가 연쇄 실행돼, 방금 만든 input이 곧바로 지워지면서
+    // "입력창이 잠깐 보였다가 휠만 남는" 증상이 났다. 미니 달력(renderCalendarTitle)에는
+    // 이미 같은 가드가 있었고 Monthly Log 쪽에만 빠져 있었다. 복원은 편집이 끝나는
+    // 시점에 closeYearMonthEditor가 직접 한다.
+    if (monthLabel && !(activeYearMonthWheel && activeYearMonthWheel.titleEl === monthLabel)) {
+      monthLabel.textContent = label + ' 달력';
+    }
     if (inboxTitle) inboxTitle.textContent = label + ' 할일';
   }
 
@@ -23555,6 +23903,15 @@ if (typeBtn) {
       openMonthlyLogOverflowPopover(overflowEl.dataset.date, overflowEl);
       return;
     }
+    // 요구사항: overflow(+N)가 없어도(행을 늘려 다 보이는 날에도) 같은 전체 목록
+    // 팝오버를 열 수 있는 별도 진입점 -- 기존 openMonthlyLogOverflowPopover를 그대로
+    // 재사용하고 새 팝오버/로직은 만들지 않는다.
+    var listBtn = e.target.closest('.monthly-log-day-list-btn');
+    if (listBtn) {
+      e.stopPropagation();
+      openMonthlyLogOverflowPopover(listBtn.dataset.date, listBtn);
+      return;
+    }
     var checkboxBtn = e.target.closest('[data-action="toggle-complete"]');
     if (checkboxBtn) { e.stopPropagation(); toggleItemCompleted(checkboxBtn.dataset.itemId, checkboxBtn.dataset.occurrenceDate); return; }
     var typeBtn = e.target.closest('[data-action="type-menu"]');
@@ -23688,7 +24045,6 @@ if (typeBtn) {
 
   function wireMonthlyLog() {
     loadMonthlyLogCustomSize();
-    applyMonthlyLogCustomSizeDom();
     wireMonthlyLogSizeWheel();
     wireMonthlyInboxPanelNarrowToggle();
     var rows = document.getElementById('monthly-log-rows');
@@ -23722,7 +24078,7 @@ if (typeBtn) {
       window.addEventListener('resize', function () {
         if (state.currentView !== 'calendar') return;
         // 창 크기가 바뀌어 슬롯 수가 달라질 때만 다시 그린다.
-        if (syncMonthlyLogDaySlotCount()) renderMonthlyLogRows();
+        if (syncMonthlyLogDaySlotCounts()) renderMonthlyLogRows();
         positionMonthlyLogScheduleLabels();
       });
     }
@@ -26623,6 +26979,10 @@ originalEndTime: state.timeDraft.endTime || null,
     if (lunarItem) lunarItem.setAttribute('aria-checked', String(!!state.lunarEnabled));
     var hideCompletedItem = activeMonthlyLogMenu.el.querySelector('[data-monthly-log-menu-action="hide-completed"]');
     if (hideCompletedItem) hideCompletedItem.setAttribute('aria-checked', String(!!state.monthlyLogHideCompleted));
+    var showTasksItem = activeMonthlyLogMenu.el.querySelector('[data-monthly-log-menu-action="show-tasks"]');
+    if (showTasksItem) showTasksItem.setAttribute('aria-checked', String(!!state.monthlyLogShowTasks));
+    var showMemosItem = activeMonthlyLogMenu.el.querySelector('[data-monthly-log-menu-action="show-memos"]');
+    if (showMemosItem) showMemosItem.setAttribute('aria-checked', String(!!state.monthlyLogShowMemos));
   }
 
   function onOutsideMonthlyLogMenuPointerDown(e) {
@@ -26667,6 +27027,19 @@ originalEndTime: state.timeDraft.endTime || null,
       row.classList.add('has-group');
       row.style.setProperty('--group-accent', group.color || 'var(--lav)');
     }
+    // 요구사항: 구분선 등 완료 불가능 유형에는 체크를 두지 않는다(toggleItemCompleted
+    // 자체도 divider를 무시하므로, 여기서는 컨트롤을 아예 안 보여주는 것만 신경 쓴다).
+    // 기존 완료 체크 컨트롤(checkboxButton)을 그대로 재사용하고, 클릭은 이 팝오버
+    // 전용으로 따로 처리해(delegated 목록이 없어) 상세 Drawer로 전파되지 않게 막는다.
+    if (item.type !== 'divider') {
+      var checkbox = checkboxButton(item, dateStr);
+      checkbox.addEventListener('click', function (e) {
+        e.stopPropagation();
+        toggleItemCompleted(item.id, dateStr);
+        refreshMonthlyLogOverflowPopoverList();
+      });
+      row.appendChild(checkbox);
+    }
     var iconWrap = document.createElement('span');
     iconWrap.className = 'monthly-log-overflow-icon';
     iconWrap.appendChild(iconForType(item, dateStr));
@@ -26685,6 +27058,41 @@ originalEndTime: state.timeDraft.endTime || null,
       openDetailDrawer(item.id, dateStr);
     });
     return row;
+  }
+
+  // openMonthlyLogOverflowPopover와 refreshMonthlyLogOverflowPopoverList가 공유하는
+  // 목록 구성 -- 기존 정렬 순서(다일 세그먼트는 slot 오름차순, 단일 항목은 기존 정렬)는
+  // 그대로 두고, 항목 배열을 만드는 부분만 한 곳에 모은다.
+  function buildMonthlyLogOverflowListRows(day, dateStr) {
+    var rows = [];
+    (day.allSegments || []).slice().sort(function (a, b) { return a.slot - b.slot; }).forEach(function (seg) {
+      rows.push(buildMonthlyLogOverflowRow(seg.item, dateStr));
+    });
+    (day.allSingles || []).forEach(function (entry) {
+      rows.push(buildMonthlyLogOverflowRow(entry.item, dateStr));
+    });
+    return rows;
+  }
+
+  // 요구사항: 팝오버 안에서 체크한 직후에도 팝오버는 열린 채로 있고, 그 목록만 최신
+  // monthlyLogScheduleGridPlan(완료 숨기기 반영 포함)으로 다시 그린다. toggleItemCompleted가
+  // 이미 renderApp()을 거쳐 plan을 갱신해 두므로 여기서는 그 결과를 다시 읽기만 한다.
+  function refreshMonthlyLogOverflowPopoverList() {
+    if (!activeMonthlyLogOverflowPopover) return;
+    var dateStr = activeMonthlyLogOverflowPopover.dateStr;
+    var list = activeMonthlyLogOverflowPopover.el.querySelector('.monthly-log-overflow-popover-list');
+    if (!list) return;
+    var day = monthlyLogScheduleGridPlan && monthlyLogScheduleGridPlan.byDate[dateStr];
+    list.replaceChildren();
+    var rows = day ? buildMonthlyLogOverflowListRows(day, dateStr) : [];
+    if (rows.length) {
+      rows.forEach(function (row) { list.appendChild(row); });
+    } else {
+      var empty = document.createElement('div');
+      empty.className = 'monthly-log-overflow-empty';
+      empty.textContent = '표시할 항목이 없습니다.';
+      list.appendChild(empty);
+    }
   }
 
   function moveMonthlyLogOverflowFocus(items, target) {
@@ -26766,13 +27174,10 @@ originalEndTime: state.timeDraft.endTime || null,
     list.setAttribute('aria-label', '항목 목록');
     // 기존 Monthly 정렬 순서 유지: 다일 세그먼트는 이미 배정된 slot 오름차순(패킹이
     // 부여한 우선순위), 단일 일정은 기존 정렬(order/생성시각/id) 그대로다.
-    (day.allSegments || []).slice().sort(function (a, b) { return a.slot - b.slot; }).forEach(function (seg) {
-      list.appendChild(buildMonthlyLogOverflowRow(seg.item, dateStr));
-    });
-    (day.allSingles || []).forEach(function (entry) {
-      list.appendChild(buildMonthlyLogOverflowRow(entry.item, dateStr));
-    });
-    if (!list.children.length) {
+    var initialRows = buildMonthlyLogOverflowListRows(day, dateStr);
+    if (initialRows.length) {
+      initialRows.forEach(function (row) { list.appendChild(row); });
+    } else {
       var empty = document.createElement('div');
       empty.className = 'monthly-log-overflow-empty';
       empty.textContent = '표시할 항목이 없습니다.';
@@ -26829,6 +27234,18 @@ originalEndTime: state.timeDraft.endTime || null,
         renderMonthlyLogMenuState();
       }
       else if (action === 'reset-size') { resetMonthlyLogCustomSize(); closeMonthlyLogMenu(true); }
+      else if (action === 'show-tasks') {
+        state.monthlyLogShowTasks = !state.monthlyLogShowTasks;
+        savePreferences();
+        renderMonthlyLogRows();
+        renderMonthlyLogMenuState();
+      }
+      else if (action === 'show-memos') {
+        state.monthlyLogShowMemos = !state.monthlyLogShowMemos;
+        savePreferences();
+        renderMonthlyLogRows();
+        renderMonthlyLogMenuState();
+      }
     }
   }
 
@@ -26901,6 +27318,49 @@ originalEndTime: state.timeDraft.endTime || null,
       closeMonthlyLogMenu(true);
     });
     menu.appendChild(resetSizeItem);
+
+    // 요구사항: Monthly 달력 본체 유형 표시 필터 -- 일정은 항상 표시(끌 수 없어 여기
+    // 항목이 없다), 할 일/메모는 각각 이 체크로만 켤 수 있고 우측 "이달의 할 일"
+    // 패널에는 영향이 없다.
+    var showTasksItem = document.createElement('div');
+    showTasksItem.className = 'monthly-log-menu-item';
+    showTasksItem.setAttribute('role', 'menuitemcheckbox');
+    showTasksItem.setAttribute('aria-checked', String(!!state.monthlyLogShowTasks));
+    showTasksItem.dataset.monthlyLogMenuAction = 'show-tasks';
+    showTasksItem.tabIndex = -1;
+    var showTasksCheck = document.createElement('span');
+    showTasksCheck.className = 'monthly-log-menu-item-check';
+    var showTasksLabel = document.createElement('span');
+    showTasksLabel.textContent = '할 일 표시';
+    showTasksItem.appendChild(showTasksCheck);
+    showTasksItem.appendChild(showTasksLabel);
+    showTasksItem.addEventListener('click', function () {
+      state.monthlyLogShowTasks = !state.monthlyLogShowTasks;
+      savePreferences();
+      renderMonthlyLogRows();
+      renderMonthlyLogMenuState();
+    });
+    menu.appendChild(showTasksItem);
+
+    var showMemosItem = document.createElement('div');
+    showMemosItem.className = 'monthly-log-menu-item';
+    showMemosItem.setAttribute('role', 'menuitemcheckbox');
+    showMemosItem.setAttribute('aria-checked', String(!!state.monthlyLogShowMemos));
+    showMemosItem.dataset.monthlyLogMenuAction = 'show-memos';
+    showMemosItem.tabIndex = -1;
+    var showMemosCheck = document.createElement('span');
+    showMemosCheck.className = 'monthly-log-menu-item-check';
+    var showMemosLabel = document.createElement('span');
+    showMemosLabel.textContent = '메모 표시';
+    showMemosItem.appendChild(showMemosCheck);
+    showMemosItem.appendChild(showMemosLabel);
+    showMemosItem.addEventListener('click', function () {
+      state.monthlyLogShowMemos = !state.monthlyLogShowMemos;
+      savePreferences();
+      renderMonthlyLogRows();
+      renderMonthlyLogMenuState();
+    });
+    menu.appendChild(showMemosItem);
 
     document.body.appendChild(menu);
     positionPopup(menu, anchorEl);
@@ -27602,6 +28062,8 @@ function wireMonthlyInboxMenuButtons() {
     state.calendarMonthlySplitRatio = loaded.calendarMonthlySplitRatio;
     state.monthlySplitDividerVisible = true;
     state.monthlyLogHideCompleted = loaded.monthlyLogHideCompleted;
+    state.monthlyLogShowTasks = loaded.monthlyLogShowTasks;
+    state.monthlyLogShowMemos = loaded.monthlyLogShowMemos;
     state.defaultInputMode = loaded.defaultInputMode || 'task';
     state.autoRolloverEnabled = loaded.autoRolloverEnabled !== false;
     state.inputMode = state.defaultInputMode;
@@ -27732,13 +28194,12 @@ wireMonthlyPanelToggle();
     exportAllDataAsJson: exportAllDataAsJson,
     reportStorageFailure: reportStorageFailure,
     reportStorageSuccessIfRecovering: reportStorageSuccessIfRecovering,
-    // 왼쪽 단축키 패널의 "실행" 버튼이 재사용하는 기존 명령 핸들러. 로직은 전혀 새로
-    // 만들지 않고 이미 있는 함수를 그대로 노출만 한다(Ctrl+Z/Y 등 실제 키 조합은 그대로
-    // handleGlobalKeydown이 처리한다 -- 이 노출은 그 핸들러를 건드리지 않는다).
+    // 단축키 패널은 읽기 전용 치트시트로 단순화됐다(요구사항) -- "실행" 버튼과 그 전용
+    // run/can 커맨드 계층·getHistoryCounts는 더 이상 쓰는 곳이 없어 제거했다. undo/redo/
+    // selectAllInActiveList는 이 패널 이전부터 있던 범용 함수라 그대로 남겨 둔다.
     undo: undo,
     redo: redo,
-    selectAllInActiveList: selectAllInActiveList,
-    getHistoryCounts: function () { return { undo: history.undoStack.length, redo: history.redoStack.length }; }
+    selectAllInActiveList: selectAllInActiveList
   };
 
   init();

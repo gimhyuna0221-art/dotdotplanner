@@ -85,10 +85,13 @@
 
     /* projectId가 없는 일정의 기본 색 -- 팔레트 자동 배정 대신 테마별 단일 neutral
        색 하나만 쓴다(요구사항). projectId가 있으면 applyMonthlyLogScheduleColors가
-       이 값을 프로젝트 색으로 덮어쓴다. */
-    --schedule-neutral-bg:#eef0f3;
-    --schedule-neutral-border:#c7cbd3;
-    --schedule-neutral-text:#565b66;
+       이 값을 프로젝트 색으로 덮어쓴다. 처음 값(#eef0f3 등)이 --bg-card(#fff)와 거의
+       구분되지 않아 "비활성"처럼 보인다는 지적이 있어, 칸 배경과 뚜렷이 갈리도록
+       더 진한 회색조로 보정했다(색상 자체는 여전히 무채색 -- 프로젝트 팔레트를 새로
+       쓰지 않는다는 요구사항은 그대로 지킨다). */
+    --schedule-neutral-bg:#e3e5ea;
+    --schedule-neutral-border:#aeb3bd;
+    --schedule-neutral-text:#3d414a;
   }
   :root[data-theme="dark"]{
     color-scheme: dark;
@@ -141,9 +144,10 @@
     --desc-color-pink:#ef9fc5;
     --desc-color-red:#ff8783;
 
-    --schedule-neutral-bg:#2b2e35;
-    --schedule-neutral-border:#454951;
-    --schedule-neutral-text:#c3c7d0;
+    /* 다크 --bg-card(#242429)와 뚜렷이 갈리도록 밝게, 테두리·글자도 더 선명하게. */
+    --schedule-neutral-bg:#363a43;
+    --schedule-neutral-border:#5b6070;
+    --schedule-neutral-text:#e4e6ea;
   }
   *{box-sizing:border-box}
   /* 1/2: 지난 턴에 Weekly를 화면 바닥까지 늘리려고 artboard를 overflow-y:visible로 풀었더니,
@@ -1902,6 +1906,28 @@ body.dnd-active .group-drag{cursor:grabbing}
   pointer-events:none;
 }
 .project-dot-tooltip[hidden]{display:none}
+/* 아이콘 전용 버튼용 2단(설명+단축키) 카드형 -- 앱 전체 icon-only 버튼 툴팁이 이
+   모양으로 통일된다(요구사항). 같은 공유 엘리먼트(#inline-tooltip)에 이 클래스가
+   붙었을 때만 꼬리표/2단 레이아웃을 쓰고, 평소 한 줄 설명 모드의 overflow:hidden/
+   ellipsis는 꼬리(::after 아님, 실제 자식 span)가 잘리지 않도록 여기서 되돌린다. */
+.project-dot-tooltip.is-kbd-tooltip{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  max-width:none;
+  white-space:nowrap;
+  overflow:visible;
+  text-overflow:clip;
+  background:var(--ink);
+  color:var(--paper);
+  font-size:12px;
+  font-weight:650;
+  padding:6px 10px;
+  border-radius:8px;
+}
+.inline-tooltip-kbd{opacity:.75;font-size:11px}
+.inline-tooltip-tail{position:absolute;left:50%;bottom:-4px;width:8px;height:8px;background:inherit;transform:translateX(-50%) rotate(45deg)}
+.project-dot-tooltip.is-below .inline-tooltip-tail{bottom:auto;top:-4px}
 /* 점을 제목 텍스트(.row-title-text/.week-item-title/.monthly-item-title) 밖의 래퍼에
    두는 이유는 app.js 쪽 주석 참고 -- 실시간 편집 미리보기가 텍스트 엘리먼트의
    textContent를 통째로 덮어써서, 점이 그 안에 있으면 타이핑 중 사라지기 때문이다.
@@ -1931,13 +1957,11 @@ body.dnd-active .group-drag{cursor:grabbing}
    정렬한다. */
 .today-menu-btn{position:absolute;top:4px;right:42px;border:0;background:none;padding:0;cursor:pointer;color:var(--icon-muted);width:26px;height:26px;border-radius:6px;display:grid;place-items:center;font-size:18px;font-weight:700;line-height:1}
 .today-menu-btn:hover,.today-menu-btn[aria-expanded="true"]{background:var(--bg-hover);color:var(--ink)}
-/* Today 우측 월간 할일 토글(보라색) + 커스텀 툴팁(title 속성이 아니다) */
+/* Today 우측 월간 할일 토글(보라색) -- 툴팁은 이제 공용 #inline-tooltip
+   (.is-kbd-tooltip, 위 .project-dot-tooltip 근처)로 통일됐다(요구사항: 앱 전체
+   icon-only 버튼과 같은 툴팁 시스템 재사용, 이 버튼 전용 커스텀 툴팁 제거). */
 .monthly-panel-toggle{position:absolute;top:0;right:0;width:34px;height:34px;border-radius:10px;border:0;background:var(--lav);color:#fff;display:grid;place-items:center;cursor:pointer;font-size:16px;box-shadow:0 2px 6px var(--shadow-soft)}
 .monthly-panel-toggle[aria-pressed="true"]{filter:brightness(.92)}
-.monthly-toggle-tooltip{position:fixed;z-index:60;background:var(--ink);color:var(--paper);font-size:12px;font-weight:650;padding:6px 10px;border-radius:8px;display:flex;align-items:center;gap:8px;pointer-events:none;box-shadow:0 4px 12px var(--overlay-shadow)}
-.monthly-toggle-tooltip-kbd{opacity:.75;font-size:11px}
-.monthly-toggle-tooltip-tail{position:absolute;left:50%;bottom:-4px;width:8px;height:8px;background:inherit;transform:translateX(-50%) rotate(45deg)}
-.monthly-toggle-tooltip.is-below .monthly-toggle-tooltip-tail{bottom:auto;top:-4px}
 
 /* Today 우측 월간 패널 -- position:fixed라 문서 흐름과 무관하게 뜬다. .artboard는
    body{justify-content:center}로 가운데 정렬되고 항상 max-width:1625px로 고정되므로,
@@ -2399,10 +2423,19 @@ body.dnd-active .group-drag{cursor:grabbing}
 .monthly-log-day-item .monthly-log-item-title{min-width:0;flex:1 1 auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .monthly-log-day-item.is-multi-day.continues-before{border-left-style:dashed;border-top-left-radius:0;border-bottom-left-radius:0}
 .monthly-log-day-item.is-multi-day.continues-after{border-right-style:dashed;border-top-right-radius:0;border-bottom-right-radius:0}
-.monthly-log-day-item.is-done{opacity:.55}
+/* 요구사항: 완료를 opacity로 과도하게 죽이지 않는다 -- 취소선이 주된 신호이고,
+   톤다운은 계속 읽을 수 있는 수준(.82)으로만 제한한다. */
+.monthly-log-day-item.is-done{opacity:.82}
 .monthly-log-day-item.is-done .monthly-log-item-title{text-decoration:line-through}
 .monthly-log-day-item.is-selected{outline:2px solid var(--lav);outline-offset:-1px}
 .monthly-log-day-item .monthly-log-drag{width:9px;flex:none}
+/* 요구사항: 할 일/메모가 일정과 같은 칸에 섞일 수 있어 Today와 같은 유형 기호로
+   구분한다. 칩 높이(18px)에 맞춰 작게 쓰고 색은 칩 자체 텍스트 색(currentColor)을
+   그대로 따른다 -- 새 색을 만들지 않는다. */
+.monthly-log-item-type-icon{flex:none;display:inline-flex;align-items:center;justify-content:center;width:10px;color:currentColor}
+.monthly-log-item-type-icon .ic-ring{width:9px;height:9px;border-width:1.4px}
+.monthly-log-item-type-icon .ic-dot{width:6px;height:6px}
+.monthly-log-item-type-icon .ic-dash{width:8px}
 /* 요구사항: Monthly는 별도 그룹 헤더/슬롯 없이, 그룹에 속한 칩 자체의 왼쪽에 2px
    그룹색 선만 표시한다(Daily/Weekly .group-member-row와 같은 채널, 값만 2px로 더 얇다).
    프로젝트 점(제목 앞 4px)과는 서로 다른 채널이라 함께 유지된다. */
@@ -2412,13 +2445,31 @@ body.dnd-active .group-drag{cursor:grabbing}
 .monthly-log-day-overflow.has-overflow{color:var(--lav);cursor:pointer}
 .monthly-log-day-overflow.has-overflow:hover,.monthly-log-day-overflow.has-overflow:focus-visible{text-decoration:underline;outline:none}
 .monthly-log-day-overflow.has-overflow:focus-visible{outline:2px solid var(--lav);outline-offset:1px;border-radius:3px}
+/* 요구사항: +N이 없어도(행을 늘려 다 보이는 날에도) 같은 전체 목록 팝오버를 열 수
+   있는 버튼 -- 날짜 칸 우측 상단, 날짜 숫자/셀 클릭 작성/드래그 영역을 가리지 않도록
+   position:absolute로 셀 위에 얹는다. 데스크톱(hover:hover and pointer:fine)에서는
+   기본 숨김 -> 그 칸 hover/포커스에서만 나타나고, 터치·좁은 화면(그 미디어 쿼리 밖)에서는
+   기본값 그대로 항상 보인다. */
+.monthly-log-day-list-btn{position:absolute;top:2px;right:2px;z-index:46;width:16px;height:16px;display:flex;align-items:center;justify-content:center;border:none;border-radius:4px;background:var(--bg-hover);color:var(--muted);cursor:pointer;padding:0}
+.monthly-log-day-list-btn:hover{background:var(--lav-soft);color:var(--lav)}
+.monthly-log-day-list-btn:focus-visible{outline:2px solid var(--lav);outline-offset:1px}
+@media (hover: hover) and (pointer: fine) {
+  .monthly-log-day-list-btn{opacity:0}
+  .monthly-log-row:hover .monthly-log-day-list-btn,
+  .monthly-log-row:focus-within .monthly-log-day-list-btn,
+  .monthly-log-day-list-btn:focus-visible{opacity:1}
+}
+.ic-list{width:11px;height:1.6px;background:currentColor;border-radius:1px;position:relative}
+.ic-list::before,.ic-list::after{content:"";position:absolute;left:0;width:100%;height:1.6px;background:currentColor;border-radius:1px}
+.ic-list::before{top:-4px}
+.ic-list::after{top:4px}
 /* +N 읽기 전용 팝오버 -- 새 작성/드래그 없음, 항목 클릭은 기존 상세 Drawer를 연다. */
 .monthly-log-overflow-popover{position:fixed;z-index:60;background:var(--bg-card);border:1px solid var(--line2);border-radius:10px;box-shadow:0 4px 16px var(--overlay-shadow);padding:8px;min-width:220px;max-width:300px}
 .monthly-log-overflow-popover-title{padding:4px 8px 8px;font-size:12px;font-weight:750;color:var(--muted);border-bottom:1px solid var(--line);margin-bottom:4px}
 .monthly-log-overflow-popover-list{max-height:280px;overflow-y:auto}
 .monthly-log-overflow-row{display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:6px;cursor:pointer;font-size:13px;color:var(--ink)}
 .monthly-log-overflow-row:hover,.monthly-log-overflow-row:focus-visible{background:var(--bg-hover);outline:none}
-.monthly-log-overflow-row.is-done{opacity:.55}
+.monthly-log-overflow-row.is-done{opacity:.82}
 .monthly-log-overflow-row.is-done .monthly-log-overflow-title{text-decoration:line-through}
 .monthly-log-overflow-row.has-group{border-left:2px solid var(--group-accent,var(--lav))}
 .monthly-log-overflow-icon{flex:none;display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;color:var(--icon-muted)}
@@ -2426,15 +2477,16 @@ body.dnd-active .group-drag{cursor:grabbing}
 .monthly-log-overflow-title{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .monthly-log-overflow-empty{padding:8px;font-size:12px;color:var(--muted)}
 /* 기본(auto-fit) 상태에서는 열이 항상 minmax(0,1fr)라 가로로 넘치지 않으므로 스크롤바가
-   보이지 않는다. Ctrl/Shift+휠로 칸 너비를 본체보다 크게 늘렸을 때만(.has-custom-col-w)
+   보이지 않는다. Shift+휠로 어느 한 열의 너비를 본체보다 크게 늘렸을 때만 그 열만큼
    실제로 넘쳐서 가로 스크롤이 나타난다(요구사항 -- Monthly 본체 내부에서만 스크롤). */
 .monthly-log-body{overflow-x:auto}
-/* Monthly 달력 크기 조절(요구사항) -- 새 7열 그리드 전용 구현, 옛 18레인 좌표 시스템과는
-   무관하다. 기본 상태(클래스 없음)는 기존 auto-fit(flex:1 1 0 / minmax(0,1fr))을 그대로
-   유지하고, 사용자가 Ctrl/Shift+휠을 한 번이라도 쓰면 그 값으로 고정한다. */
-#monthly-log-rows.has-custom-row-h .monthly-log-week-row{flex:0 0 var(--monthly-row-h,104px);min-height:var(--monthly-row-h,104px)}
-#monthly-log-rows.has-custom-col-w .monthly-log-weekday-head,
-#monthly-log-rows.has-custom-col-w .monthly-log-week-row{grid-template-columns:repeat(7,var(--monthly-col-w,120px))}
+/* Monthly 달력 행·열 개별 크기 조절(요구사항) -- 새 7열 그리드 전용 구현, 옛 18레인 좌표
+   시스템과는 무관하다. 행 높이(flex/min-height)와 열 너비(grid-template-columns)는 행/열
+   마다 값이 달라 CSS 변수 하나로 표현할 수 없으므로, 값은 여기가 아니라 JS가 각 주
+   행/헤더/다일 오버레이 엘리먼트에 직접 인라인 스타일로 적용한다
+   (applyMonthlyLogRowHeightDom/applyMonthlyLogColumnTemplateDom). 기본 상태(인라인 스타일
+   없음)는 이 파일의 .monthly-log-week-row/.monthly-log-weekday-head 규칙(auto-fit)을
+   그대로 따른다. */
 .monthly-log-schedule-grid-host{display:flex!important;flex-direction:column;overflow:hidden!important}
 .monthly-log-day-slots.monthly-log-schedule-drop-lane{position:static!important;inset:auto!important;opacity:1!important;pointer-events:auto!important}
 .monthly-log-day-item.monthly-log-item:hover,.monthly-log-day-item.monthly-log-item:focus-visible{background:var(--schedule-bg);filter:brightness(.97);outline:none}
@@ -2448,7 +2500,7 @@ body.dnd-active .group-drag{cursor:grabbing}
 .monthly-log-week-segment.has-group{border-left-width:2px;border-left-color:var(--group-accent,var(--lav))}
 .monthly-log-week-segment.continues-before{margin-left:0!important;border-left-style:dashed;border-top-left-radius:0;border-bottom-left-radius:0}
 .monthly-log-week-segment.continues-after{margin-right:0!important;border-right-style:dashed;border-top-right-radius:0;border-bottom-right-radius:0}
-.monthly-log-week-segment.is-done{opacity:.55}
+.monthly-log-week-segment.is-done{opacity:.82}
 .monthly-log-week-segment.is-done .monthly-log-item-title{text-decoration:line-through}
 .monthly-log-item.monthly-log-week-segment:hover{background:var(--schedule-bg);filter:brightness(.97);outline:none}
 .monthly-log-item.monthly-log-week-segment.is-selected{background:var(--schedule-bg);box-shadow:none;outline:2px solid var(--lav);outline-offset:-1px}
@@ -2483,7 +2535,7 @@ body.dnd-active .monthly-log-week-segment{pointer-events:none}
   <section class="top">
     <div class="calendar-card">
       <div class="cal-title">2026년 7월</div>
-      <div class="cal-nav"><button type="button" class="cal-nav-prev" aria-label="이전 달">‹</button><button type="button" class="cal-nav-today" aria-label="오늘로 이동"><span class="ic-ring"></span></button><button type="button" class="cal-nav-next" aria-label="다음 달">›</button><button type="button" class="cal-settings-btn" aria-label="달력 표시 설정" aria-haspopup="menu" aria-expanded="false" aria-controls="cal-settings-menu">⋯</button></div>
+      <div class="cal-nav"><button type="button" class="cal-nav-prev" aria-label="이전 달">‹</button><button type="button" class="cal-nav-today" aria-label="오늘로 이동" data-tooltip-label="오늘로 이동"><span class="ic-ring"></span></button><button type="button" class="cal-nav-next" aria-label="다음 달">›</button><button type="button" class="cal-settings-btn" aria-label="달력 표시 설정" aria-haspopup="menu" aria-expanded="false" aria-controls="cal-settings-menu" data-tooltip-label="달력 표시 설정">⋯</button></div>
       <div class="weekdays"><span class="sun">Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span class="sat">Sat</span></div>
       <div class="dates">
         <span></span><span></span><span></span><span class="date">1</span><span class="date">2</span><span class="date">3</span><span class="date sat">4</span><span class="date sun">5</span>
@@ -2578,12 +2630,12 @@ body.dnd-active .monthly-log-week-segment{pointer-events:none}
 
     <div class="daily">
       <h2 class="daily-title">2026년 07월 30일</h2>
-      <button type="button" class="today-menu-btn" id="today-menu-btn" aria-haspopup="menu" aria-expanded="false" aria-controls="today-menu" aria-label="Today 설정">⋯</button>
-      <button type="button" class="monthly-panel-toggle" id="monthly-panel-toggle" aria-label="이번달 할 일 열기" aria-pressed="false" aria-haspopup="dialog" aria-controls="today-monthly-panel" aria-describedby="monthly-panel-tooltip">
+      <button type="button" class="today-menu-btn" id="today-menu-btn" aria-haspopup="menu" aria-expanded="false" aria-controls="today-menu" aria-label="Today 설정" data-tooltip-label="Today 설정">⋯</button>
+      <button type="button" class="monthly-panel-toggle" id="monthly-panel-toggle" aria-label="이번달 할 일 열기" aria-pressed="false" aria-haspopup="dialog" aria-controls="today-monthly-panel">
         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4M16 3v4M4 9h16"/></svg>
       </button>
       <div class="daily-normal-view">
-        <div class="quick"><span class="quick-icons" role="group" aria-label="입력 종류"><button type="button" class="q-slot" data-mode="task" aria-pressed="true" aria-label="할 일"><span class="ic-dot"></span></button><button type="button" class="q-slot" data-mode="schedule" aria-pressed="false" aria-label="일정"><span class="ic-ring"></span></button><button type="button" class="q-slot" data-mode="memo" aria-pressed="false" aria-label="메모"><span class="ic-dash"></span></button></span><input type="text" id="quick-input" class="placeholder" placeholder="할 일을 입력하고 엔터를 누르세요." autocomplete="off" aria-label="할 일 빠른 입력" /></div>
+        <div class="quick"><span class="quick-icons" role="group" aria-label="입력 종류"><button type="button" class="q-slot" data-mode="task" aria-pressed="true" aria-label="할 일" data-tooltip-label="할 일"><span class="ic-dot"></span></button><button type="button" class="q-slot" data-mode="schedule" aria-pressed="false" aria-label="일정" data-tooltip-label="일정"><span class="ic-ring"></span></button><button type="button" class="q-slot" data-mode="memo" aria-pressed="false" aria-label="메모" data-tooltip-label="메모"><span class="ic-dash"></span></button></span><input type="text" id="quick-input" class="placeholder" placeholder="할 일을 입력하고 엔터를 누르세요." autocomplete="off" aria-label="할 일 빠른 입력" /></div>
         <div class="rollover"><button type="button" class="rollover-toggle" aria-expanded="false"><span class="tri"></span><span class="rollover-count">이월(0)</span></button><button type="button" class="rollover-today-btn" aria-label="이월 항목 전체 오늘로 이동">[오늘]</button><button type="button" class="delete-btn" aria-label="이월 항목 전체 삭제">[삭제]</button></div>
         <div class="task-list" id="rollover-list" hidden></div>
         <div class="rollover-divider" id="rollover-divider" hidden></div>
@@ -2593,9 +2645,9 @@ body.dnd-active .monthly-log-week-segment{pointer-events:none}
         <div class="trash-toolbar">
           <div class="trash-filter" role="group" aria-label="휴지통 필터">
             <button type="button" class="trash-filter-btn" data-filter="all" aria-pressed="true">전체</button>
-            <button type="button" class="trash-filter-btn" data-filter="task" aria-pressed="false" aria-label="할 일"><span class="ic-dot"></span></button>
-            <button type="button" class="trash-filter-btn" data-filter="schedule" aria-pressed="false" aria-label="일정"><span class="ic-ring"></span></button>
-            <button type="button" class="trash-filter-btn" data-filter="memo" aria-pressed="false" aria-label="메모"><span class="ic-dash"></span></button>
+            <button type="button" class="trash-filter-btn" data-filter="task" aria-pressed="false" aria-label="할 일" data-tooltip-label="할 일"><span class="ic-dot"></span></button>
+            <button type="button" class="trash-filter-btn" data-filter="schedule" aria-pressed="false" aria-label="일정" data-tooltip-label="일정"><span class="ic-ring"></span></button>
+            <button type="button" class="trash-filter-btn" data-filter="memo" aria-pressed="false" aria-label="메모" data-tooltip-label="메모"><span class="ic-dash"></span></button>
           </div>
           <button type="button" class="empty-trash-btn" id="empty-trash-btn">휴지통 비우기</button>
         </div>
@@ -2621,11 +2673,11 @@ body.dnd-active .monthly-log-week-segment{pointer-events:none}
       <div class="week-nav">
         <button type="button" class="week-nav-btn" data-nav="-range" aria-label="7일 전">‹‹</button>
         <button type="button" class="week-nav-btn" data-nav="-1" aria-label="하루 전">‹</button>
-        <button type="button" class="week-nav-btn" data-nav="today" aria-label="이번 주"><span class="ic-ring"></span></button>
+        <button type="button" class="week-nav-btn" data-nav="today" aria-label="이번 주" data-tooltip-label="이번 주"><span class="ic-ring"></span></button>
         <button type="button" class="week-nav-btn" data-nav="1" aria-label="하루 후">›</button>
         <button type="button" class="week-nav-btn" data-nav="range" aria-label="7일 후">››</button>
       </div>
-      <button type="button" class="week-range-menu-btn" aria-haspopup="menu" aria-expanded="false" aria-controls="week-range-menu" aria-label="Weekly 보기 기준 설정">⋯</button>
+      <button type="button" class="week-range-menu-btn" aria-haspopup="menu" aria-expanded="false" aria-controls="week-range-menu" aria-label="Weekly 보기 기준 설정" data-tooltip-label="Weekly 보기 기준 설정">⋯</button>
     </div>
     <div class="weekly-body">
       <div class="week-row-scroll week-row-scroll-top">
@@ -2652,10 +2704,10 @@ body.dnd-active .monthly-log-week-segment{pointer-events:none}
         <div class="monthly-log-nav">
           <span class="monthly-log-month-label" id="monthly-log-month-label">2026년 7월 달력</span>
           <button type="button" class="monthly-log-nav-btn" data-monthly-nav="-1" aria-label="이전 달">‹</button>
-          <button type="button" class="monthly-log-nav-btn" data-monthly-nav="today" aria-label="이번 달"><span class="ic-ring"></span></button>
+          <button type="button" class="monthly-log-nav-btn" data-monthly-nav="today" aria-label="이번 달" data-tooltip-label="이번 달"><span class="ic-ring"></span></button>
           <button type="button" class="monthly-log-nav-btn" data-monthly-nav="1" aria-label="다음 달">›</button>
-          <button type="button" class="monthly-log-menu-btn" aria-haspopup="menu" aria-expanded="false" aria-controls="monthly-log-menu" aria-label="Monthly Log 설정">⋯</button>
-          <button type="button" class="monthly-inbox-toggle-btn" id="monthly-inbox-toggle-btn" aria-haspopup="dialog" aria-expanded="false" aria-controls="monthly-inbox-panel" aria-label="이번 달 할 일 패널 열기">☰</button>
+          <button type="button" class="monthly-log-menu-btn" aria-haspopup="menu" aria-expanded="false" aria-controls="monthly-log-menu" aria-label="Monthly Log 설정" data-tooltip-label="Monthly Log 설정">⋯</button>
+          <button type="button" class="monthly-inbox-toggle-btn" id="monthly-inbox-toggle-btn" aria-haspopup="dialog" aria-expanded="false" aria-controls="monthly-inbox-panel" aria-label="이번 달 할 일 패널 열기" data-tooltip-label="이달의 할 일">☰</button>
         </div>
       </div>
       <div class="monthly-log-body" id="monthly-log-body">
@@ -2676,19 +2728,21 @@ body.dnd-active .monthly-log-week-segment{pointer-events:none}
     aria-haspopup="menu"
     aria-expanded="false"
     aria-label="이번 달 할 일 메뉴"
+    data-tooltip-label="이번 달 할 일 메뉴"
   >⋯</button>
   <button
     type="button"
     class="monthly-inbox-close-btn"
     id="monthly-inbox-close-btn"
     aria-label="이번 달 할 일 패널 닫기"
+   
   >×</button>
 </div>
       <div class="monthly-quick" id="monthly-inbox-quick">
         <span class="monthly-quick-modes" role="group" aria-label="입력 종류">
-          <button type="button" class="monthly-quick-mode" data-type="task" aria-pressed="true" aria-label="할 일"><span class="ic-dot"></span></button>
-          <button type="button" class="monthly-quick-mode" data-type="schedule" aria-pressed="false" aria-label="일정"><span class="ic-ring"></span></button>
-          <button type="button" class="monthly-quick-mode" data-type="memo" aria-pressed="false" aria-label="메모"><span class="ic-dash"></span></button>
+          <button type="button" class="monthly-quick-mode" data-type="task" aria-pressed="true" aria-label="할 일" data-tooltip-label="할 일"><span class="ic-dot"></span></button>
+          <button type="button" class="monthly-quick-mode" data-type="schedule" aria-pressed="false" aria-label="일정" data-tooltip-label="일정"><span class="ic-ring"></span></button>
+          <button type="button" class="monthly-quick-mode" data-type="memo" aria-pressed="false" aria-label="메모" data-tooltip-label="메모"><span class="ic-dash"></span></button>
         </span>
         <input type="text" class="monthly-quick-input" placeholder="할 일을 입력하고 엔터를 누르세요." autocomplete="off" aria-label="월간 할일 빠른 입력" />
       </div>
@@ -2721,6 +2775,7 @@ body.dnd-active .monthly-log-week-segment{pointer-events:none}
       aria-haspopup="menu"
       aria-expanded="false"
       aria-label="이번 달 할 일 메뉴"
+      data-tooltip-label="이번 달 할 일 메뉴"
     >⋯</button>
 
     <button
@@ -2728,14 +2783,15 @@ body.dnd-active .monthly-log-week-segment{pointer-events:none}
       class="today-monthly-panel-close"
       id="today-monthly-panel-close"
       aria-label="이번달 할 일 닫기"
+     
     >×</button>
   </div>
 </div>
     <div class="monthly-quick" id="today-monthly-quick">
       <span class="monthly-quick-modes" role="group" aria-label="입력 종류">
-        <button type="button" class="monthly-quick-mode" data-type="task" aria-pressed="true" aria-label="할 일"><span class="ic-dot"></span></button>
-        <button type="button" class="monthly-quick-mode" data-type="schedule" aria-pressed="false" aria-label="일정"><span class="ic-ring"></span></button>
-        <button type="button" class="monthly-quick-mode" data-type="memo" aria-pressed="false" aria-label="메모"><span class="ic-dash"></span></button>
+        <button type="button" class="monthly-quick-mode" data-type="task" aria-pressed="true" aria-label="할 일" data-tooltip-label="할 일"><span class="ic-dot"></span></button>
+        <button type="button" class="monthly-quick-mode" data-type="schedule" aria-pressed="false" aria-label="일정" data-tooltip-label="일정"><span class="ic-ring"></span></button>
+        <button type="button" class="monthly-quick-mode" data-type="memo" aria-pressed="false" aria-label="메모" data-tooltip-label="메모"><span class="ic-dash"></span></button>
       </span>
       <input type="text" class="monthly-quick-input" placeholder="할 일을 입력하고 엔터를 누르세요." autocomplete="off" aria-label="이번 달 할일 빠른 입력" />
     </div>

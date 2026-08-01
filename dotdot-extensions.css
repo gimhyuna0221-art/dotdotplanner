@@ -94,6 +94,9 @@
 .shortcut-group[data-accent="sat"]{--shortcut-accent:var(--sat)}
 .shortcut-group[data-accent="lav"]{--shortcut-accent:var(--lav)}
 .shortcut-group[data-accent="sun"]{--shortcut-accent:var(--sun)}
+/* 전수 감사로 추가된 "입력·이동" 그룹 전용 4번째 accent. 전용 --mint 변수는 없어 이미
+   라이트·다크 둘 다 정의돼 있는 --desc-color-green을 재사용한다(새 색 추가 안 함). */
+.shortcut-group[data-accent="mint"]{--shortcut-accent:var(--desc-color-green)}
 .shortcut-group-label{display:flex;align-items:center;gap:8px;margin:0 0 6px;font-size:11.5px;font-weight:750;letter-spacing:.02em;color:var(--ink)}
 .shortcut-group-tab{width:3px;height:14px;border-radius:2px;background:var(--shortcut-accent,var(--lav));flex:none}
 .shortcut-group-count{margin-left:auto;font-size:10.5px;font-weight:700;color:var(--muted);background:var(--bg-hover);border-radius:999px;padding:1px 7px}
@@ -110,14 +113,17 @@
 .shortcut-desc{margin:3px 0 0;font-size:12px;color:var(--muted)}
 .shortcut-empty{margin:8px 2px 2px;font-size:12px;color:var(--muted)}
 
-/* 직접 실행 -- 재사용 가능한 명령(전체 선택/실행 취소/다시 실행)만 실제로 클릭 가능한
-   버튼이고, 나머지는 항상 비활성 + title/aria-label로 이유를 알린다. 일시적으로 막힌
-   것(예: 되돌릴 작업 없음)과 애초에 실행 버튼을 제공하지 않는 것(클릭 전용, 다중 동작)을
-   테두리 스타일로 구분한다. */
-.shortcut-run{flex:none;border:1px solid var(--line2);background:var(--bg-card);color:var(--ink);font-size:10.5px;font-weight:750;border-radius:999px;padding:3px 10px;cursor:pointer;font-family:inherit}
-.shortcut-run:hover:not(:disabled){background:var(--shortcut-accent,var(--lav));border-color:var(--shortcut-accent,var(--lav));color:#fff}
-.shortcut-run:focus-visible{outline:2px solid var(--lav);outline-offset:1px}
-.shortcut-run:disabled{cursor:default}
-.shortcut-run.is-blocked{opacity:.5;border-style:dashed}
-.shortcut-run.is-static{opacity:.32}
 @media(max-width:900px){.dotdot-ext-overlay{padding:22px 18px 50px}}
+
+/* 검색의 "Today에서 열기" 도착 강조. 항목이 사라지는 애니메이션이 아니라 외곽선·배경이
+   맥박치듯 두세 번 강조되는 방식(요구사항) -- .6s x 3회 = 1.8s 뒤 자바스크립트가 클래스를
+   지운다. prefers-reduced-motion에서는 애니메이션 없이 2초간 정적 외곽선만 쓴다. */
+@keyframes search-jump-pulse{
+  0%,100%{box-shadow:0 0 0 0 color-mix(in srgb,var(--sun) 55%,transparent);background-color:transparent}
+  50%{box-shadow:0 0 0 4px color-mix(in srgb,var(--sun) 32%,transparent);background-color:color-mix(in srgb,var(--sun) 14%,transparent)}
+}
+.search-jump-highlight{border-radius:8px;outline:2px solid var(--sun);outline-offset:1px;animation:search-jump-pulse .6s ease-in-out 3}
+.search-jump-highlight-static{border-radius:8px;outline:2px solid var(--sun);outline-offset:1px;background-color:color-mix(in srgb,var(--sun) 16%,transparent)}
+@media (prefers-reduced-motion: reduce){
+  .search-jump-highlight{animation:none;background-color:color-mix(in srgb,var(--sun) 16%,transparent)}
+}

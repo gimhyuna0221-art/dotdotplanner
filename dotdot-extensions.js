@@ -117,58 +117,57 @@
   var shortcutQuery='';
   var shortcutPanelOpen=false;
   var shortcutPanelEl=null, shortcutPanelBodyEl=null;
-  // 단축키를 실제로 다른 기능인 세 그룹으로 나눈다(선택 / 복사·그룹 / 편집·되돌리기).
-  // 항목 12개의 키·설명 텍스트는 기존 목록과 동일하고, 묶는 방식과 표시만 바꾼다.
-  // exec가 있는 항목만 "실행" 버튼이 활성화될 수 있다 -- 그 함수는 아래 SHORTCUT_COMMANDS를
-  // 통해 app.js의 기존 undo/redo/selectAllInActiveList를 그대로 호출한다(로직 복제 없음).
-  // exec가 없는 항목(클릭 전용 조작, 한 줄에 여러 동작이 섞인 조합, 대상 선택이 전제인
-  // 조작)은 항상 비활성화하고 이유를 함께 보여준다.
+  // 전수 감사(재작성): 코드에 실제 등록된 전역 키보드 단축키(app.js handleGlobalKeydown)를
+  // 다시 세어 4그룹 17항목으로 갱신했다 -- 이전 12항목 목록에는 F2/Enter(제목 편집 시작),
+  // Ctrl/Cmd+N(빠른 입력 포커스), Ctrl/Cmd+Shift+/(이번 달 패널 토글), Ctrl/Cmd+Alt+I(배치
+  // 생성)가 통째로 빠져 있었고, Ctrl/Cmd+[·]는 서로 다른 두 명령인데 한 줄로 묶여 있었다.
+  // exec가 있는 항목은 "실행" 버튼이 app.js의 실제 명령 함수를 호출한다(로직 복제 없음,
+  // 대부분 dispatchShortcutCommand로 handleGlobalKeydown 자체를 합성 이벤트로 통과시켜
+  // 키보드 입력과 완전히 같은 코드 경로를 탄다). exec가 없는 항목(Shift/Ctrl+클릭처럼
+  // 포인터 동작 자체가 필요한 것)만 "직접 조작"으로 표시한다.
+  // 요구사항: 단축키 패널은 읽기 전용 치트시트다 -- "실행" 버튼/활성·비활성 판정을
+  // 전부 없앴다. 아래 목록(키 조합·설명·그룹별 개수)은 실제 handleGlobalKeydown에
+  // 등록된 21개 단축키와 일치를 맞추기 위한 registry로만 남긴다(감사 시 이 배열과
+  // app.js를 나란히 비교한다).
   var SHORTCUT_GROUPS=[
     {id:'select',label:'선택',accent:'sat',items:[
-      {keys:['Ctrl/⌘','A'],desc:'현재 목록 전체 선택',exec:{run:'selectAll',reason:function(){
-        return (S.currentView==='today'||S.currentView==='calendar') ? null : 'Today 또는 Monthly Log 화면에서만 실행할 수 있어요';
-      }}},
-      {keys:['Shift','클릭'],desc:'범위 선택',exec:null,staticReason:'클릭으로 사용하는 단축키라 여기서 실행할 수 없어요'},
-      {keys:['Ctrl/⌘','클릭'],desc:'비연속 선택',exec:null,staticReason:'클릭으로 사용하는 단축키라 여기서 실행할 수 없어요'}
+      {keys:['Ctrl/⌘','A'],desc:'현재 목록 전체 선택'},
+      {keys:['Shift','클릭'],desc:'범위 선택'},
+      {keys:['Ctrl/⌘','클릭'],desc:'비연속 선택'}
+    ]},
+    {id:'input',label:'입력·이동',accent:'mint',items:[
+      {keys:['F2'],desc:'선택 항목 제목 편집 시작'},
+      {keys:['Enter'],desc:'선택 항목 제목 편집 시작'},
+      {keys:['Ctrl/⌘','N'],desc:'Today 빠른 입력에 포커스'},
+      {keys:['Ctrl/⌘','Shift','/'],desc:'이번 달 할 일 패널 토글'}
     ]},
     {id:'clip',label:'복사·그룹',accent:'lav',items:[
-      {keys:['Ctrl/⌘','C / X / V'],desc:'복사·잘라내기·붙여넣기',exec:null,staticReason:'서로 다른 세 동작이라 여기서 실행할 수 없어요'},
-      {keys:['Ctrl/⌘','Alt','C / V'],desc:'연결 인스턴스 복사·붙여넣기',exec:null,staticReason:'서로 다른 두 동작이라 여기서 실행할 수 없어요'},
-      {keys:['Ctrl/⌘','Alt','U'],desc:'연결 해제',exec:null,staticReason:'연결된 항목을 직접 선택한 뒤 키보드로 사용하세요'},
-      {keys:['Ctrl/⌘','[ / ]'],desc:'그룹 생성·해제',exec:null,staticReason:'생성·해제 중 무엇을 할지 정할 수 없어 여기서 실행할 수 없어요'}
+      {keys:['Ctrl/⌘','C'],desc:'복사'},
+      {keys:['Ctrl/⌘','X'],desc:'잘라내기'},
+      {keys:['Ctrl/⌘','V'],desc:'붙여넣기'},
+      {keys:['Ctrl/⌘','Alt','C'],desc:'연결 인스턴스 복사'},
+      {keys:['Ctrl/⌘','Alt','V'],desc:'연결 인스턴스 붙여넣기'},
+      {keys:['Ctrl/⌘','Alt','U'],desc:'연결 해제'},
+      {keys:['Ctrl/⌘','['],desc:'그룹 생성'},
+      {keys:['Ctrl/⌘',']'],desc:'그룹 해제'},
+      {keys:['Ctrl/⌘','Alt','I'],desc:'선택한 이달의 할 일을 오늘 날짜에 배치'}
     ]},
     {id:'edit',label:'편집·되돌리기',accent:'sun',items:[
-      {keys:['Ctrl/⌘','Z'],desc:'실행 취소',exec:{run:'undo',reason:function(){
-        return B.getHistoryCounts().undo>0 ? null : '되돌릴 작업이 없어요';
-      }}},
-      {keys:['Ctrl/⌘','Shift','Z'],desc:'다시 실행',exec:{run:'redo',reason:function(){
-        return B.getHistoryCounts().redo>0 ? null : '다시 실행할 작업이 없어요';
-      }}},
-      {keys:['Ctrl/⌘','Y'],desc:'다시 실행',exec:{run:'redo',reason:function(){
-        return B.getHistoryCounts().redo>0 ? null : '다시 실행할 작업이 없어요';
-      }}},
-      {keys:['Delete'],desc:'휴지통 이동',exec:null,staticReason:'항목을 직접 선택한 뒤 키보드로 사용하세요'},
-      {keys:['Escape'],desc:'현재 조작 취소',exec:null,staticReason:'진행 중인 조작에 따라 달라져 여기서 실행할 수 없어요'}
+      {keys:['Ctrl/⌘','Z'],desc:'실행 취소'},
+      {keys:['Ctrl/⌘','Shift','Z'],desc:'다시 실행'},
+      {keys:['Ctrl/⌘','Y'],desc:'다시 실행'},
+      {keys:['Delete'],desc:'휴지통 이동 / 영구 삭제'},
+      {keys:['Escape'],desc:'현재 조작 취소'}
     ]}
   ];
-  var SHORTCUT_COMMANDS={
-    selectAll:function(){ B.selectAllInActiveList(); },
-    undo:function(){ B.undo(); },
-    redo:function(){ B.redo(); }
-  };
   function buildShortcutRow(entry){
     var keysHtml=entry.keys.map(function(k,i){
       return (i?'<span class="shortcut-kbd-plus" aria-hidden="true">+</span>':'')+'<span class="shortcut-kbd">'+esc(k)+'</span>';
     }).join('');
-    var blockedReason=entry.exec ? entry.exec.reason() : entry.staticReason;
-    var runnable=!!entry.exec && !blockedReason;
-    var runAttr=runnable
-      ? 'data-shortcut-run="'+esc(entry.exec.run)+'"'
-      : 'disabled aria-disabled="true" title="'+esc(blockedReason)+'" aria-label="'+esc(entry.desc+' — '+blockedReason)+'"';
-    var btnClass='shortcut-run'+(runnable?'':(entry.exec?' is-blocked':' is-static'));
+    // 실행 버튼이 없으니 키 행이 가로 폭을 그대로 다 쓰고, 설명은 그 아래 자기 줄에서
+    // 전체 폭을 자연스럽게 쓴다(요구사항).
     return '<li class="shortcut-row">'
-      +'<div class="shortcut-row-top"><span class="shortcut-keys">'+keysHtml+'</span>'
-      +'<button type="button" class="'+btnClass+'" '+runAttr+'>실행</button></div>'
+      +'<div class="shortcut-row-top"><span class="shortcut-keys">'+keysHtml+'</span></div>'
       +'<p class="shortcut-desc">'+esc(entry.desc)+'</p>'
       +'</li>';
   }
@@ -234,16 +233,6 @@
       shortcutQuery=e.target.value;
       renderShortcutPanelBody();
       focusBack('ext-shortcut-query', shortcutQuery);
-    });
-    shortcutPanelEl.addEventListener('click', function(e){
-      var btn=e.target.closest('[data-shortcut-run]');
-      if(!btn) return;
-      var cmd=SHORTCUT_COMMANDS[btn.dataset.shortcutRun];
-      if(!cmd) return;
-      cmd();
-      // 실행 후 패널은 그대로 열려 있는다 -- 상태가 바뀌었을 수 있는 행(예: 실행
-      // 취소 가능 여부)만 다시 그린다. 검색어(shortcutQuery)는 건드리지 않는다.
-      renderShortcutPanelBody();
     });
   }
   function onShortcutPanelDocumentKeydown(e){
@@ -328,6 +317,7 @@
         btn.className='dotdot-ext-btn';
         btn.setAttribute('data-ext','search-open');
         btn.setAttribute('data-date', it.date);
+        btn.setAttribute('data-item-id', it.id);
         btn.textContent='Today에서 열기';
         li.appendChild(btn);
       }
@@ -340,6 +330,55 @@
     // getAliveItems()의 스냅샷에 남아 있더라도 여기서 걸러 절대 표시하지 않는다.
     .filter(function(it){var found=B.findItemById(it.id);return !!found&&!found.deletedAt;})
     .sort(function(a,b){return a.date<b.date?1:-1;});var rows=buildSearchRows(results);return head('검색','제목·설명·프로젝트 검색과 필터','검색 결과는 원본 항목을 가리키며 복사본을 만들지 않습니다.')+'<div class="dotdot-ext-card"><div class="dotdot-ext-row"><input class="dotdot-ext-input" id="ext-search-q" value="'+esc(searchState.q)+'" placeholder="검색어"><select class="dotdot-ext-select" id="ext-search-type"><option value="all">모든 유형</option><option value="task">할 일</option><option value="schedule">일정</option><option value="memo">메모</option></select><select class="dotdot-ext-select" id="ext-search-done"><option value="all">전체</option><option value="open">미완료</option><option value="done">완료</option></select><input class="dotdot-ext-input" style="min-width:auto" type="date" id="ext-search-from" value="'+searchState.from+'"><span>~</span><input class="dotdot-ext-input" style="min-width:auto" type="date" id="ext-search-to" value="'+searchState.to+'"></div><p class="dotdot-ext-muted">'+results.length+'건</p><ul class="dotdot-ext-list">'+rows+'</ul></div>';}
+  // 검색 결과의 "Today에서 열기" -- 예전에는 localStorage에 날짜만 써넣고 새로고침해
+  // 날짜만 맞을 뿐 대상이 어디 있는지 못 찾는 문제가 있었다. itemId 기준으로 실제 상태를
+  // 옮기고(새로고침 없음), 그룹/완료숨김 때문에 가려졌으면 이번만 펼치고, 렌더 후 DOM을
+  // itemId로 다시 찾아 가운데로 스크롤 + 맥박 강조한다.
+  function cssIdSelector(id){
+    return (window.CSS && CSS.escape) ? CSS.escape(String(id)) : String(id).replace(/([^\w-])/g,'\\$1');
+  }
+  function prefersReducedMotion(){
+    return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  }
+  function flashSearchTarget(itemId){
+    var el=document.querySelector('[data-item-id="'+cssIdSelector(itemId)+'"]');
+    if(!el){
+      // 그룹 펼침 등 방금 반영된 렌더가 다음 프레임에야 자리잡는 경우를 한 번 더 시도한다.
+      requestAnimationFrame(function(){
+        var retry=document.querySelector('[data-item-id="'+cssIdSelector(itemId)+'"]');
+        if(retry) flashSearchTarget.__apply(retry);
+      });
+      return;
+    }
+    flashSearchTarget.__apply(el);
+  }
+  flashSearchTarget.__apply=function(el){
+    el.scrollIntoView({block:'center', inline:'nearest', behavior: prefersReducedMotion()?'auto':'smooth'});
+    var reduced=prefersReducedMotion();
+    el.classList.add(reduced?'search-jump-highlight-static':'search-jump-highlight');
+    setTimeout(function(){
+      el.classList.remove('search-jump-highlight');
+      el.classList.remove('search-jump-highlight-static');
+    }, reduced?2000:1700);
+  };
+  function openInToday(itemId,date){
+    if(!date) return;
+    var it=B.findItemById(itemId);
+    if(!it||it.deletedAt) return; // 실제로 존재하지 않는 삭제 항목은 열지 않는다(요구사항).
+    closeSideView();
+    S.selectedDate=date;
+    S.calendarViewDate=date.slice(0,7)+'-01';
+    S.selectedDateRange=null;
+    // 대상이 그룹 안에 있으면 자동으로 펼친다.
+    var groupId=B.getItemGroupIdAt(it,'weekly',date);
+    if(groupId){ var g=B.findGroupById(groupId); if(g && g.collapsed) g.collapsed=false; }
+    // 완료 숨김 필터에 가려졌다면 찾는 순간에는 보이게 한다(Today/Daily 전용 플래그).
+    if(it.completed && S.dailyHideCompleted) S.dailyHideCompleted=false;
+    B.savePreferences();
+    B.setView('today');
+    B.renderApp();
+    requestAnimationFrame(function(){ flashSearchTarget(itemId); });
+  }
   function renderStats(){var items=getAliveItems();var today=B.formatLocalDate(new Date());function period(n){var from=B.addCalendarDays(today,-(n-1));var list=items.filter(function(it){return it.date>=from&&it.date<=today;});var done=list.filter(function(it){return it.completed;}).length;return{total:list.length,done:done,rate:list.length?Math.round(done/list.length*100):0};}var w7=period(7),w30=period(30),moved=items.filter(function(it){return it.migratedFrom||(it.originalDate&&it.originalDate!==it.date);}).length;function stat(label,value,sub){return '<div class="dotdot-ext-stat"><b>'+value+'</b><span>'+label+(sub?' · '+sub:'')+'</span></div>';}return head('통계','완료·이월·유형 분포를 현재 로컬 데이터에서 계산','삭제되지 않은 항목만 집계하며 성과 압박용 스트릭은 만들지 않습니다.')+'<div class="dotdot-ext-card"><h3>최근 7일</h3>'+stat('완료',w7.done,'전체 '+w7.total)+stat('완료율',w7.rate+'%')+'<div class="dotdot-ext-bar"><i style="width:'+w7.rate+'%"></i></div></div><div class="dotdot-ext-card"><h3>최근 30일</h3>'+stat('완료',w30.done,'전체 '+w30.total)+stat('완료율',w30.rate+'%')+'<div class="dotdot-ext-bar"><i style="width:'+w30.rate+'%"></i></div></div><div class="dotdot-ext-card"><h3>계획 변경</h3>'+stat('이월·이동 흔적',moved+'건')+'</div>';
   }
   function fullBackupPayload(){var storage={};for(var i=0;i<localStorage.length;i++){var key=localStorage.key(i);if(key&&key.indexOf(P)===0)storage[key]=localStorage.getItem(key);}return{format:'dotdotplanner-full-backup-v1',exportedAt:new Date().toISOString(),storage:storage};}
@@ -347,7 +386,11 @@
   function renderSettings(){var theme=localStorage.getItem(P+'theme')||'light',days=localStorage.getItem(P+'weeklyVisibleDays')||'7',week=localStorage.getItem(P+'calendarWeekStartsOn')||'0',def=localStorage.getItem(P+'defaultInputMode')||'task',auto=localStorage.getItem(P+'autoRolloverEnabled')!=='false';return head('설정','실제 앱에 연결되는 로컬 설정과 데이터 관리','가져오기는 현재 데이터를 타임스탬프 백업 키에 먼저 보존한 뒤 교체합니다.')+'<div class="dotdot-ext-card"><h3>표시·입력</h3><div class="dotdot-ext-field"><span>테마</span><select class="dotdot-ext-select" id="ext-theme"><option value="light" '+(theme==='light'?'selected':'')+'>라이트</option><option value="dark" '+(theme==='dark'?'selected':'')+'>다크</option></select></div><div class="dotdot-ext-field"><span>Weekly 표시 일수</span><select class="dotdot-ext-select" id="ext-week-days">'+Array.from({length:14},function(_,i){var n=i+1;return '<option value="'+n+'" '+(String(n)===days?'selected':'')+'>'+n+'일</option>';}).join('')+'</select></div><div class="dotdot-ext-field"><span>주 시작 요일</span><select class="dotdot-ext-select" id="ext-week-start"><option value="0" '+(week==='0'?'selected':'')+'>일요일</option><option value="1" '+(week==='1'?'selected':'')+'>월요일</option></select></div><div class="dotdot-ext-field"><span>기본 빠른 입력 유형</span><select class="dotdot-ext-select" id="ext-default-type"><option value="task" '+(def==='task'?'selected':'')+'>할 일</option><option value="schedule" '+(def==='schedule'?'selected':'')+'>일정</option><option value="memo" '+(def==='memo'?'selected':'')+'>메모</option></select></div><div class="dotdot-ext-field"><span>과거 미완료 자동 이월</span><label><input type="checkbox" id="ext-auto-rollover" '+(auto?'checked':'')+'> 사용</label></div></div><div class="dotdot-ext-card"><h3>데이터</h3><div class="dotdot-ext-row"><button class="dotdot-ext-btn" data-ext="export-app">앱 JSON 내보내기</button><button class="dotdot-ext-btn" data-ext="export-full">첨부 외 전체 설정 백업</button><button class="dotdot-ext-btn" data-ext="import-full">백업 가져오기·교체</button><button class="dotdot-ext-btn danger" data-ext="reset-all">모든 로컬 데이터 초기화</button></div><p class="dotdot-ext-muted">IndexedDB 첨부 바이너리는 아직 이 JSON에 포함되지 않습니다.</p></div>';}
   function getProfile(){var p=readJSON(P+'localProfile',null);return p&&p.name?p:null;}
   function initials(name){var n=String(name||'').trim();return !n?'＋':(/[가-힣]/.test(n)?n.slice(-2):n.slice(0,2).toUpperCase());}
-  function paintProfile(){var el=document.querySelector('.profile');if(!el)return;var p=getProfile();el.textContent=initials(p&&p.name);el.classList.toggle('dotdot-profile-empty',!p);el.setAttribute('title',p?p.name+' · 로컬 프로필':'로컬 프로필 설정');}
+  // 요구사항: 브라우저 기본 title 툴팁 대신 앱 공용 커스텀 툴팁(app.js의
+  // data-tooltip-text/wireInlineTooltips)을 그대로 재사용한다 -- 이 엘리먼트는 이미
+  // role="button"/tabIndex가 별도로 설정돼 있어(bootSideViews) role="img"를 강제하는
+  // applyInlineTooltip 대신 data-tooltip-text 속성만 직접 채운다.
+  function paintProfile(){var el=document.querySelector('.profile');if(!el)return;var p=getProfile();el.textContent=initials(p&&p.name);el.classList.toggle('dotdot-profile-empty',!p);el.dataset.tooltipText=p?p.name+' · 로컬 프로필':'로컬 프로필 설정';}
   function renderAccount(){var p=getProfile();return head('로컬 프로필','계정·서버 없이 이 브라우저에만 저장','동기화나 인증 기능이 아닙니다. 사이드바에 표시할 이름만 저장합니다.')+'<div class="dotdot-ext-card" style="max-width:430px">'+(p?'<div class="dotdot-ext-row"><span class="dotdot-ext-avatar">'+esc(initials(p.name))+'</span><strong>'+esc(p.name)+'</strong></div>':'')+'<div class="dotdot-ext-row"><input class="dotdot-ext-input" id="ext-profile-name" value="'+esc(p?p.name:'')+'" placeholder="표시 이름"><button class="dotdot-ext-btn primary" data-ext="profile-save">저장</button>'+(p?'<button class="dotdot-ext-btn danger" data-ext="profile-clear">지우기</button>':'')+'</div></div>';}
   var sideRenderers={routine:renderRoutine,search:renderSearch,stats:renderStats,settings:renderSettings,account:renderAccount};
   function renderSideView(){if(activeSideView&&sideRenderers[activeSideView])sideOverlay.innerHTML=sideRenderers[activeSideView]();}
@@ -369,7 +412,7 @@
       }
       if(action==='routine-toggle'||action==='routine-delete'){var rs=getRoutines(),id=el.dataset.id;if(action==='routine-delete')rs=rs.filter(function(r){return r.id!==id;});else rs.forEach(function(r){if(r.id===id)r.active=!r.active;});saveRoutines(rs);renderSideView();return;}
       if(action==='routine-materialize'){materializeDueRoutines(B.formatLocalDate(new Date()),true,false);return;}
-      if(action==='search-open'){if(safeSetRaw(P+'selectedDate',el.dataset.date,'preferences'))location.reload();return;}
+      if(action==='search-open'){openInToday(el.dataset.itemId, el.dataset.date);return;}
       if(action==='export-app'){B.exportAllDataAsJson();return;}
       if(action==='export-full'){downloadJson(fullBackupPayload(),'dotdotplanner-full-backup-'+B.formatLocalDate(new Date())+'.json');return;}
       if(action==='import-full'){var input=document.createElement('input');input.type='file';input.accept='application/json';input.onchange=function(){var file=input.files&&input.files[0];if(!file)return;var reader=new FileReader();reader.onload=function(){try{var data=JSON.parse(reader.result);if(!data||data.format!=='dotdotplanner-full-backup-v1'||!data.storage)throw new Error('지원하지 않는 형식');if(!confirm('현재 로컬 데이터를 백업한 뒤 가져온 데이터로 교체할까요?'))return;var backup=fullBackupPayload();localStorage.setItem(P+'import_backup_'+Date.now(),JSON.stringify(backup));storageKeys().filter(function(k){return k.indexOf(P)===0&&!k.startsWith(P+'import_backup_');}).forEach(function(k){localStorage.removeItem(k);});Object.keys(data.storage).forEach(function(k){if(k.indexOf(P)===0)localStorage.setItem(k,data.storage[k]);});location.reload();}catch(err){alert('가져오기에 실패했습니다: '+err.message);}};reader.readAsText(file);};input.click();return;}
