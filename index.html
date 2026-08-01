@@ -1864,7 +1864,8 @@ body.dnd-active .group-drag{cursor:grabbing}
    null을 돌려줘 이 엘리먼트 자체가 DOM에 없다 -- 점 자리도, 간격도 생기지 않는다.
    실제 DOM 엘리먼트라 aria-label(접근성 이름)·tabindex(키보드 포커스)를 가질 수 있다
    (::before로는 불가능). 호버 툴팁은 브라우저 기본 title이 아니라 아래
-   .project-dot-tooltip 커스텀 엘리먼트가 담당한다(wireProjectDotTooltip). 배지·추가
+   .project-dot-tooltip 커스텀 엘리먼트가 담당한다(wireInlineTooltips, [data-tooltip-text]가
+   붙은 어떤 엘리먼트에도 재사용된다 -- Search의 유형 기호·그룹선도 같은 문법). 배지·추가
    배경·테두리 색은 만들지 않는다 -- 테두리는 배경 대비용 1px 고정 색(var(--line2))뿐이고
    채움색만 프로젝트색이다. */
 .project-dot{
@@ -2383,7 +2384,16 @@ body.dnd-active .group-drag{cursor:grabbing}
 .monthly-log-title-cell{display:flex;align-items:center;min-width:0;flex:1 1 auto}
 .monthly-log-day-overflow{flex:0 0 auto;height:14px;padding:0 4px;font-size:10px;font-weight:750;color:transparent;line-height:14px;overflow:hidden;user-select:none}
 .monthly-log-day-overflow.has-overflow{color:var(--lav);cursor:default}
-.monthly-log-body{overflow-x:hidden}
+/* 기본(auto-fit) 상태에서는 열이 항상 minmax(0,1fr)라 가로로 넘치지 않으므로 스크롤바가
+   보이지 않는다. Ctrl/Shift+휠로 칸 너비를 본체보다 크게 늘렸을 때만(.has-custom-col-w)
+   실제로 넘쳐서 가로 스크롤이 나타난다(요구사항 -- Monthly 본체 내부에서만 스크롤). */
+.monthly-log-body{overflow-x:auto}
+/* Monthly 달력 크기 조절(요구사항) -- 새 7열 그리드 전용 구현, 옛 18레인 좌표 시스템과는
+   무관하다. 기본 상태(클래스 없음)는 기존 auto-fit(flex:1 1 0 / minmax(0,1fr))을 그대로
+   유지하고, 사용자가 Ctrl/Shift+휠을 한 번이라도 쓰면 그 값으로 고정한다. */
+#monthly-log-rows.has-custom-row-h .monthly-log-week-row{flex:0 0 var(--monthly-row-h,104px);min-height:var(--monthly-row-h,104px)}
+#monthly-log-rows.has-custom-col-w .monthly-log-weekday-head,
+#monthly-log-rows.has-custom-col-w .monthly-log-week-row{grid-template-columns:repeat(7,var(--monthly-col-w,120px))}
 .monthly-log-schedule-grid-host{display:flex!important;flex-direction:column;overflow:hidden!important}
 .monthly-log-day-slots.monthly-log-schedule-drop-lane{position:static!important;inset:auto!important;opacity:1!important;pointer-events:auto!important}
 .monthly-log-day-item.monthly-log-item:hover,.monthly-log-day-item.monthly-log-item:focus-visible{background:var(--schedule-bg);filter:brightness(.97);outline:none}

@@ -92,10 +92,22 @@
     if(changed){if(!writeJSON(P+'items',items,'items'))return false;if(reload!==false)location.reload();}
     return changed;
   }
+  // 평일/주말은 새 데이터 구조가 아니라 기존 "특정 요일"(frequency:'weekdays') +
+  // days 배열로 정규화되는 UI 프리셋일 뿐이다(요구사항). 요일 집합이 정확히 월~금/
+  // 토·일이면 목록에서도 평일/주말로 표시한다(신규 필드 없이 기존 days만으로 판정).
+  function routineFrequencyLabel(r){
+    if(r.frequency==='weekdays'){
+      var days=(r.days||[]).slice().sort(function(a,b){return a-b;}).join(',');
+      if(days==='1,2,3,4,5') return '평일';
+      if(days==='0,6') return '주말';
+      return '특정 요일';
+    }
+    return ({daily:'매일',weekly:'매주',monthly:'매월'})[r.frequency]||r.frequency;
+  }
   function renderRoutine() {
     var routines=getRoutines();
-    var rows=routines.map(function(r){return '<li><span class="dotdot-ext-tag">'+esc(({daily:'매일',weekdays:'특정 요일',weekly:'매주',monthly:'매월'})[r.frequency]||r.frequency)+'</span><span style="flex:1;'+(r.active?'':'opacity:.45')+'">'+esc(r.text)+'</span><label class="dotdot-ext-muted"><input type="checkbox" data-ext="routine-auto" data-id="'+r.id+'" '+(r.autoCreate?'checked':'')+'> 자동 생성</label><button class="dotdot-ext-btn" data-ext="routine-toggle" data-id="'+r.id+'">'+(r.active?'일시정지':'활성화')+'</button><button class="dotdot-ext-btn danger" data-ext="routine-delete" data-id="'+r.id+'">삭제</button></li>';}).join('')||'<li class="dotdot-ext-muted">등록된 루틴이 없습니다.</li>';
-    return head('루틴','반복 규칙을 실제 Today 항목으로 생성','자동 생성은 같은 루틴·같은 날짜의 중복을 방지합니다. 생성된 항목은 일반 할 일과 동일하게 이동·완료·삭제할 수 있습니다.')+'<div class="dotdot-ext-card"><h3>새 루틴</h3><div class="dotdot-ext-row"><input class="dotdot-ext-input" id="ext-routine-text" placeholder="반복할 할 일"><select class="dotdot-ext-select" id="ext-routine-frequency"><option value="daily">매일</option><option value="weekdays">특정 요일</option><option value="weekly">매주</option><option value="monthly">매월</option></select><span class="dotdot-ext-routine-days">'+['일','월','화','수','목','금','토'].map(function(d,i){return '<label class="dotdot-ext-day-toggle"><input type="checkbox" name="ext-routine-day" value="'+i+'">'+d+'</label>';}).join('')+'</span><button class="dotdot-ext-btn primary" data-ext="routine-add">추가</button></div></div><div class="dotdot-ext-card"><div class="dotdot-ext-row"><button class="dotdot-ext-btn primary" data-ext="routine-materialize">오늘 해당 루틴 지금 생성</button></div></div><div class="dotdot-ext-card"><h3>루틴 목록</h3><ul class="dotdot-ext-list">'+rows+'</ul></div>';
+    var rows=routines.map(function(r){return '<li><span class="dotdot-ext-tag">'+esc(routineFrequencyLabel(r))+'</span><span style="flex:1;'+(r.active?'':'opacity:.45')+'">'+esc(r.text)+'</span><label class="dotdot-ext-muted"><input type="checkbox" data-ext="routine-auto" data-id="'+r.id+'" '+(r.autoCreate?'checked':'')+'> 자동 생성</label><button class="dotdot-ext-btn" data-ext="routine-toggle" data-id="'+r.id+'">'+(r.active?'일시정지':'활성화')+'</button><button class="dotdot-ext-btn danger" data-ext="routine-delete" data-id="'+r.id+'">삭제</button></li>';}).join('')||'<li class="dotdot-ext-muted">등록된 루틴이 없습니다.</li>';
+    return head('루틴','반복 규칙을 실제 Today 항목으로 생성','자동 생성은 같은 루틴·같은 날짜의 중복을 방지합니다. 생성된 항목은 일반 할 일과 동일하게 이동·완료·삭제할 수 있습니다.')+'<div class="dotdot-ext-card"><h3>새 루틴</h3><div class="dotdot-ext-row"><input class="dotdot-ext-input" id="ext-routine-text" placeholder="반복할 할 일"><select class="dotdot-ext-select" id="ext-routine-frequency"><option value="daily">매일</option><option value="weekdays">특정 요일</option><option value="weekdays-work">평일</option><option value="weekdays-weekend">주말</option><option value="weekly">매주</option><option value="monthly">매월</option></select><span class="dotdot-ext-routine-days" id="ext-routine-days-wrap" hidden>'+['일','월','화','수','목','금','토'].map(function(d,i){return '<label class="dotdot-ext-day-toggle"><input type="checkbox" name="ext-routine-day" value="'+i+'">'+d+'</label>';}).join('')+'</span><button class="dotdot-ext-btn primary" data-ext="routine-add">추가</button></div></div><div class="dotdot-ext-card"><div class="dotdot-ext-row"><button class="dotdot-ext-btn primary" data-ext="routine-materialize">오늘 해당 루틴 지금 생성</button></div></div><div class="dotdot-ext-card"><h3>루틴 목록</h3><ul class="dotdot-ext-list">'+rows+'</ul></div>';
   }
   // ------------------------------------------------------------------
   // 단축키 -- 독립 화면(오버레이)이 아니라 앱 전체 가장 왼쪽에 고정되는 보조 패널.
@@ -243,12 +255,17 @@
   function openShortcutPanel(){
     if(shortcutPanelOpen) return;
     buildShortcutPanel();
-    closeSideView(); // 다른 보조 화면(검색/루틴/통계/설정)과 동시에 뜨지 않게 한다.
+    // 다른 보조 화면(검색/루틴/통계/설정)을 닫지 않는다 -- 요구사항: 현재 화면 상태를
+    // 그대로 보존한다. 데스크톱에서는 패널이 열리며 .app-row 폭이 늘어나 .artboard가
+    // 오른쪽으로 밀리므로, 열려 있는 sideOverlay가 있다면 새 위치로 다시 맞춘다(닫지
+    // 않고 재배치만 한다 -- placeSideOverlay는 이미 열려 있는 화면의 스크롤·입력값·
+    // DOM을 전혀 건드리지 않고 좌표만 다시 잰다).
     shortcutPanelOpen=true;
     shortcutPanelEl.hidden=false;
     document.body.classList.add('shortcut-panel-open');
     var btn=document.querySelector('.side-item.shortcut');
     if(btn){ btn.classList.add('active'); btn.setAttribute('aria-expanded','true'); }
+    if(activeSideView) placeSideOverlay();
     renderShortcutPanelBody();
     document.addEventListener('keydown', onShortcutPanelDocumentKeydown, true);
     var input=document.getElementById('ext-shortcut-query');
@@ -261,17 +278,68 @@
     document.body.classList.remove('shortcut-panel-open');
     var btn=document.querySelector('.side-item.shortcut');
     if(btn){ btn.classList.remove('active'); btn.setAttribute('aria-expanded','false'); }
+    // 패널이 닫히며 .app-row 폭이 원래대로 줄어드는 경우도 마찬가지로 다시 맞춘다.
+    if(activeSideView) placeSideOverlay();
     document.removeEventListener('keydown', onShortcutPanelDocumentKeydown, true);
   }
   function toggleShortcutPanel(){
     if(shortcutPanelOpen) closeShortcutPanel(); else openShortcutPanel();
   }
   var searchState={q:'',type:'all',done:'all',from:'',to:''};
+  // 검색 결과 행 -- Today가 실제로 쓰는 유형 기호(B.iconForType)·프로젝트 점
+  // (B.buildProjectDot)·커스텀 툴팁(B.applyInlineTooltip)을 그대로 재사용해 다른
+  // 화면과 같은 문법으로 보이게 한다(요구사항: schedule/task/divider 영어 pill 제거).
+  // 정보 위계: 날짜 -> 유형 기호 -> 프로젝트 점/그룹선 -> 제목 -> 실행 버튼.
+  function buildSearchRows(results){
+    if(!results.length) return '<li class="dotdot-ext-muted">검색 결과가 없습니다.</li>';
+    var typeLabels={task:'할 일',schedule:'일정',memo:'메모',divider:'구분선'};
+    var ul=document.createElement('ul');
+    results.slice(0,150).forEach(function(it){
+      var li=document.createElement('li');
+      li.className='search-row';
+      var groupId=B.getItemGroupIdAt(it,'weekly',it.date);
+      var group=groupId?B.findGroupById(groupId):null;
+      var dot=B.buildProjectDot(it,'is-lg',group?group.name:null);
+      if(group){
+        var bar=document.createElement('span');
+        bar.className='search-group-bar';
+        bar.style.setProperty('--group-accent',group.color||'var(--lav)');
+        // 프로젝트 점이 있으면 그 점의 툴팁에 그룹명이 이미 함께 담기므로(위 buildProjectDot),
+        // 막대 자체는 순수 시각 표시만 하고 별도 툴팁 트리거를 중복으로 만들지 않는다.
+        if(!dot) B.applyInlineTooltip(bar, group.name, '그룹: '+group.name);
+        li.appendChild(bar);
+      }
+      var dateEl=document.createElement('span');
+      dateEl.className='search-date';
+      dateEl.textContent=it.date||'';
+      li.appendChild(dateEl);
+      var iconWrap=document.createElement('span');
+      iconWrap.className='search-type-icon';
+      iconWrap.appendChild(B.iconForType(it));
+      B.applyInlineTooltip(iconWrap, typeLabels[it.type]||it.type);
+      li.appendChild(iconWrap);
+      if(dot) li.appendChild(dot);
+      var titleEl=document.createElement('span');
+      titleEl.className='search-title'+(it.completed?' is-done':'');
+      titleEl.textContent=it.text||'';
+      li.appendChild(titleEl);
+      if(/^\d{4}-\d{2}-\d{2}$/.test(it.date||'')){
+        var btn=document.createElement('button');
+        btn.className='dotdot-ext-btn';
+        btn.setAttribute('data-ext','search-open');
+        btn.setAttribute('data-date', it.date);
+        btn.textContent='Today에서 열기';
+        li.appendChild(btn);
+      }
+      ul.appendChild(li);
+    });
+    return ul.innerHTML;
+  }
   function renderSearch(){var q=searchState.q.trim().toLowerCase();var projects={};S.projects.forEach(function(p){projects[p.id]=p.name;});var results=getAliveItems().filter(function(it){var hay=(it.text+' '+(it.description||'')+' '+(projects[it.projectId]||'')).toLowerCase();return(!q||hay.indexOf(q)>=0)&&(searchState.type==='all'||it.type===searchState.type)&&(searchState.done==='all'||(searchState.done==='done')===!!it.completed)&&(!searchState.from||it.date>=searchState.from)&&(!searchState.to||it.date<=searchState.to);})
     // 렌더 직전 실제 존재 여부를 다시 확인한다: 완전 삭제된 항목이나 오래된 참조는
     // getAliveItems()의 스냅샷에 남아 있더라도 여기서 걸러 절대 표시하지 않는다.
     .filter(function(it){var found=B.findItemById(it.id);return !!found&&!found.deletedAt;})
-    .sort(function(a,b){return a.date<b.date?1:-1;});var rows=results.slice(0,150).map(function(it){var hasValidDate=/^\d{4}-\d{2}-\d{2}$/.test(it.date||'');var openBtn=hasValidDate?'<button class="dotdot-ext-btn" data-ext="search-open" data-date="'+it.date+'">Today에서 열기</button>':'';return '<li><span class="dotdot-ext-muted" style="min-width:88px">'+esc(it.date||'')+'</span><span class="dotdot-ext-tag">'+esc(it.type)+'</span><span style="flex:1;'+(it.completed?'text-decoration:line-through;opacity:.55':'')+'">'+esc(it.text)+'</span>'+openBtn+'</li>';}).join('')||'<li class="dotdot-ext-muted">검색 결과가 없습니다.</li>';return head('검색','제목·설명·프로젝트 검색과 필터','검색 결과는 원본 항목을 가리키며 복사본을 만들지 않습니다.')+'<div class="dotdot-ext-card"><div class="dotdot-ext-row"><input class="dotdot-ext-input" id="ext-search-q" value="'+esc(searchState.q)+'" placeholder="검색어"><select class="dotdot-ext-select" id="ext-search-type"><option value="all">모든 유형</option><option value="task">할 일</option><option value="schedule">일정</option><option value="memo">메모</option></select><select class="dotdot-ext-select" id="ext-search-done"><option value="all">전체</option><option value="open">미완료</option><option value="done">완료</option></select><input class="dotdot-ext-input" style="min-width:auto" type="date" id="ext-search-from" value="'+searchState.from+'"><span>~</span><input class="dotdot-ext-input" style="min-width:auto" type="date" id="ext-search-to" value="'+searchState.to+'"></div><p class="dotdot-ext-muted">'+results.length+'건</p><ul class="dotdot-ext-list">'+rows+'</ul></div>';}
+    .sort(function(a,b){return a.date<b.date?1:-1;});var rows=buildSearchRows(results);return head('검색','제목·설명·프로젝트 검색과 필터','검색 결과는 원본 항목을 가리키며 복사본을 만들지 않습니다.')+'<div class="dotdot-ext-card"><div class="dotdot-ext-row"><input class="dotdot-ext-input" id="ext-search-q" value="'+esc(searchState.q)+'" placeholder="검색어"><select class="dotdot-ext-select" id="ext-search-type"><option value="all">모든 유형</option><option value="task">할 일</option><option value="schedule">일정</option><option value="memo">메모</option></select><select class="dotdot-ext-select" id="ext-search-done"><option value="all">전체</option><option value="open">미완료</option><option value="done">완료</option></select><input class="dotdot-ext-input" style="min-width:auto" type="date" id="ext-search-from" value="'+searchState.from+'"><span>~</span><input class="dotdot-ext-input" style="min-width:auto" type="date" id="ext-search-to" value="'+searchState.to+'"></div><p class="dotdot-ext-muted">'+results.length+'건</p><ul class="dotdot-ext-list">'+rows+'</ul></div>';}
   function renderStats(){var items=getAliveItems();var today=B.formatLocalDate(new Date());function period(n){var from=B.addCalendarDays(today,-(n-1));var list=items.filter(function(it){return it.date>=from&&it.date<=today;});var done=list.filter(function(it){return it.completed;}).length;return{total:list.length,done:done,rate:list.length?Math.round(done/list.length*100):0};}var w7=period(7),w30=period(30),moved=items.filter(function(it){return it.migratedFrom||(it.originalDate&&it.originalDate!==it.date);}).length;function stat(label,value,sub){return '<div class="dotdot-ext-stat"><b>'+value+'</b><span>'+label+(sub?' · '+sub:'')+'</span></div>';}return head('통계','완료·이월·유형 분포를 현재 로컬 데이터에서 계산','삭제되지 않은 항목만 집계하며 성과 압박용 스트릭은 만들지 않습니다.')+'<div class="dotdot-ext-card"><h3>최근 7일</h3>'+stat('완료',w7.done,'전체 '+w7.total)+stat('완료율',w7.rate+'%')+'<div class="dotdot-ext-bar"><i style="width:'+w7.rate+'%"></i></div></div><div class="dotdot-ext-card"><h3>최근 30일</h3>'+stat('완료',w30.done,'전체 '+w30.total)+stat('완료율',w30.rate+'%')+'<div class="dotdot-ext-bar"><i style="width:'+w30.rate+'%"></i></div></div><div class="dotdot-ext-card"><h3>계획 변경</h3>'+stat('이월·이동 흔적',moved+'건')+'</div>';
   }
   function fullBackupPayload(){var storage={};for(var i=0;i<localStorage.length;i++){var key=localStorage.key(i);if(key&&key.indexOf(P)===0)storage[key]=localStorage.getItem(key);}return{format:'dotdotplanner-full-backup-v1',exportedAt:new Date().toISOString(),storage:storage};}
@@ -286,7 +354,19 @@
   function focusBack(id,value){var el=document.getElementById(id);if(!el)return;el.value=value;el.focus();try{el.setSelectionRange(value.length,value.length);}catch(e){}}
   function wireSideEvents(){
     sideOverlay.addEventListener('click',function(e){var el=e.target.closest('[data-ext]');if(!el)return;var action=el.dataset.ext;
-      if(action==='routine-add'){var text=(document.getElementById('ext-routine-text').value||'').trim();if(!text)return;var frequency=document.getElementById('ext-routine-frequency').value;var days=Array.prototype.slice.call(document.querySelectorAll('[name="ext-routine-day"]:checked')).map(function(x){return Number(x.value);});var routines=getRoutines();routines.push({id:'routine_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,7),text:text,type:'task',frequency:frequency,days:days.length?days:[1],dayOfMonth:new Date().getDate(),active:true,autoCreate:true,createdAt:Date.now()});saveRoutines(routines);renderSideView();return;}
+      if(action==='routine-add'){
+        var text=(document.getElementById('ext-routine-text').value||'').trim();
+        if(!text)return;
+        var freqRaw=document.getElementById('ext-routine-frequency').value;
+        var frequency=freqRaw, days;
+        // 평일/주말은 새 데이터 구조가 아니라 기존 "특정 요일" + days로 정규화된다(요구사항).
+        if(freqRaw==='weekdays-work'){ frequency='weekdays'; days=[1,2,3,4,5]; }
+        else if(freqRaw==='weekdays-weekend'){ frequency='weekdays'; days=[0,6]; }
+        else { days=Array.prototype.slice.call(document.querySelectorAll('[name="ext-routine-day"]:checked')).map(function(x){return Number(x.value);}); }
+        var routines=getRoutines();
+        routines.push({id:'routine_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,7),text:text,type:'task',frequency:frequency,days:days.length?days:[1],dayOfMonth:new Date().getDate(),active:true,autoCreate:true,createdAt:Date.now()});
+        saveRoutines(routines);renderSideView();return;
+      }
       if(action==='routine-toggle'||action==='routine-delete'){var rs=getRoutines(),id=el.dataset.id;if(action==='routine-delete')rs=rs.filter(function(r){return r.id!==id;});else rs.forEach(function(r){if(r.id===id)r.active=!r.active;});saveRoutines(rs);renderSideView();return;}
       if(action==='routine-materialize'){materializeDueRoutines(B.formatLocalDate(new Date()),true,false);return;}
       if(action==='search-open'){if(safeSetRaw(P+'selectedDate',el.dataset.date,'preferences'))location.reload();return;}
@@ -299,6 +379,13 @@
     });
     sideOverlay.addEventListener('input',function(e){if(e.target.id==='ext-search-q'){searchState.q=e.target.value;var q=searchState.q;renderSideView();focusBack('ext-search-q',q);}});
     sideOverlay.addEventListener('change',function(e){var id=e.target.id;
+      if(id==='ext-routine-frequency'){
+        // 평일/주말/매일/매월은 프리셋이라 개별 요일 체크박스를 숨긴다(요구사항: 숨기거나
+        // 읽기전용). '특정 요일'·'매주'로 바꾸면 다시 보여 직접 선택할 수 있다.
+        var v=e.target.value;
+        var wrap=document.getElementById('ext-routine-days-wrap');
+        if(wrap) wrap.hidden=(v==='daily'||v==='monthly'||v==='weekdays-work'||v==='weekdays-weekend');
+      }
       if(id==='ext-search-type'){searchState.type=e.target.value;renderSideView();}
       if(id==='ext-search-done'){searchState.done=e.target.value;renderSideView();}
       if(id==='ext-search-from'){searchState.from=e.target.value;renderSideView();}

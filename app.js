@@ -1888,7 +1888,7 @@ endDateDraftActive: false,
   // 제목 앞에 프로젝트를 나타내는 작은 원 하나만 만든다(요구사항 -- 그룹의 왼쪽 선과는
   // 완전히 다른 채널, 배지·추가 배경·테두리 없음). 프로젝트가 없으면 null을 돌려주고
   // 호출자는 아무것도 넣지 않는다(점 자리조차 만들지 않음). 브라우저 기본 title 툴팁에는
-  // 기대지 않는다 -- 이름은 dataset에만 담아 wireProjectDotTooltip()의 커스텀 툴팁이
+  // 기대지 않는다 -- 이름은 dataset에만 담아 wireInlineTooltips()의 커스텀 툴팁이
   // 읽고, aria-label로 접근성 이름을 별도 제공한다. 그룹색과 같아도 자동 변경 없이
   // 프로젝트 고유 색을 그대로 쓴다. sizeClass는 'is-lg'(Daily/Weekly 6px) 또는
   // 'is-sm'(Monthly 4px)만 받는다. groupName을 주면(월간 캘린더 그룹 칩) 툴팁·접근성
@@ -1899,37 +1899,44 @@ endDateDraftActive: false,
     var dot = document.createElement('span');
     dot.className = 'project-dot ' + sizeClass;
     dot.style.setProperty('--project-accent', project.color || 'var(--lav)');
-    dot.tabIndex = 0;
-    dot.setAttribute('role', 'img');
     var label = groupName ? ('그룹: ' + groupName + ' · 프로젝트: ' + project.name) : ('프로젝트: ' + project.name);
-    dot.setAttribute('aria-label', label);
-    dot.dataset.projectDotText = groupName ? (groupName + ' · ' + project.name) : project.name;
+    applyInlineTooltip(dot, groupName ? (groupName + ' · ' + project.name) : project.name, label);
     return dot;
   }
 
-  // 프로젝트 점 커스텀 툴팁 -- 브라우저 기본 title에 기대지 않고, hover 또는 keyboard
-  // focus 즉시(지연 애니메이션 없이) 표시한다. 공유 엘리먼트 하나를 재사용하고, 위치는
-  // 매번 대상 점을 기준으로 다시 계산한다. pointerleave/blur/Escape에서 닫는다.
-  var projectDotTooltipEl = null;
-  var projectDotTooltipTarget = null;
-  function ensureProjectDotTooltipEl() {
-    if (projectDotTooltipEl) return projectDotTooltipEl;
+  // 커스텀 인라인 툴팁 -- 브라우저 기본 title에 기대지 않고, hover 또는 keyboard focus
+  // 즉시(지연 애니메이션 없이) 표시한다. data-tooltip-text가 붙은 엘리먼트라면 어디서든
+  // (프로젝트 점, Monthly 그룹 표시, Search 결과의 유형 기호/점/그룹선 등) 같은 문법으로
+  // 동작한다 -- 공유 엘리먼트 하나를 재사용하고, 위치는 매번 대상을 기준으로 다시
+  // 계산한다. pointerleave/blur/Escape에서 닫는다.
+  function applyInlineTooltip(el, tooltipText, ariaLabel) {
+    if (!el) return el;
+    el.tabIndex = 0;
+    el.setAttribute('role', 'img');
+    el.setAttribute('aria-label', ariaLabel || tooltipText);
+    el.dataset.tooltipText = tooltipText;
+    return el;
+  }
+  var inlineTooltipEl = null;
+  var inlineTooltipTarget = null;
+  function ensureInlineTooltipEl() {
+    if (inlineTooltipEl) return inlineTooltipEl;
     var el = document.createElement('div');
-    el.id = 'project-dot-tooltip';
+    el.id = 'inline-tooltip';
     el.className = 'project-dot-tooltip';
     el.setAttribute('role', 'tooltip');
     el.hidden = true;
     document.body.appendChild(el);
-    projectDotTooltipEl = el;
+    inlineTooltipEl = el;
     return el;
   }
-  function showProjectDotTooltip(dotEl) {
-    var text = dotEl.dataset.projectDotText;
+  function showInlineTooltip(targetEl) {
+    var text = targetEl.dataset.tooltipText;
     if (!text) return;
-    var tip = ensureProjectDotTooltipEl();
+    var tip = ensureInlineTooltipEl();
     tip.textContent = text;
     tip.hidden = false;
-    var r = dotEl.getBoundingClientRect();
+    var r = targetEl.getBoundingClientRect();
     var tipRect = tip.getBoundingClientRect();
     var top = r.top - tipRect.height - 6;
     if (top < 4) top = r.bottom + 6;
@@ -1938,35 +1945,35 @@ endDateDraftActive: false,
     // position:fixed라 뷰포트 기준 좌표를 그대로 쓴다(스크롤 오프셋을 더하지 않음).
     tip.style.top = Math.round(top) + 'px';
     tip.style.left = Math.round(left) + 'px';
-    dotEl.setAttribute('aria-describedby', 'project-dot-tooltip');
-    projectDotTooltipTarget = dotEl;
+    targetEl.setAttribute('aria-describedby', 'inline-tooltip');
+    inlineTooltipTarget = targetEl;
   }
-  function hideProjectDotTooltip() {
-    if (!projectDotTooltipEl || projectDotTooltipEl.hidden) return;
-    projectDotTooltipEl.hidden = true;
-    if (projectDotTooltipTarget) projectDotTooltipTarget.removeAttribute('aria-describedby');
-    projectDotTooltipTarget = null;
+  function hideInlineTooltip() {
+    if (!inlineTooltipEl || inlineTooltipEl.hidden) return;
+    inlineTooltipEl.hidden = true;
+    if (inlineTooltipTarget) inlineTooltipTarget.removeAttribute('aria-describedby');
+    inlineTooltipTarget = null;
   }
-  function wireProjectDotTooltip() {
+  function wireInlineTooltips() {
     document.addEventListener('pointerover', function (e) {
-      var dot = e.target.closest && e.target.closest('.project-dot');
-      if (dot) showProjectDotTooltip(dot);
+      var t = e.target.closest && e.target.closest('[data-tooltip-text]');
+      if (t) showInlineTooltip(t);
     });
     // pointerleave/blur는 버블링하지 않으므로 캡처 단계에서 위임한다.
     document.addEventListener('pointerleave', function (e) {
-      var dot = e.target.closest && e.target.closest('.project-dot');
-      if (dot) hideProjectDotTooltip();
+      var t = e.target.closest && e.target.closest('[data-tooltip-text]');
+      if (t) hideInlineTooltip();
     }, true);
     document.addEventListener('focusin', function (e) {
-      var dot = e.target.closest && e.target.closest('.project-dot');
-      if (dot) showProjectDotTooltip(dot);
+      var t = e.target.closest && e.target.closest('[data-tooltip-text]');
+      if (t) showInlineTooltip(t);
     });
     document.addEventListener('blur', function (e) {
-      var dot = e.target.closest && e.target.closest('.project-dot');
-      if (dot) hideProjectDotTooltip();
+      var t = e.target.closest && e.target.closest('[data-tooltip-text]');
+      if (t) hideInlineTooltip();
     }, true);
     document.addEventListener('keydown', function (e) {
-      if (e.key === 'Escape' && projectDotTooltipTarget) hideProjectDotTooltip();
+      if (e.key === 'Escape' && inlineTooltipTarget) hideInlineTooltip();
     });
   }
 
@@ -5588,7 +5595,7 @@ itemMarqueeSelectionState = null;
     // 4차 5: 텍스트 선택 floating toolbar — 상세 모달이 열려 있을 때만 의미 있으므로
     // onDescSelectionChange 내부에서 activeDetailDrawer 여부를 매번 확인한다.
     document.addEventListener('selectionchange', onDescSelectionChange);
-    wireProjectDotTooltip();
+    wireInlineTooltips();
   }
 
   // ---------------------------------------------------------------------
@@ -21673,6 +21680,113 @@ if (typeBtn) {
     monthlyLogDaySlotCount = next;
     return true;
   }
+
+  // ---------------------------------------------------------------------
+  // Monthly 달력 크기 조절 -- 7열 그리드 전용 새 구현(옛 18레인 컬럼 좌표 시스템과는
+  // 무관). 달력 본체(#monthly-log-body) 위에서만 Ctrl+휠(행 높이)/Shift+휠(칸 너비)로
+  // 모든 주 행/모든 날짜 칸을 동일하게 확대·축소한다. 기본값은 그대로 auto-fit이고,
+  // 사용자가 한 번이라도 조작하면 그 값을 --monthly-row-h/--monthly-col-w에 담아
+  // localStorage에 저장해 월 이동·새로고침에도 유지한다.
+  // ---------------------------------------------------------------------
+  var MONTHLY_LOG_ROW_H_MIN = 104, MONTHLY_LOG_ROW_H_MAX = 320, MONTHLY_LOG_ROW_H_STEP = 8;
+  var MONTHLY_LOG_COL_W_MIN = 120, MONTHLY_LOG_COL_W_MAX = 420, MONTHLY_LOG_COL_W_STEP = 16;
+  var MONTHLY_LOG_SIZE_STORAGE_KEY = STORAGE_PREFIX + 'monthlyLogCustomSize';
+  var monthlyLogCustomRowH = null; // null = auto-fit(기본)
+  var monthlyLogCustomColW = null;
+  var monthlyLogSizeSettleRaf = null;
+
+  function snapMonthlySize(value, min, max, step) {
+    var snapped = min + Math.round((value - min) / step) * step;
+    return Math.max(min, Math.min(max, snapped));
+  }
+
+  function measureMonthlyLogRowHeight() {
+    var row = document.querySelector('#monthly-log-rows .monthly-log-week-row');
+    var h = row ? row.getBoundingClientRect().height : 0;
+    return h ? snapMonthlySize(h, MONTHLY_LOG_ROW_H_MIN, MONTHLY_LOG_ROW_H_MAX, MONTHLY_LOG_ROW_H_STEP) : MONTHLY_LOG_ROW_H_MIN;
+  }
+  function measureMonthlyLogColWidth() {
+    var cell = document.querySelector('#monthly-log-rows .monthly-log-weekday-cell');
+    var w = cell ? cell.getBoundingClientRect().width : 0;
+    return w ? snapMonthlySize(w, MONTHLY_LOG_COL_W_MIN, MONTHLY_LOG_COL_W_MAX, MONTHLY_LOG_COL_W_STEP) : MONTHLY_LOG_COL_W_MIN;
+  }
+
+  function loadMonthlyLogCustomSize() {
+    try {
+      var raw = localStorage.getItem(MONTHLY_LOG_SIZE_STORAGE_KEY);
+      if (!raw) return;
+      var parsed = JSON.parse(raw);
+      if (parsed && typeof parsed.rowH === 'number') {
+        monthlyLogCustomRowH = snapMonthlySize(parsed.rowH, MONTHLY_LOG_ROW_H_MIN, MONTHLY_LOG_ROW_H_MAX, MONTHLY_LOG_ROW_H_STEP);
+      }
+      if (parsed && typeof parsed.colW === 'number') {
+        monthlyLogCustomColW = snapMonthlySize(parsed.colW, MONTHLY_LOG_COL_W_MIN, MONTHLY_LOG_COL_W_MAX, MONTHLY_LOG_COL_W_STEP);
+      }
+    } catch (e) {}
+  }
+  function saveMonthlyLogCustomSize() {
+    try {
+      if (monthlyLogCustomRowH == null && monthlyLogCustomColW == null) {
+        localStorage.removeItem(MONTHLY_LOG_SIZE_STORAGE_KEY);
+      } else {
+        localStorage.setItem(MONTHLY_LOG_SIZE_STORAGE_KEY, JSON.stringify({ rowH: monthlyLogCustomRowH, colW: monthlyLogCustomColW }));
+      }
+    } catch (e) {}
+  }
+  // 컨테이너(#monthly-log-rows)는 매 렌더마다 자식만 교체될 뿐 그 자신은 유지되므로,
+  // 여기서 설정한 class/CSS 변수는 월 이동·재렌더에도 별도 재적용 없이 남아있다.
+  function applyMonthlyLogCustomSizeDom() {
+    var container = document.getElementById('monthly-log-rows');
+    if (!container) return;
+    container.classList.toggle('has-custom-row-h', monthlyLogCustomRowH != null);
+    if (monthlyLogCustomRowH != null) container.style.setProperty('--monthly-row-h', monthlyLogCustomRowH + 'px');
+    else container.style.removeProperty('--monthly-row-h');
+    container.classList.toggle('has-custom-col-w', monthlyLogCustomColW != null);
+    if (monthlyLogCustomColW != null) container.style.setProperty('--monthly-col-w', monthlyLogCustomColW + 'px');
+    else container.style.removeProperty('--monthly-col-w');
+  }
+  // 연속 휠 이벤트를 rAF 하나로 묶어, 값이 안정된 뒤 딱 한 번만 저장 + 슬롯 수(S) 재계산
+  // + (바뀐 경우에만) 다시 그린다 -- 휠마다 전체 앱을 재렌더하지 않는다(요구사항).
+  function scheduleMonthlyLogSizeSettle() {
+    if (monthlyLogSizeSettleRaf) return;
+    monthlyLogSizeSettleRaf = requestAnimationFrame(function () {
+      monthlyLogSizeSettleRaf = null;
+      saveMonthlyLogCustomSize();
+      if (syncMonthlyLogDaySlotCount()) renderMonthlyLogRows();
+      positionMonthlyLogScheduleLabels();
+    });
+  }
+  function onMonthlyLogBodyWheel(e) {
+    if (state.currentView !== 'calendar') return;
+    if (!e.ctrlKey && !e.shiftKey) return; // 두 조합키가 없으면 평소 스크롤 그대로 둔다.
+    if (!document.getElementById('monthly-log-rows')) return;
+    e.preventDefault();
+    var dir = e.deltaY < 0 ? 1 : -1; // 휠 위쪽 = 확대.
+    if (e.ctrlKey) {
+      var baseH = monthlyLogCustomRowH != null ? monthlyLogCustomRowH : measureMonthlyLogRowHeight();
+      monthlyLogCustomRowH = snapMonthlySize(baseH + dir * MONTHLY_LOG_ROW_H_STEP, MONTHLY_LOG_ROW_H_MIN, MONTHLY_LOG_ROW_H_MAX, MONTHLY_LOG_ROW_H_STEP);
+    } else {
+      var baseW = monthlyLogCustomColW != null ? monthlyLogCustomColW : measureMonthlyLogColWidth();
+      monthlyLogCustomColW = snapMonthlySize(baseW + dir * MONTHLY_LOG_COL_W_STEP, MONTHLY_LOG_COL_W_MIN, MONTHLY_LOG_COL_W_MAX, MONTHLY_LOG_COL_W_STEP);
+    }
+    applyMonthlyLogCustomSizeDom();
+    scheduleMonthlyLogSizeSettle();
+  }
+  function wireMonthlyLogSizeWheel() {
+    var body = document.getElementById('monthly-log-body');
+    if (!body || body._monthlyLogSizeWheelWired) return;
+    body._monthlyLogSizeWheelWired = true;
+    body.addEventListener('wheel', onMonthlyLogBodyWheel, { passive: false });
+  }
+  // "달력 크기 초기화" -- 사용자 값과 localStorage를 모두 지우고 auto-fit으로 되돌린다.
+  function resetMonthlyLogCustomSize() {
+    monthlyLogCustomRowH = null;
+    monthlyLogCustomColW = null;
+    saveMonthlyLogCustomSize();
+    applyMonthlyLogCustomSizeDom();
+    if (syncMonthlyLogDaySlotCount()) renderMonthlyLogRows();
+  }
+
   // 주 단위 다일 세그먼트 패킹의 안전 상한. 이 값을 넘는 슬롯은 만들지 않는다
   // (S를 넘긴 세그먼트는 어차피 그 주 전체에서 숨겨져 +N으로만 표시된다).
   var MONTHLY_LOG_WEEK_PACK_LIMIT = 64;
@@ -23481,6 +23595,9 @@ if (typeBtn) {
   }
 
   function wireMonthlyLog() {
+    loadMonthlyLogCustomSize();
+    applyMonthlyLogCustomSizeDom();
+    wireMonthlyLogSizeWheel();
     var rows = document.getElementById('monthly-log-rows');
     if (rows) {
       rows.addEventListener('click', handleMonthlyLogRowsClick);
@@ -26464,13 +26581,13 @@ originalEndTime: state.timeDraft.endTime || null,
       e.preventDefault();
       var action = document.activeElement && document.activeElement.dataset.monthlyLogMenuAction;
       if (action === 'lunar') { toggleMonthlyLogLunarMenuItem(); closeMonthlyLogMenu(true); }
-      else if (action === 'cleanup-completed') { cleanupCompletedItemsForMonthlyLogMonth(); closeMonthlyLogMenu(true); }
       else if (action === 'hide-completed') {
         state.monthlyLogHideCompleted = !state.monthlyLogHideCompleted;
         savePreferences();
         renderMonthlyLogRows();
         renderMonthlyLogMenuState();
       }
+      else if (action === 'reset-size') { resetMonthlyLogCustomSize(); closeMonthlyLogMenu(true); }
     }
   }
 
@@ -26506,20 +26623,6 @@ originalEndTime: state.timeDraft.endTime || null,
     });
     menu.appendChild(lunarItem);
 
-    var cleanupCompletedItem = document.createElement('div');
-    cleanupCompletedItem.className = 'monthly-log-menu-item menu-item-has-help';
-    cleanupCompletedItem.setAttribute('role', 'menuitem');
-    cleanupCompletedItem.dataset.monthlyLogMenuAction = 'cleanup-completed';
-    cleanupCompletedItem.dataset.help = '현재 Monthly Log에 표시된 한 달 전체에서 완료 항목을 날짜별 완료 구분선 아래로 모읍니다.';
-    cleanupCompletedItem.title = cleanupCompletedItem.dataset.help;
-    cleanupCompletedItem.tabIndex = -1;
-    cleanupCompletedItem.textContent = '완료한 할 일 정리하기';
-    cleanupCompletedItem.addEventListener('click', function () {
-      cleanupCompletedItemsForMonthlyLogMonth();
-      closeMonthlyLogMenu(true);
-    });
-    menu.appendChild(cleanupCompletedItem);
-
     var hideCompletedItem = document.createElement('div');
     hideCompletedItem.className = 'monthly-log-menu-item menu-item-has-help';
     hideCompletedItem.setAttribute('role', 'menuitemcheckbox');
@@ -26541,6 +26644,22 @@ originalEndTime: state.timeDraft.endTime || null,
       renderMonthlyLogMenuState();
     });
     menu.appendChild(hideCompletedItem);
+
+    // 요구사항: Ctrl/Shift+휠로 조절한 행 높이·칸 너비 사용자 값을 모두 지우고
+    // auto-fit 기본값으로 즉시 되돌린다(localStorage/CSS 변수까지 함께 제거).
+    var resetSizeItem = document.createElement('div');
+    resetSizeItem.className = 'monthly-log-menu-item menu-item-has-help';
+    resetSizeItem.setAttribute('role', 'menuitem');
+    resetSizeItem.dataset.monthlyLogMenuAction = 'reset-size';
+    resetSizeItem.dataset.help = 'Ctrl/Shift+휠로 조절한 행 높이·칸 너비를 기본 크기로 되돌립니다.';
+    resetSizeItem.title = resetSizeItem.dataset.help;
+    resetSizeItem.tabIndex = -1;
+    resetSizeItem.textContent = '달력 크기 초기화';
+    resetSizeItem.addEventListener('click', function () {
+      resetMonthlyLogCustomSize();
+      closeMonthlyLogMenu(true);
+    });
+    menu.appendChild(resetSizeItem);
 
     document.body.appendChild(menu);
     positionPopup(menu, anchorEl);
@@ -27344,6 +27463,11 @@ wireMonthlyPanelToggle();
     isOccurrenceCompleted: isOccurrenceCompleted,
     findItemById: findItemById,
     findProjectById: findProjectById,
+    findGroupById: findGroupById,
+    getItemGroupIdAt: getItemGroupIdAt,
+    iconForType: iconForType,
+    buildProjectDot: buildProjectDot,
+    applyInlineTooltip: applyInlineTooltip,
     createItem: createItem,
     moveSingleItemToDate: moveSingleItemToDate,
     shiftScheduleCompletionMap: shiftScheduleCompletionMap,
