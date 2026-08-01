@@ -1537,9 +1537,6 @@ endDateDraftActive: false,
         endTime: opts.endTime || null,
         order: opts.insertAtStart ? minOrderForDate(d) : nextOrder(d)
       });
-      if (opts.monthlyLogScheduleColumn !== undefined && opts.monthlyLogScheduleColumn !== null) {
-        item.monthlyLogScheduleColumn = Math.max(0, Math.min(MONTHLY_LOG_SCHEDULE_GRID_COLUMNS - 1, Number(opts.monthlyLogScheduleColumn) || 0));
-      }
       state.items.push(item);
     });
     saveItems();
@@ -1980,7 +1977,7 @@ endDateDraftActive: false,
 
   // ---------------------------------------------------------------------
   // 그룹 헤더 UI -- Daily/Weekly/Monthly Log가 공유하는 단일 빌더. buildRowFn(item)만
-  // 화면마다 다르게 넘기면(createDailyItemRow/createWeeklyItemRow/buildMonthlyLogItemEl)
+  // 화면마다 다르게 넘기면(createDailyItemRow/createWeeklyItemRow 등)
   // 나머지 그룹 렌더 로직(순서·접힘·중첩 없음)은 한 곳에만 구현된다.
   // ---------------------------------------------------------------------
   // 최종 감사(2026-07-27) 8: context/sourceDate는 헤더의 드래그 핸들이 onDragHandlePointerDown을
@@ -15936,7 +15933,6 @@ function moveSingleScheduleToRange(
         allDay: it.allDay,
         startTime: it.startTime,
         endTime: it.endTime,
-        monthlyLogScheduleColumn: it.monthlyLogScheduleColumn,
         monthlyLogScheduleColorIndex: it.monthlyLogScheduleColorIndex,
         // 요구사항: 일반 복사 시 projectId를 유지한다.
         projectId: it.projectId || null,
@@ -16001,7 +15997,6 @@ function moveSingleScheduleToRange(
       updatedAt: now,
       projectId: src.projectId || null
     });
-    if (src.monthlyLogScheduleColumn !== undefined && src.monthlyLogScheduleColumn !== null) clonedItem.monthlyLogScheduleColumn = clampMonthlyLogScheduleColumn(src.monthlyLogScheduleColumn);
     if (src.monthlyLogScheduleColorIndex !== undefined && src.monthlyLogScheduleColorIndex !== null) clonedItem.monthlyLogScheduleColorIndex = Number(src.monthlyLogScheduleColorIndex);
     return clonedItem;
   }
@@ -16642,11 +16637,7 @@ overContext: null,
     dragState.anchorRow.classList.contains('monthly-log-schedule-segment')
   ) {
     var sourceRow = dragState.anchorRow.closest('.monthly-log-row[data-date]');
-    var sourceLane = sourceRow && sourceRow.querySelector(
-      '.monthly-log-row-items[data-lane-index="' +
-      String(getMonthlyLogLaneAt(findItemById(dragState.anchorRow.dataset.itemId), dragState.sourceDate)) +
-      '"]'
-    );
+    var sourceLane = sourceRow && sourceRow.querySelector('.monthly-log-row-items');
     if (sourceLane) {
       initialParent = sourceLane;
       initialBefore = sourceLane.firstElementChild;
@@ -16889,36 +16880,20 @@ overContext: null,
     if (state.currentView !== 'calendar') return null;
     var row = el ? el.closest('.monthly-log-row[data-date]') : null;
     if (!row) {
+      // 7열 그리드에서는 같은 y를 가진 칸이 7개이므로 x까지 함께 봐야 한다.
       var rows = document.querySelectorAll('#monthly-log-rows .monthly-log-row[data-date]');
       for (var i = 0; i < rows.length; i++) {
         var rowRect = rows[i].getBoundingClientRect();
-        if (y >= rowRect.top && y <= rowRect.bottom) { row = rows[i]; break; }
+        if (y >= rowRect.top && y <= rowRect.bottom && x >= rowRect.left && x <= rowRect.right) {
+          row = rows[i];
+          break;
+        }
       }
     }
     if (!row) return null;
     var scheduleHost = row.querySelector(':scope > .monthly-log-schedule-grid-host');
-    if (scheduleHost) {
-      return scheduleHost.querySelector(':scope > .monthly-log-schedule-drop-lane');
-    }
-    var laneEls = Array.prototype.slice.call(row.querySelectorAll(':scope > .monthly-log-row-lanes > .monthly-log-row-items'));
-    if (!laneEls.length) return null;
-    var nearest = null;
-    var nearestDistance = Infinity;
-    laneEls.forEach(function (laneEl) {
-      var rect = laneEl.getBoundingClientRect();
-      if (x >= rect.left && x <= rect.right) {
-        nearest = laneEl;
-        nearestDistance = -1;
-        return;
-      }
-      if (nearestDistance < 0) return;
-      var distance = x < rect.left ? rect.left - x : x - rect.right;
-      if (distance < nearestDistance) {
-        nearestDistance = distance;
-        nearest = laneEl;
-      }
-    });
-    return nearest;
+    if (!scheduleHost) return null;
+    return scheduleHost.querySelector(':scope > .monthly-log-schedule-drop-lane');
   }
 
   function updateDropTarget(x, y) {
@@ -16964,7 +16939,6 @@ var calendarCell =
     clearCalendarDropHighlight();
 
     var targetContext, targetDate, targetList;
-    dragState.overLane = null;
     if (dailyDropList) {
       targetContext = 'daily'; targetDate = state.selectedDate; targetList = dailyDropList;
     } else if (weeklyUl) {
@@ -16979,7 +16953,6 @@ var calendarCell =
       var monthlyLogRowEl = monthlyLogRowItems.closest('.monthly-log-row[data-date]');
       if (!monthlyLogRowEl) { dragState.pointerCurrentlyValid = false; clearColumnHighlight(); return; }
       targetContext = 'monthly-log'; targetDate = monthlyLogRowEl.dataset.date; targetList = monthlyLogRowItems;
-      dragState.overLane = Number(monthlyLogRowItems.dataset.laneIndex) || 0;
       var scheduleGridHost = monthlyLogRowEl.querySelector('.monthly-log-schedule-grid-host');
       var scheduleColumn = scheduleGridHost ? resolveMonthlyLogScheduleSnappedColumnAtPoint(
         scheduleGridHost,
@@ -16988,9 +16961,10 @@ var calendarCell =
       ) : null;
       if (scheduleColumn !== null) dragState.monthlyScheduleSnappedColumn = scheduleColumn;
       dragState.overScheduleColumn = scheduleColumn;
-      if (scheduleGridHost && scheduleColumn !== null) {
+      // v1: 열 개념이 없어졌으므로 날짜 칸 전체를 드롭 대상으로 강조한다.
+      if (scheduleGridHost) {
         scheduleGridHost.classList.add('drop-target-schedule-grid');
-        scheduleGridHost.style.setProperty('--schedule-drop-column', String(scheduleColumn));
+        if (scheduleColumn !== null) scheduleGridHost.style.setProperty('--schedule-drop-column', String(scheduleColumn));
       }
     } else {
       // 12: 허용되지 않은 영역 위에서는 placeholder를 마지막 유효 위치에 그대로 둔다.
@@ -17221,11 +17195,8 @@ var calendarCell =
   // 바뀐 항목의 updatedAt)만 갱신한다(스펙: "이동"과 "순서 변경"은 서로 다른 연산).
   // dropPosition은 placeholder 로직이 항상 "이 항목 앞" 또는 "끝"만 계산하므로
   // 'before' | 'end' 두 가지만 쓴다.
-  function reorderItemsWithinDate(itemIds, date, overItemId, dropPosition, monthlyLogLane) {
-    var hasMonthlyLane = monthlyLogLane !== null && monthlyLogLane !== undefined;
-    var all = getItemsForDate(date).filter(function (it) {
-      return !hasMonthlyLane || getMonthlyLogLaneAt(it, date) === Number(monthlyLogLane);
-    }).sort(function (a, b) { return a.order - b.order; });
+  function reorderItemsWithinDate(itemIds, date, overItemId, dropPosition) {
+    var all = getItemsForDate(date).sort(function (a, b) { return a.order - b.order; });
     var movingSet = {};
     itemIds.forEach(function (id) { movingSet[id] = true; });
     var moving = all.filter(function (it) { return movingSet[it.id]; });
@@ -17558,7 +17529,6 @@ projectId: master.projectId || null,
     var rows = Array.prototype.slice.call(laneEl.querySelectorAll(':scope > [data-item-id]:not(.drag-source-hidden)'))
       .filter(function (row) { return !movingSet[row.dataset.itemId]; });
     var intent = {
-      lane: Number(laneEl.dataset.laneIndex) || 0,
       scheduleColumn: ds.monthlyScheduleSnappedColumn !== null && ds.monthlyScheduleSnappedColumn !== undefined
         ? clampMonthlyLogScheduleColumn(ds.monthlyScheduleSnappedColumn)
         : resolveMonthlyLogScheduleColumnAtPoint(laneEl.closest('.monthly-log-schedule-grid-host') || laneEl, x),
@@ -17593,23 +17563,11 @@ projectId: master.projectId || null,
   }
 
   function commitDrop(ds) {
-    // Monthly Log의 칸 이동은 선택한 항목에만 적용한다. 드롭 대상 날짜의 다른 항목은
-    // 커밋 전 칸을 스냅샷해 두고 마지막에 복원해, 반대쪽 카드가 대신 넘어가는 회귀를 막는다.
-    var monthlyLogLaneSnapshot = null;
-    if (ds && ds.overContext === 'monthly-log' && ds.overDate) {
-      var movingLaneIds = {};
-      (ds.draggedItemIds || []).forEach(function (id) { movingLaneIds[id] = true; });
-      monthlyLogLaneSnapshot = {};
-      getItemsForDate(ds.overDate).forEach(function (item) {
-        if (!movingLaneIds[item.id]) monthlyLogLaneSnapshot[item.id] = getMonthlyLogLaneAt(item, ds.overDate);
-      });
-    }
     // Monthly Log는 최종 포인터 위치를 우선하고, 좌표 판정이 불가능한 예외에만
     // placeholder의 실제 다음 항목을 fallback으로 사용한다.
     if (ds && ds.overContext === 'monthly-log') {
       var finalMonthlyIntent = resolveMonthlyLogDropIntentAtPoint(ds);
       if (finalMonthlyIntent) {
-        ds.overLane = finalMonthlyIntent.lane;
         ds.overScheduleColumn = finalMonthlyIntent.scheduleColumn;
         ds.overItemId = finalMonthlyIntent.overItemId;
         ds.dropPosition = finalMonthlyIntent.dropPosition;
@@ -17667,21 +17625,12 @@ projectId: master.projectId || null,
 
       if (!movedRegularItems.length) return;
 
-      if (ds.overContext === 'monthly-log') {
-        movedRegularItems.forEach(function (item) {
-          setMonthlyLogLaneAt(item, ds.overDate, Number(ds.overLane) || 0);
-          if (item.type === 'schedule' && ds.overScheduleColumn !== null && ds.overScheduleColumn !== undefined) {
-            setMonthlyLogScheduleColumn(item, ds.overScheduleColumn);
-          }
-        });
-      }
       // placeholder가 보인 정확한 위치에 배치
       reorderItemsWithinDate(
         movedRegularItems.map(function (item) { return item.id; }),
         ds.overDate,
         ds.overItemId,
-        ds.dropPosition,
-        ds.overContext === 'monthly-log' ? (Number(ds.overLane) || 0) : null
+        ds.dropPosition
       );
 
       mutated = true;
@@ -17875,21 +17824,12 @@ projectId: master.projectId || null,
            * 달력 칸은 위치가 없는 날짜 이동이므로 재정렬하지 않는다.
            * Daily·Weekly 목록은 placeholder가 있던 위치를 실제 order에 반영한다.
            */
-          if (ds.overContext === 'monthly-log') {
-            touched.forEach(function (item) {
-              setMonthlyLogLaneAt(item, ds.overDate, Number(ds.overLane) || 0);
-              if (item.type === 'schedule' && ds.overScheduleColumn !== null && ds.overScheduleColumn !== undefined) {
-                setMonthlyLogScheduleColumn(item, ds.overScheduleColumn);
-              }
-            });
-          }
           if (ds.overContext !== 'calendar') {
             reorderItemsWithinDate(
               ids,
               ds.overDate,
               ds.overItemId,
-              ds.dropPosition,
-              ds.overContext === 'monthly-log' ? (Number(ds.overLane) || 0) : null
+              ds.dropPosition
             );
             syncGroupMembershipAfterReorder(ids, ds.overDate);
           }
@@ -17933,20 +17873,11 @@ projectId: master.projectId || null,
   });
 }
 
-        if (ds.overContext === 'monthly-log') {
-          touched.forEach(function (item) {
-            if (setMonthlyLogLaneAt(item, ds.overDate, Number(ds.overLane) || 0)) classificationChanged = true;
-            if (item && item.type === 'schedule' && ds.overScheduleColumn !== null && ds.overScheduleColumn !== undefined) {
-              if (setMonthlyLogScheduleColumn(item, ds.overScheduleColumn)) classificationChanged = true;
-            }
-          });
-        }
         var reordered = reorderItemsWithinDate(
           ids,
           ds.overDate,
           ds.overItemId,
-          ds.dropPosition,
-          ds.overContext === 'monthly-log' ? (Number(ds.overLane) || 0) : null
+          ds.dropPosition
         );
         var groupMembershipChanged = syncGroupMembershipAfterReorder(ids, ds.overDate);
 
@@ -17978,14 +17909,6 @@ projectId: master.projectId || null,
     state.rolloverExpanded = true;
   }
   } finally {
-    if (monthlyLogLaneSnapshot && ds && ds.overDate) {
-      var restoredMonthlyLogLane = false;
-      Object.keys(monthlyLogLaneSnapshot).forEach(function (id) {
-        var item = findItemById(id);
-        if (item && setMonthlyLogLaneAt(item, ds.overDate, monthlyLogLaneSnapshot[id])) restoredMonthlyLogLane = true;
-      });
-      if (restoredMonthlyLogLane) saveItems();
-    }
     cleanupDragDom(ds);
     dragState = null;
     renderApp();
@@ -21604,31 +21527,56 @@ if (typeBtn) {
   // 날짜당 표시 개수 제한은 없다(모든 항목을 표시, 아래 buildMonthlyLogRow 참고).
   // ---------------------------------------------------------------------
 
-  // Monthly Log 전용 구분선 행. 그룹 카운트에서는 제외되지만, 드래그와 칸 이동은
-  // 일반 항목과 같은 occurrence 기준으로 동작한다.
-  function buildMonthlyLogDividerRow(item, dateStr) {
-    var el = document.createElement('div');
-    el.className = 'monthly-log-item divider-item-row';
-    el.dataset.itemId = item.id;
-    el.dataset.occurrenceDate = dateStr;
-    el.dataset.monthlyLogLane = String(getMonthlyLogLaneAt(item, dateStr));
-    el.setAttribute('aria-selected', 'false');
-    el.appendChild(createMonthlyLogDragHandle(item, dateStr));
-    el.appendChild(buildDividerLine());
-    return el;
-  }
-
   // Monthly Log 일정 전용 눈금 그리드. 날짜는 세로축, 일정은 가로 눈금의 한 열을
   // 차지하는 세로 색상 블록으로 표현한다. 다일 일정은 날짜별로 같은 제목을 반복하지
   // 않고, 전체 기간의 중앙에 세로 제목을 딱 한 번만 표시한다. 일반 할 일/메모/구분선은
   // 이 달력 영역에 렌더하지 않고 오른쪽 "이번 달 할 일"과 Today/Weekly에서 관리한다.
   var MONTHLY_LOG_SCHEDULE_GRID_COLUMNS = 18;
+  // Monthly Calendar v1: 7열 × 5~6주 그리드. 모든 주 행은 같은 높이이고, 날짜 칸의
+  // 이벤트 슬롯 수는 S=3 고정이다(+N 초과 표시 영역은 슬롯을 차지하지 않는 별도 1줄).
+  // 이벤트 슬롯 수 S는 고정값이 아니라 주 행의 실제 이벤트 영역 높이에서 계산한다.
+  // 행 높이·칩 높이는 그대로 두고, 남는 세로 공간만큼 슬롯을 더 쓴다.
+  var MONTHLY_LOG_DAY_SLOT_MIN = 3;
+  var MONTHLY_LOG_DAY_SLOT_MAX = 8;
+  var MONTHLY_LOG_DAY_SLOT_HEIGHT = 18; // .monthly-log-day-item / .monthly-log-week-segment 높이
+  var MONTHLY_LOG_DAY_SLOT_GAP = 2;     // .monthly-log-row-items의 세로 gap
+  // 슬롯 영역에서 빼야 하는 고정 크롬: 칸 위 여백(3) + 날짜 줄(18) + 날짜-본문 간격(2)
+  // + 고정 +N 영역(14) + 칸 아래 여백(2).
+  var MONTHLY_LOG_DAY_FIXED_CHROME = 39;
+  var monthlyLogDaySlotCount = MONTHLY_LOG_DAY_SLOT_MIN;
+  var monthlyLogSlotSyncGuard = false;
+
+  function getMonthlyLogDaySlotCount() { return monthlyLogDaySlotCount; }
+
+  function computeMonthlyLogDaySlotCount(rowHeight) {
+    var available = rowHeight - MONTHLY_LOG_DAY_FIXED_CHROME;
+    var per = MONTHLY_LOG_DAY_SLOT_HEIGHT + MONTHLY_LOG_DAY_SLOT_GAP;
+    var count = Math.floor((available + MONTHLY_LOG_DAY_SLOT_GAP) / per);
+    if (!isFinite(count)) count = MONTHLY_LOG_DAY_SLOT_MIN;
+    return Math.max(MONTHLY_LOG_DAY_SLOT_MIN, Math.min(MONTHLY_LOG_DAY_SLOT_MAX, count));
+  }
+
+  // 실제로 그려진 주 행 높이를 재서 S를 갱신한다. 값이 바뀐 경우에만 true를 돌려주고,
+  // 호출자가 그때만 다시 렌더한다(모든 주 행은 같은 높이이므로 첫 행만 재면 된다).
+  function syncMonthlyLogDaySlotCount() {
+    var container = document.getElementById('monthly-log-rows');
+    var weekRow = container && container.querySelector('.monthly-log-week-row');
+    if (!weekRow) return false;
+    var height = weekRow.getBoundingClientRect().height;
+    if (!height) return false;
+    var next = computeMonthlyLogDaySlotCount(height);
+    if (next === monthlyLogDaySlotCount) return false;
+    monthlyLogDaySlotCount = next;
+    return true;
+  }
+  // 주 단위 다일 세그먼트 패킹의 안전 상한. 이 값을 넘는 슬롯은 만들지 않는다
+  // (S를 넘긴 세그먼트는 어차피 그 주 전체에서 숨겨져 +N으로만 표시된다).
+  var MONTHLY_LOG_WEEK_PACK_LIMIT = 64;
   var monthlyLogScheduleGridPlan = null;
   var monthlyLogPendingScheduleColumnByDate = {};
   var monthlyLogScheduleCellSelection = null; // { startDate, endDate, column }
   var monthlyLogScheduleGridIsActive = false;
   var monthlyLogScheduleAutoScrollState = null;
-  var monthlyLogSchedulePlanSaveTimer = null;
   var MONTHLY_LOG_SCHEDULE_PALETTE = [
     { bg:'#e2ebf7', border:'#a2b8d5', text:'#3f5f86', hue:212 },
     { bg:'#f2e1e9', border:'#d6a9bc', text:'#87506a', hue:336 },
@@ -21656,13 +21604,13 @@ if (typeBtn) {
     return isMonthlyLogSchedule(item) && !!item.endDate && item.endDate > item.date;
   }
 
+  // v1: 화면에 실제로 그려지는 범위는 그 달이 아니라 7열 그리드의 첫 칸~마지막 칸이다.
+  // 이전·다음 달 칸에도 일정이 보여야 하므로 배치 계획도 이 범위를 기준으로 만든다.
   function getMonthlyLogVisibleMonthBounds() {
-    var monthDate = parseLocalDate(state.monthlyLogViewMonth);
-    var year = monthDate.getFullYear();
-    var month = monthDate.getMonth();
+    var layout = buildMonthlyLogWeekStarts();
     return {
-      start: formatLocalDate(new Date(year, month, 1)),
-      end: formatLocalDate(new Date(year, month, daysInMonthFromParts(year, month)))
+      start: layout.starts[0],
+      end: addCalendarDays(layout.starts[layout.starts.length - 1], 6)
     };
   }
 
@@ -21682,14 +21630,12 @@ if (typeBtn) {
     return Math.min(d, 360 - d);
   }
 
+  // v1: 열 개념이 없으므로 인접 판정은 "기간이 겹치거나 하루 차이로 맞닿는가"만 본다.
+  // 같은 날짜 칸이나 같은 주에 나란히 보이는 일정끼리 색이 겹치지 않게 하는 용도다.
   function monthlyLogSchedulesAreAdjacent(a, b) {
-    if (!a || !b || a.column < 0 || b.column < 0) return false;
-    var verticalOverlapOrTouch =
-      addMonthlyLogScheduleDays(a.visibleEnd, 1) >= b.visibleStart &&
-      addMonthlyLogScheduleDays(b.visibleEnd, 1) >= a.visibleStart;
-    var horizontalNeighbor = Math.abs(a.column - b.column) <= 1;
-    var sameColumnNear = a.column === b.column && verticalOverlapOrTouch;
-    return (horizontalNeighbor && verticalOverlapOrTouch) || sameColumnNear;
+    if (!a || !b) return false;
+    return addMonthlyLogScheduleDays(a.end, 1) >= b.start
+      && addMonthlyLogScheduleDays(b.end, 1) >= a.start;
   }
 
   function getMonthlyLogScheduleLinkKey(item) {
@@ -21711,13 +21657,6 @@ if (typeBtn) {
     });
   }
 
-  function scheduleMonthlyLogPlanSave() {
-    if (monthlyLogSchedulePlanSaveTimer) return;
-    monthlyLogSchedulePlanSaveTimer = setTimeout(function () {
-      monthlyLogSchedulePlanSaveTimer = null;
-      saveItems();
-    }, 0);
-  }
 
   function isMonthlyLogScheduleRangeFree(startDate, endDate, column, exceptItemId) {
     var start = startDate <= endDate ? startDate : endDate;
@@ -21935,14 +21874,6 @@ if (typeBtn) {
     return span;
   }
 
-  function setMonthlyLogScheduleColumn(item, column) {
-    if (!item || item.type !== 'schedule') return false;
-    var next = clampMonthlyLogScheduleColumn(column);
-    if (Number(item.monthlyLogScheduleColumn) === next) return false;
-    item.monthlyLogScheduleColumn = next;
-    item.updatedAt = Date.now();
-    return true;
-  }
 
   function addMonthlyLogScheduleDays(dateStr, amount) {
     return addCalendarDays(dateStr, amount);
@@ -22080,95 +22011,152 @@ if (typeBtn) {
     if (pathCount) rows.appendChild(svg);
   }
 
+  // Monthly Calendar v1 배치 계획.
+  // - 주 단위로 다일 세그먼트를 먼저 슬롯에 패킹하고, 남은 슬롯을 단일 일정이 채운다.
+  // - 슬롯 번호가 S를 넘긴 다일 세그먼트는 그 주 전체에서 숨기고, 지나는 날짜마다 +N에 센다.
+  // - 위치는 저장하지 않는다. 렌더 중 item.updatedAt 변경이나 saveItems 호출도 하지 않는다.
   function buildMonthlyLogScheduleGridPlan() {
     var bounds = getMonthlyLogVisibleMonthBounds();
-    var needsSave = false;
+    var layout = buildMonthlyLogWeekStarts();
     var entries = state.items.filter(function (item) {
       var end = item.endDate || item.date;
       return isMonthlyLogSchedule(item) && item.date <= bounds.end && end >= bounds.start;
     }).map(function (item) {
       var endDate = item.endDate || item.date;
-      var visibleStart = item.date < bounds.start ? bounds.start : item.date;
-      var visibleEnd = endDate > bounds.end ? bounds.end : endDate;
-      var visibleDays = differenceInCalendarDays(visibleStart, visibleEnd) + 1;
       return {
         item: item,
-        visibleStart: visibleStart,
-        visibleEnd: visibleEnd,
-        continuesBefore: item.date < bounds.start,
-        continuesAfter: endDate > bounds.end,
-        visibleDays: visibleDays,
+        start: item.date,
+        end: endDate,
         duration: differenceInCalendarDays(item.date, endDate) + 1,
-        column: -1,
+        isMultiDay: endDate > item.date,
         paletteIndex: null,
         palette: null
       };
     }).filter(function (entry) {
-      return !state.monthlyLogHideCompleted || !isItemCompletedForCleanup(entry.item, entry.visibleStart);
+      var firstVisible = entry.start < bounds.start ? bounds.start : entry.start;
+      return !state.monthlyLogHideCompleted || !isItemCompletedForCleanup(entry.item, firstVisible);
     }).sort(function (a, b) {
+      if (a.duration !== b.duration) return b.duration - a.duration;
+      if (a.start !== b.start) return a.start < b.start ? -1 : 1;
       var ac = Number(a.item.createdAt) || 0;
       var bc = Number(b.item.createdAt) || 0;
       if (ac !== bc) return ac - bc;
-      if (a.visibleStart !== b.visibleStart) return a.visibleStart < b.visibleStart ? -1 : 1;
       return String(a.item.id).localeCompare(String(b.item.id));
     });
 
-    var occupied = new Array(MONTHLY_LOG_SCHEDULE_GRID_COLUMNS).fill(null).map(function () { return []; });
-    var hiddenCountByDate = {};
-    var hiddenTitlesByDate = {};
+    assignMonthlyLogScheduleColors(entries);
 
-    entries.forEach(function (entry) {
-      var preferred = Number.isFinite(Number(entry.item.monthlyLogScheduleColumn))
-        ? clampMonthlyLogScheduleColumn(entry.item.monthlyLogScheduleColumn)
-        : -1;
-      var candidates = [];
-      if (preferred >= 0) candidates.push(preferred);
-      for (var i = 0; i < MONTHLY_LOG_SCHEDULE_GRID_COLUMNS; i++) if (i !== preferred) candidates.push(i);
-      for (var c = 0; c < candidates.length; c++) {
-        var column = candidates[c];
-        var blocked = occupied[column].some(function (other) {
-          return other.visibleStart <= entry.visibleEnd && other.visibleEnd >= entry.visibleStart;
+    var weeks = [];
+    var byDate = {};
+    layout.starts.forEach(function (weekStart) {
+      var weekEnd = addCalendarDays(weekStart, 6);
+      var segments = entries.filter(function (entry) {
+        return entry.isMultiDay && entry.start <= weekEnd && entry.end >= weekStart;
+      }).map(function (entry) {
+        var segStart = entry.start < weekStart ? weekStart : entry.start;
+        var segEnd = entry.end > weekEnd ? weekEnd : entry.end;
+        return {
+          entry: entry,
+          item: entry.item,
+          segStart: segStart,
+          segEnd: segEnd,
+          continuesBefore: entry.start < segStart,
+          continuesAfter: entry.end > segEnd,
+          slot: -1
+        };
+      });
+
+      // 주 단위 인터벌 패킹. 정렬은 이미 기간 긴 순 -> 시작 이른 순이므로 위에서부터 채운다.
+      var occupancy = [];
+      segments.forEach(function (seg) {
+        var slot = 0;
+        while (slot < MONTHLY_LOG_WEEK_PACK_LIMIT) {
+          if (!occupancy[slot]) occupancy[slot] = [];
+          var blocked = occupancy[slot].some(function (other) {
+            return other.segStart <= seg.segEnd && other.segEnd >= seg.segStart;
+          });
+          if (!blocked) break;
+          slot++;
+        }
+        seg.slot = slot;
+        if (!occupancy[slot]) occupancy[slot] = [];
+        occupancy[slot].push(seg);
+      });
+
+      var slotCount = getMonthlyLogDaySlotCount();
+      var visibleSegments = segments.filter(function (seg) { return seg.slot < slotCount; });
+
+      for (var i = 0; i < 7; i++) {
+        var dateStr = addCalendarDays(weekStart, i);
+        var segmentsOnDate = segments.filter(function (seg) {
+          return seg.segStart <= dateStr && dateStr <= seg.segEnd;
         });
-        if (!blocked) {
-          entry.column = column;
-          occupied[column].push(entry);
-          if (Number(entry.item.monthlyLogScheduleColumn) !== column) {
-            entry.item.monthlyLogScheduleColumn = column;
-            entry.item.updatedAt = Date.now();
-            needsSave = true;
-          }
-          break;
+        var takenSlots = {};
+        segmentsOnDate.forEach(function (seg) {
+          if (seg.slot < slotCount) takenSlots[seg.slot] = true;
+        });
+        var singles = entries.filter(function (entry) {
+          return !entry.isMultiDay && entry.start === dateStr;
+        }).sort(function (a, b) {
+          var ao = Number(a.item.order);
+          var bo = Number(b.item.order);
+          if (isFinite(ao) && isFinite(bo) && ao !== bo) return ao - bo;
+          var ac = Number(a.item.createdAt) || 0;
+          var bc = Number(b.item.createdAt) || 0;
+          if (ac !== bc) return ac - bc;
+          return String(a.item.id).localeCompare(String(b.item.id));
+        });
+        var freeSlots = [];
+        for (var slotIndex = 0; slotIndex < slotCount; slotIndex++) {
+          if (!takenSlots[slotIndex]) freeSlots.push(slotIndex);
         }
+        var placed = [];
+        var hiddenTitles = [];
+        singles.forEach(function (entry, index) {
+          if (index < freeSlots.length) placed.push({ entry: entry, slot: freeSlots[index] });
+          else hiddenTitles.push(entry.item.text || '제목 없음');
+        });
+        segmentsOnDate.forEach(function (seg) {
+          if (seg.slot >= slotCount) hiddenTitles.push(seg.item.text || '제목 없음');
+        });
+        // 보이는 개수 = 이 날짜에서 슬롯을 차지한 다일 세그먼트 + 실제로 배치된 단일 일정.
+        var total = segmentsOnDate.length + singles.length;
+        var shown = Object.keys(takenSlots).length + placed.length;
+        byDate[dateStr] = {
+          singles: placed,
+          takenSlots: takenSlots,
+          total: total,
+          overflow: Math.max(0, total - shown),
+          hiddenTitles: hiddenTitles
+        };
       }
-      if (entry.column < 0) {
-        var cursor = parseLocalDate(entry.visibleStart);
-        var last = parseLocalDate(entry.visibleEnd);
-        while (cursor <= last) {
-          var key = formatLocalDate(cursor);
-          hiddenCountByDate[key] = (hiddenCountByDate[key] || 0) + 1;
-          if (!hiddenTitlesByDate[key]) hiddenTitlesByDate[key] = [];
-          hiddenTitlesByDate[key].push(entry.item.text);
-          cursor.setDate(cursor.getDate() + 1);
-        }
-      }
+
+      weeks.push({ start: weekStart, end: weekEnd, segments: visibleSegments });
     });
 
-    var assignedColors = [];
+    return { bounds: bounds, entries: entries, weeks: weeks, byDate: byDate };
+  }
+
+  // 색은 항목에 저장하지 않는다. 저장돼 있던 monthlyLogScheduleColorIndex는 시작 후보로만
+  // 읽고, 되쓰지 않는다(렌더가 updatedAt을 건드리지 않게 하기 위한 v1 규칙).
+  function assignMonthlyLogScheduleColors(entries) {
+    var assigned = [];
     var paletteIndexByLinkKey = {};
-    entries.filter(function (entry) { return entry.column >= 0; }).forEach(function (entry) {
+    entries.forEach(function (entry) {
       var stored = Number(entry.item.monthlyLogScheduleColorIndex);
       var hasStored = Number.isInteger(stored) && stored >= 0 && stored < MONTHLY_LOG_SCHEDULE_PALETTE.length;
-      var startIndex = hasStored ? stored : Math.abs(getMonthlyLogScheduleColorSeed(entry.item)) % MONTHLY_LOG_SCHEDULE_PALETTE.length;
+      var startIndex = hasStored
+        ? stored
+        : Math.abs(getMonthlyLogScheduleColorSeed(entry.item)) % MONTHLY_LOG_SCHEDULE_PALETTE.length;
       var chosen = -1;
       var linkKey = getMonthlyLogScheduleLinkKey(entry.item);
       if (linkKey && paletteIndexByLinkKey[linkKey] !== undefined) chosen = paletteIndexByLinkKey[linkKey];
-      // Existing persisted colors win when they are not visually adjacent to a similar block.
-      if (chosen < 0 && hasStored && !scheduleColorConflicts(stored, entry, assignedColors)) chosen = stored;
+      if (chosen < 0 && hasStored && !scheduleColorConflicts(stored, entry, assigned)) chosen = stored;
       if (chosen < 0) {
         var bestScore = -1;
         for (var candidate = 0; candidate < MONTHLY_LOG_SCHEDULE_PALETTE.length; candidate++) {
           var palette = MONTHLY_LOG_SCHEDULE_PALETTE[candidate];
-          var neighbors = assignedColors.filter(function (other) {
+          var neighbors = assigned.filter(function (other) {
             return other.paletteIndex != null && monthlyLogSchedulesAreAdjacent(entry, other);
           });
           var minDistance = neighbors.length ? Math.min.apply(null, neighbors.map(function (other) {
@@ -22184,93 +22172,8 @@ if (typeBtn) {
       entry.paletteIndex = chosen;
       entry.palette = MONTHLY_LOG_SCHEDULE_PALETTE[chosen];
       if (linkKey) paletteIndexByLinkKey[linkKey] = chosen;
-      assignedColors.push(entry);
-      if (Number(entry.item.monthlyLogScheduleColorIndex) !== chosen) {
-        entry.item.monthlyLogScheduleColorIndex = chosen;
-        entry.item.updatedAt = Date.now();
-        needsSave = true;
-      }
+      assigned.push(entry);
     });
-
-    if (needsSave) scheduleMonthlyLogPlanSave();
-    return {
-      bounds: bounds,
-      entries: entries,
-      hiddenCountByDate: hiddenCountByDate,
-      hiddenTitlesByDate: hiddenTitlesByDate
-    };
-  }
-
-  function getMonthlyLogScheduleEntriesForDate(dateStr) {
-    if (!monthlyLogScheduleGridPlan) return [];
-    return monthlyLogScheduleGridPlan.entries.filter(function (entry) {
-      return entry.column >= 0 && entry.visibleStart <= dateStr && dateStr <= entry.visibleEnd;
-    }).sort(function (a, b) { return a.column - b.column; });
-  }
-  function buildMonthlyLogScheduleSegment(entry, dateStr) {
-    var item = entry.item;
-    var palette = entry.palette || MONTHLY_LOG_SCHEDULE_PALETTE[0];
-    // 요구사항: projectId가 있으면 프로젝트 색을 우선 사용하고(연결선도 이 세 변수를
-    // 그대로 읽으므로 자동으로 같은 색을 쓴다), 없으면 기존 자동 색상 로직을 그대로
-    // 유지한다.
-    var project = item.projectId ? findProjectById(item.projectId) : null;
-    var segBg = palette.bg, segBorder = palette.border, segText = palette.text;
-    if (project && project.color) {
-      segBg = 'color-mix(in srgb, ' + project.color + ' 16%, var(--bg-card))';
-      segBorder = project.color;
-      segText = project.color;
-    }
-    var segment = document.createElement('div');
-    segment.className = 'monthly-log-item monthly-log-schedule-segment';
-    segment.style.setProperty('--schedule-bg', segBg);
-    segment.style.setProperty('--schedule-border', segBorder);
-    segment.style.setProperty('--schedule-text', segText);
-    segment.style.setProperty('--schedule-color', segBorder);
-    segment.dataset.scheduleTitle = item.text || '';
-    segment.dataset.itemId = item.id;
-    segment.dataset.occurrenceDate = dateStr;
-    segment.dataset.scheduleColumn = String(entry.column);
-    segment.dataset.scheduleColorIndex = String(entry.paletteIndex == null ? 0 : entry.paletteIndex);
-    var scheduleLinkKey = getMonthlyLogScheduleLinkKey(item);
-    if (scheduleLinkKey) {
-      segment.dataset.scheduleLinkKey = scheduleLinkKey;
-      segment.classList.add('is-linked-schedule');
-    }
-    segment.dataset.monthlyLogLane = '0';
-    segment.style.gridColumn = String(entry.column + 1);
-    segment.style.setProperty('--schedule-duration-days', String(entry.visibleDays));
-    segment.tabIndex = 0;
-    segment.setAttribute('role', 'button');
-    segment.setAttribute('aria-selected', 'false');
-    segment.setAttribute('aria-label', item.text + ', ' + formatDotDate(item.date) + '부터 ' + formatDotDate(item.endDate || item.date) + '까지');
-    segment.title = item.text + ' · ' + formatDotDate(item.date) + (item.endDate && item.endDate !== item.date ? '–' + formatDotDate(item.endDate) : '') + (project ? ' · ' + project.name : '');
-
-    var isFirst = dateStr === entry.visibleStart;
-    var isLast = dateStr === entry.visibleEnd;
-    var isSingle = isFirst && isLast;
-    segment.classList.toggle('is-schedule-first', isFirst);
-    segment.classList.toggle('is-schedule-middle', !isFirst && !isLast);
-    segment.classList.toggle('is-schedule-last', isLast);
-    segment.classList.toggle('is-schedule-single', isSingle);
-    segment.classList.toggle('continues-before', entry.continuesBefore && isFirst);
-    segment.classList.toggle('continues-after', entry.continuesAfter && isLast);
-    if (isOccurrenceCompleted(item, dateStr)) segment.classList.add('is-done');
-
-    // 한 일정의 제목 DOM은 보이는 첫 조각에 한 번만 둔다. 실제 위치는 렌더 뒤
-    // positionMonthlyLogScheduleLabels가 전체 블록의 중앙으로 옮긴다.
-    if (isFirst) {
-      segment.classList.add('has-schedule-label');
-      var label = document.createElement('span');
-      label.className = 'monthly-log-schedule-label monthly-log-item-title';
-      label.textContent = item.text || '제목 없음';
-      label.title = segment.title;
-      segment.appendChild(label);
-
-      var handle = createMonthlyLogDragHandle(item, dateStr);
-      handle.classList.add('monthly-log-schedule-drag');
-      segment.appendChild(handle);
-    }
-    return segment;
   }
 
   function buildMonthlyLogScheduleInputEl(dateStr, column) {
@@ -22292,53 +22195,123 @@ if (typeBtn) {
     wrap.appendChild(input);
     return wrap;
   }
-  function buildMonthlyLogScheduleGrid(dateStr) {
+  // Monthly Calendar v1 날짜 칸 본문. 드롭 계약(.monthly-log-schedule-grid-host >
+  // .monthly-log-schedule-drop-lane)과 인라인 입력은 그대로 유지하고, 18칸 격자 대신
+  // 슬롯 3개 스택 + 고정 초과 표시 영역 1줄을 만든다.
+  function buildMonthlyLogDayBody(dateStr) {
     var host = document.createElement('div');
     host.className = 'monthly-log-row-lanes monthly-log-schedule-grid-host';
     host.dataset.date = dateStr;
     host.tabIndex = -1;
 
-    var grid = document.createElement('div');
-    grid.className = 'monthly-log-schedule-grid';
-    grid.dataset.date = dateStr;
-    grid.style.setProperty('--schedule-grid-columns', String(MONTHLY_LOG_SCHEDULE_GRID_COLUMNS));
+    var day = (monthlyLogScheduleGridPlan && monthlyLogScheduleGridPlan.byDate[dateStr]) || null;
 
-    for (var column = 0; column < MONTHLY_LOG_SCHEDULE_GRID_COLUMNS; column++) {
-      var cell = document.createElement('span');
-      cell.className = 'monthly-log-schedule-grid-cell';
-      cell.dataset.date = dateStr;
-      cell.dataset.scheduleColumn = String(column);
-      cell.style.gridColumn = String(column + 1);
-      cell.setAttribute('aria-label', formatAnnounceDate(dateStr) + ', ' + (column + 1) + '번째 일정 칸');
-      grid.appendChild(cell);
+    var slots = document.createElement('div');
+    slots.className = 'monthly-log-row-items monthly-log-lane monthly-log-schedule-drop-lane monthly-log-day-slots';
+    slots.dataset.date = dateStr;
+
+    // 다일 세그먼트가 차지한 슬롯은 주 단위 오버레이가 그리므로, 날짜 칸 안에서는
+    // 같은 높이의 빈 자리만 남겨 단일 일정이 아래 슬롯부터 이어지게 한다.
+    if (day) {
+      var bySlot = {};
+      var lastUsed = -1;
+      day.singles.forEach(function (placed) {
+        bySlot[placed.slot] = placed;
+        if (placed.slot > lastUsed) lastUsed = placed.slot;
+      });
+      for (var slotIndex = 0; slotIndex <= lastUsed; slotIndex++) {
+        if (bySlot[slotIndex]) {
+          slots.appendChild(buildMonthlyLogDayChip(bySlot[slotIndex].entry, dateStr));
+        } else {
+          var spacer = document.createElement('div');
+          spacer.className = 'monthly-log-day-slot-spacer';
+          spacer.setAttribute('aria-hidden', 'true');
+          slots.appendChild(spacer);
+        }
+      }
     }
+    host.appendChild(slots);
 
-    getMonthlyLogScheduleEntriesForDate(dateStr).forEach(function (entry) {
-      grid.appendChild(buildMonthlyLogScheduleSegment(entry, dateStr));
-    });
-
-    var hiddenCount = monthlyLogScheduleGridPlan && monthlyLogScheduleGridPlan.hiddenCountByDate[dateStr];
-    if (hiddenCount) {
-      var overflow = document.createElement('span');
-      overflow.className = 'monthly-log-schedule-overflow';
-      overflow.textContent = '+' + hiddenCount;
-      overflow.title = (monthlyLogScheduleGridPlan.hiddenTitlesByDate[dateStr] || []).join(' · ');
-      overflow.setAttribute('aria-label', '숨겨진 일정 ' + hiddenCount + '개');
-      grid.appendChild(overflow);
+    // 초과 표시 영역은 +N이 없어도 항상 자리를 차지한다(모든 주 행 동일 높이 원칙).
+    var overflow = document.createElement('div');
+    overflow.className = 'monthly-log-day-overflow';
+    var hiddenCount = day ? day.overflow : 0;
+    if (hiddenCount > 0) {
+      overflow.classList.add('has-overflow');
+      overflow.textContent = '+' + hiddenCount + '개';
+      overflow.title = (day.hiddenTitles || []).join(' · ');
+      overflow.setAttribute('aria-label', formatAnnounceDate(dateStr) + ', 더 있는 일정 ' + hiddenCount + '개');
     }
+    host.appendChild(overflow);
 
-    host.appendChild(grid);
-    var dropLane = document.createElement('div');
-    dropLane.className = 'monthly-log-row-items monthly-log-lane monthly-log-schedule-drop-lane';
-    dropLane.dataset.laneIndex = '0';
-    dropLane.dataset.date = dateStr;
-    host.appendChild(dropLane);
-
-    var selectedColumn = monthlyLogScheduleCellSelection && monthlyLogScheduleCellSelection.startDate === dateStr
-      ? monthlyLogScheduleCellSelection.column
-      : monthlyLogPendingScheduleColumnByDate[dateStr];
-    host.appendChild(buildMonthlyLogScheduleInputEl(dateStr, selectedColumn == null ? 0 : selectedColumn));
+    host.appendChild(buildMonthlyLogScheduleInputEl(dateStr, 0));
     return host;
+  }
+
+  function applyMonthlyLogScheduleColors(el, entry) {
+    var palette = entry.palette || MONTHLY_LOG_SCHEDULE_PALETTE[0];
+    var project = entry.item.projectId ? findProjectById(entry.item.projectId) : null;
+    el.style.setProperty('--schedule-bg', project && project.color
+      ? 'color-mix(in srgb, ' + project.color + ' 16%, var(--bg-card))'
+      : palette.bg);
+    el.style.setProperty('--schedule-border', project && project.color ? project.color : palette.border);
+    el.style.setProperty('--schedule-text', project && project.color ? project.color : palette.text);
+    return project;
+  }
+
+  function decorateMonthlyLogScheduleEl(el, item, dateStr, project) {
+    el.dataset.itemId = item.id;
+    el.dataset.occurrenceDate = dateStr;
+    el.tabIndex = 0;
+    el.setAttribute('role', 'button');
+    el.setAttribute('aria-selected', 'false');
+    if (isOccurrenceCompleted(item, dateStr)) el.classList.add('is-done');
+    el.title = item.text + ' · ' + formatDotDate(item.date)
+      + (item.endDate && item.endDate !== item.date ? '–' + formatDotDate(item.endDate) : '')
+      + (project ? ' · ' + project.name : '');
+    el.setAttribute('aria-label', item.text + ', ' + formatDotDate(item.date) + '부터 '
+      + formatDotDate(item.endDate || item.date) + '까지');
+    el.appendChild(createMonthlyLogDragHandle(item, dateStr));
+    var title = document.createElement('span');
+    title.className = 'monthly-log-item-title';
+    if (item.instanceGroupId) title.classList.add('is-instance-linked');
+    title.textContent = item.text || '제목 없음';
+    el.appendChild(title);
+  }
+
+  function buildMonthlyLogDayChip(entry, dateStr) {
+    var chip = document.createElement('div');
+    chip.className = 'monthly-log-item monthly-log-day-item';
+    var project = applyMonthlyLogScheduleColors(chip, entry);
+    decorateMonthlyLogScheduleEl(chip, entry.item, dateStr, project);
+    return chip;
+  }
+
+  // 주 경계에서 잘린 다일 일정 조각. 제목은 조각마다 반복 표기하고, 양끝 모양으로
+  // 이전/다음 주로 이어짐을 나타낸다.
+  function buildMonthlyLogWeekSegmentEl(seg) {
+    var el = document.createElement('div');
+    el.className = 'monthly-log-item monthly-log-week-segment';
+    var project = applyMonthlyLogScheduleColors(el, seg.entry);
+    decorateMonthlyLogScheduleEl(el, seg.item, seg.segStart, project);
+    el.classList.toggle('continues-before', !!seg.continuesBefore);
+    el.classList.toggle('continues-after', !!seg.continuesAfter);
+    var startIndex = differenceInCalendarDays(seg.weekStart, seg.segStart);
+    var span = differenceInCalendarDays(seg.segStart, seg.segEnd) + 1;
+    el.style.gridColumn = (startIndex + 1) + ' / span ' + span;
+    el.style.gridRow = String(seg.slot + 1);
+    return el;
+  }
+
+  function buildMonthlyLogWeekSegmentLayer(week) {
+    var layer = document.createElement('div');
+    layer.className = 'monthly-log-week-segments';
+    layer.setAttribute('aria-hidden', 'false');
+    week.segments.forEach(function (seg) {
+      seg.weekStart = week.start;
+      layer.appendChild(buildMonthlyLogWeekSegmentEl(seg));
+    });
+    return layer;
   }
 
   function resolveMonthlyLogScheduleColumnAtPoint(el, x) {
@@ -22493,7 +22466,7 @@ if (typeBtn) {
   }
 
   function onMonthlyLogScheduleGridPointerDown(e) {
-    if (dragState || e.target.closest('.monthly-log-schedule-segment') || e.target.closest('.monthly-log-schedule-inline-add')) return;
+    if (dragState || e.target.closest('.monthly-log-schedule-segment, .monthly-log-week-segment, .monthly-log-day-item') || e.target.closest('.monthly-log-schedule-inline-add')) return;
     var cell = e.target.closest('.monthly-log-schedule-grid-cell');
     if (!cell) return;
     if (e.pointerType === 'mouse' && e.button !== 0) return;
@@ -22617,75 +22590,31 @@ if (typeBtn) {
     cancelMonthlyLogScheduleGridInteraction({ clearDraft:false });
   }
 
-  function appendMonthlyLogItemMenuButton(parent, item) {
-    var menuBtn = document.createElement('button');
-    menuBtn.type = 'button';
-    menuBtn.className = 'arrow monthly-log-item-menu-btn';
-    menuBtn.dataset.action = 'monthly-log-item-menu';
-    menuBtn.dataset.itemId = item.id;
-    menuBtn.setAttribute('aria-haspopup', 'menu');
-    menuBtn.setAttribute('aria-expanded', 'false');
-    menuBtn.setAttribute('aria-label', '항목 메뉴: ' + item.text);
-    menuBtn.textContent = '→';
-    menuBtn.addEventListener('click', function (e) {
-      e.stopPropagation();
-      if (activeMoveMenu && activeMoveMenu.anchorItemId === item.id) { closeMoveDateMenu(); return; }
-      openMoveDateMenu([item.id], menuBtn);
-    });
-    parent.appendChild(menuBtn);
-  }
-
-  function buildMonthlyLogItemEl(item, dateStr) {
-    if (item.type === 'divider') return buildMonthlyLogDividerRow(item, dateStr);
-    var el = document.createElement('div');
-    el.className = 'monthly-log-item';
-    el.dataset.itemId = item.id;
-    el.dataset.occurrenceDate = dateStr;
-    el.dataset.monthlyLogLane = String(getMonthlyLogLaneAt(item, dateStr));
-    el.tabIndex = 0;
-    el.setAttribute('role', 'button');
-    el.setAttribute('aria-selected', 'false');
-    if (isOccurrenceCompleted(item, dateStr)) el.classList.add('is-done');
-    el.appendChild(createMonthlyLogDragHandle(item, dateStr));
-    el.appendChild(checkboxButton(item, dateStr));
-    el.appendChild(typeMenuButton(item, 'monthly-log-item-type-btn', dateStr));
-    var title = document.createElement('span');
-    title.className = 'monthly-log-item-title';
-    if (item.instanceGroupId) title.classList.add('is-instance-linked');
-    title.textContent = item.text;
-    title.title = item.text;
-    el.appendChild(title);
-    appendMonthlyLogItemMenuButton(el, item);
-    return el;
-  }
-
-  function buildMonthlyLogRow(dateStr, dayNum) {
+  function buildMonthlyLogRow(dateStr, dayNum, inCurrentMonth) {
     var d = parseLocalDate(dateStr);
     var dow = d.getDay();
     var annotation = getCalendarAnnotations(dateStr);
     var row = document.createElement('div');
     row.className = 'monthly-log-row';
     row.dataset.date = dateStr;
+    if (!inCurrentMonth) row.classList.add('is-outside-month');
     if (annotation.isPublicHoliday) row.classList.add('is-holiday');
     else if (dow === 0) row.classList.add('is-sun');
     else if (dow === 6) row.classList.add('is-sat');
-    // 주 구분선: 이 날짜가 (설정된 주 시작 요일 기준) 그 주의 첫 날일 때만, 매월 1일
-    // 행에는 붙이지 않는다(헤더와 중복 방지). 요일 정책은 state.calendarWeekStartsOn
-    // 하나로 미니 달력·Weekly 주 기준과 통일한다(getWeekStart).
-    if (dateStr === getWeekStart(dateStr, state.calendarWeekStartsOn) && dayNum !== 1) row.classList.add('is-week-start');
     if (dateStr === state.todayDate) row.classList.add('is-today');
-    // Monthly Log uses exact grid-cell and schedule-block selection; never outline a whole date row.
 
     var label = document.createElement('div');
     label.className = 'monthly-log-row-label';
-    label.title = 'Ctrl + 마우스 휠: 이 날짜 칸 높이 조절';
     var dayEl = document.createElement('span');
-    dayEl.textContent = String(dayNum).padStart(2, '0');
-    var weekdayEl = document.createElement('span');
-    weekdayEl.className = 'monthly-log-row-weekday';
-    weekdayEl.textContent = annotation.holidayName ? annotation.holidayName : WEEKDAY_KO[dow];
+    dayEl.className = 'monthly-log-day-num';
+    dayEl.textContent = String(dayNum);
     label.appendChild(dayEl);
-    label.appendChild(weekdayEl);
+    if (annotation.isPublicHoliday && annotation.holidayName) {
+      var holidayEl = document.createElement('span');
+      holidayEl.className = 'monthly-log-row-weekday';
+      holidayEl.textContent = annotation.holidayName;
+      label.appendChild(holidayEl);
+    }
     if (annotation.lunarVisible) {
       var lunarEl = document.createElement('span');
       lunarEl.className = 'monthly-log-row-lunar';
@@ -22695,86 +22624,93 @@ if (typeBtn) {
     row.appendChild(label);
 
     // Monthly Log 달력 본문에는 일정만 표시한다. 날짜별 일반 할 일/메모는 오른쪽
-    // '이번 달 할 일' 패널과 Today/Weekly에서 확인하고, 여기서는 기간과 겹침을 한눈에
-    // 읽을 수 있는 세로 블록 그리드만 렌더한다.
-    row.appendChild(buildMonthlyLogScheduleGrid(dateStr));
+    // '이번 달 할 일' 패널과 Today/Weekly에서 확인한다(할 일/메모 보기 필터는 후속 단계).
+    row.appendChild(buildMonthlyLogDayBody(dateStr));
 
     return row;
   }
 
-  // ---------------------------------------------------------------------
-  // Calendar 날짜 행 직접 입력 -- 행마다 항상 존재하는 인라인 입력(런타임에 "+" 버튼으로
-  // 열고 닫는 방식이 아니다). 클릭/포커스/타이핑은 전부 #monthly-log-rows 위임
-  // (handleMonthlyLogRowsClick/Keydown/FocusIn/FocusOut)이 처리하므로 행마다 개별
-  // 리스너를 달지 않는다. createItem()을 그대로 재사용해 Daily/Weekly와 즉시 동기화된다.
-  // ---------------------------------------------------------------------
-  // 날짜별로 마지막에 고른 종류를 기억해(세션 한정, 저장 안 함) Enter로 새 항목을 만든
-  // 뒤 같은 행에서 같은 종류로 계속 입력할 수 있게 한다. 처음 만드는 행은 기본 schedule.
-  var monthlyLogRowLastType = {};
+  // 7열 × 5~6주 그리드. 주 시작 요일은 state.calendarWeekStartsOn(미니 달력·Weekly와
+  // 동일 정책)을 따르고, 이전·다음 달 날짜도 회색 실제 셀로 그려 클릭·드롭을 허용한다.
+  function buildMonthlyLogWeekStarts() {
+    var monthStart = parseLocalDate(state.monthlyLogViewMonth);
+    var year = monthStart.getFullYear();
+    var month = monthStart.getMonth();
+    var firstDate = formatLocalDate(new Date(year, month, 1));
+    var lastDate = formatLocalDate(new Date(year, month, daysInMonthFromParts(year, month)));
+    var cursor = getWeekStart(firstDate, state.calendarWeekStartsOn);
+    var starts = [];
+    while (cursor <= lastDate && starts.length < 6) {
+      starts.push(cursor);
+      cursor = addCalendarDays(cursor, 7);
+    }
+    // 2월이 정확히 4주에 들어맞는 해가 있어도 달마다 화면 높이가 흔들리지 않도록
+    // 최소 5주를 유지한다(모든 주 행 동일 높이 원칙의 연장).
+    while (starts.length < 5) {
+      starts.push(cursor);
+      cursor = addCalendarDays(cursor, 7);
+    }
+    return { starts: starts, monthKey: state.monthlyLogViewMonth.slice(0, 7) };
+  }
 
-  function buildMonthlyLogRowInputEl(dateStr) {
-    var wrap = document.createElement('span');
-    wrap.className = 'monthly-log-inline-add';
-    wrap.dataset.date = dateStr;
-
-    var mode = monthlyLogRowLastType[dateStr] || 'schedule';
-
-    var modesWrap = document.createElement('span');
-    modesWrap.className = 'week-inline-modes';
-    modesWrap.setAttribute('role', 'group');
-    modesWrap.setAttribute('aria-label', '입력 종류');
-
-    WEEKLY_INLINE_MODES.forEach(function (cfg) {
-      var btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = 'week-inline-mode';
-      btn.dataset.action = 'monthly-row-mode';
-      btn.dataset.type = cfg.type;
-      btn.dataset.date = dateStr;
-      btn.setAttribute('aria-pressed', String(cfg.type === mode));
-      btn.setAttribute('aria-label', cfg.label);
-      var icon = document.createElement('span');
-      icon.className = cfg.icon;
-      btn.appendChild(icon);
-      modesWrap.appendChild(btn);
-    });
-
-    var input = document.createElement('input');
-    input.type = 'text';
-    input.className = 'week-inline-input monthly-log-row-input';
-    input.dataset.date = dateStr;
-    input.dataset.mode = mode;
-    input.autocomplete = 'off';
-    input.setAttribute('aria-label', formatAnnounceDate(dateStr) + ' 항목 추가');
-    input.addEventListener('focus', function () { markLastActiveListDate(dateStr); }); // 3단계: Weekly 인라인 입력과 같은 패턴.
-
-    wrap.appendChild(modesWrap);
-    wrap.appendChild(input);
-    return wrap;
+  function buildMonthlyLogWeekdayHead() {
+    var head = document.createElement('div');
+    head.className = 'monthly-log-weekday-head';
+    var startsOn = state.calendarWeekStartsOn === 1 ? 1 : 0;
+    for (var i = 0; i < 7; i++) {
+      var dow = (startsOn + i) % 7;
+      var cell = document.createElement('span');
+      cell.className = 'monthly-log-weekday-cell';
+      if (dow === 0) cell.classList.add('is-sun');
+      else if (dow === 6) cell.classList.add('is-sat');
+      cell.textContent = WEEKDAY_KO[dow];
+      head.appendChild(cell);
+    }
+    return head;
   }
 
   function renderMonthlyLogRows() {
     var container = document.getElementById('monthly-log-rows');
     if (!container) return;
     monthlyLogScheduleGridPlan = buildMonthlyLogScheduleGridPlan();
-    var monthStart = parseLocalDate(state.monthlyLogViewMonth);
-    var year = monthStart.getFullYear();
-    var month = monthStart.getMonth();
-    var total = daysInMonthFromParts(year, month);
+    var layout = buildMonthlyLogWeekStarts();
     var frag = document.createDocumentFragment();
-    for (var day = 1; day <= total; day++) {
-      frag.appendChild(buildMonthlyLogRow(formatLocalDate(new Date(year, month, day)), day));
-    }
+    frag.appendChild(buildMonthlyLogWeekdayHead());
+    layout.starts.forEach(function (weekStart, weekIndex) {
+      var weekRow = document.createElement('div');
+      weekRow.className = 'monthly-log-week-row';
+      weekRow.dataset.weekStart = weekStart;
+      for (var i = 0; i < 7; i++) {
+        var dateStr = addCalendarDays(weekStart, i);
+        var cellDate = parseLocalDate(dateStr);
+        weekRow.appendChild(buildMonthlyLogRow(
+          dateStr,
+          cellDate.getDate(),
+          dateStr.slice(0, 7) === layout.monthKey
+        ));
+      }
+      // 다일 세그먼트는 날짜 칸 위에 겹치는 주 단위 오버레이가 그린다. 날짜 칸의
+      // 클릭·드롭 판정을 막지 않도록 오버레이 자체는 pointer-events:none이다.
+      var week = monthlyLogScheduleGridPlan && monthlyLogScheduleGridPlan.weeks[weekIndex];
+      if (week) weekRow.appendChild(buildMonthlyLogWeekSegmentLayer(week));
+      frag.appendChild(weekRow);
+    });
+    container.style.setProperty('--monthly-slot-count', String(monthlyLogDaySlotCount));
     container.replaceChildren(frag);
-    requestAnimationFrame(positionMonthlyLogScheduleLabels);
     // 행 자체를 통째로 새로 만들었으므로, 확정된 날짜 범위(state.selectedDateRange)가
     // 있다면 새 DOM에도 다시 클래스를 입혀야 한다(미니 달력의 renderCalendarRangeSelection과
     // 같은 필요성).
     renderMonthlyLogRangeSelection();
-    requestAnimationFrame(function () {
-      positionMonthlyLogScheduleLabels();
-      renderMonthlyLogScheduleDraftSelection(false);
-    });
+    // 실제 배치가 끝난 뒤 한 번만 S를 재측정한다. 행 높이는 flex로 정해지고 슬롯 수에
+    // 좌우되지 않으므로, 값이 바뀌면 한 번 더 그리는 것으로 수렴한다.
+    if (!monthlyLogSlotSyncGuard) {
+      requestAnimationFrame(function () {
+        if (state.currentView !== 'calendar') return;
+        if (!syncMonthlyLogDaySlotCount()) return;
+        monthlyLogSlotSyncGuard = true;
+        try { renderMonthlyLogRows(); } finally { monthlyLogSlotSyncGuard = false; }
+      });
+    }
   }
 
   function renderMonthlyLogHeader() {
@@ -23270,8 +23206,18 @@ if (typeBtn) {
   // 일반 클릭은 상세 패널도 함께 연다. 부모(#monthly-log-rows)에 한 번만 위임
   // 등록하므로(행은 replaceChildren로 매번 교체되지만 부모 자신은 그대로다)
   // calendar<->today<->trash 반복 전환에도 리스너가 중복 등록되지 않는다.
+  // v1: 일정 블록은 주 단위 가로 세그먼트(.monthly-log-week-segment)와 날짜 칸 칩
+  // (.monthly-log-day-item) 두 형태로 그려진다. 둘 다 예전 세그먼트와 같은 조작 규칙을 쓴다.
+  function isMonthlyLogScheduleBlockEl(el) {
+    return !!el && !!el.classList && (
+      el.classList.contains('monthly-log-week-segment') ||
+      el.classList.contains('monthly-log-day-item') ||
+      el.classList.contains('monthly-log-schedule-segment')
+    );
+  }
+
   function onMonthlyLogScheduleSegmentPointerDown(e) {
-    if (!e.target.closest || !e.target.closest('.monthly-log-schedule-segment')) return;
+    if (!e.target.closest || !e.target.closest('.monthly-log-schedule-segment, .monthly-log-week-segment, .monthly-log-day-item')) return;
     clearMonthlyLogScheduleDraftSelection();
     clearMonthlyLogRangePreview();
     clearMonthlyLogConfirmedRangeClasses();
@@ -23284,14 +23230,6 @@ if (typeBtn) {
   function handleMonthlyLogRowsClick(e) {
     if (suppressNextItemGutterClick) { suppressNextItemGutterClick = false; return; }
     if (e.target.closest('.group-header')) return;
-    var modeBtn = e.target.closest('[data-action="monthly-row-mode"]');
-    if (modeBtn) {
-      var wrap = modeBtn.closest('.monthly-log-inline-add');
-      var input = wrap ? wrap.querySelector('.monthly-log-row-input') : null;
-      monthlyLogRowLastType[modeBtn.dataset.date] = modeBtn.dataset.type;
-      if (input) { input.dataset.mode = modeBtn.dataset.type; input.focus(); }
-      return;
-    }
     var checkboxBtn = e.target.closest('[data-action="toggle-complete"]');
     if (checkboxBtn) { e.stopPropagation(); toggleItemCompleted(checkboxBtn.dataset.itemId, checkboxBtn.dataset.occurrenceDate); return; }
     var typeBtn = e.target.closest('[data-action="type-menu"]');
@@ -23300,7 +23238,7 @@ if (typeBtn) {
     var itemEl = e.target.closest('.monthly-log-item');
     if (itemEl) {
       clearMonthlyLogScheduleDraftSelection();
-      if (itemEl.classList.contains('monthly-log-schedule-segment')) {
+      if (isMonthlyLogScheduleBlockEl(itemEl)) {
         state.selectedDateRange = null;
         state.dateTimeDraft = null;
         clearMonthlyLogRangePreview();
@@ -23310,7 +23248,7 @@ if (typeBtn) {
       }
       var monthlyItem = findItemById(itemEl.dataset.itemId);
       if (monthlyItem) {
-        var isScheduleSegment = itemEl.classList.contains('monthly-log-schedule-segment');
+        var isScheduleSegment = isMonthlyLogScheduleBlockEl(itemEl);
         var noModifier = !e.ctrlKey && !e.metaKey && !e.shiftKey;
         if (isScheduleSegment && noModifier) {
           // 한 번 클릭은 즉시 선택되고 짧은 지연 뒤 상세를 연다. 같은 위치를 더블클릭하면
@@ -23340,14 +23278,16 @@ if (typeBtn) {
       }
       return;
     }
-    // 격자와 격자 입력은 자체 포인터 로직이 처리한다. 행 전체 날짜 선택/입력으로
-    // 새지 않게 여기서 종료한다.
-    if (e.target.closest('.monthly-log-schedule-grid-host')) return;
-    var row = e.target.closest('.monthly-log-row');
+    // 인라인 입력 자체를 누른 경우는 입력이 직접 처리한다.
+    if (e.target.closest('.monthly-log-inline-add')) return;
+    // 날짜 칸의 빈 곳을 누르면 그 날짜의 인라인 입력을 연다(v1: 18칸 격자 드래그로
+    // 입력을 열던 흐름을 대체한다). 날짜 숫자는 날짜 범위 선택이 담당한다.
+    var row = e.target.closest('.monthly-log-row[data-date]');
     if (row && !e.target.closest('.monthly-log-row-label')) {
       clearMonthlyLogScheduleDraftSelection();
       clearItemSelection();
       markLastActiveListDate(row.dataset.date);
+      focusMonthlyLogRowInput(row.dataset.date);
     }
   }
   function handleMonthlyLogRowsKeydown(e) {
@@ -23372,11 +23312,6 @@ if (typeBtn) {
         if (!textValue) return;
         var dateStr = rowInput.dataset.date;
         var monthlyOpts = buildCreateOptsFromDraft('schedule', textValue, dateStr);
-        var pendingScheduleColumn = monthlyLogPendingScheduleColumnByDate[dateStr];
-        if (pendingScheduleColumn !== undefined && pendingScheduleColumn !== null) {
-          monthlyOpts.monthlyLogScheduleColumn = pendingScheduleColumn;
-          delete monthlyLogPendingScheduleColumnByDate[dateStr];
-        }
         clearMonthlyLogScheduleDraftSelection({ keepDraft:true });
         clearDateTimeDraftAfterCreate();
         createItem(monthlyOpts);
@@ -23447,10 +23382,13 @@ if (typeBtn) {
     });
     wireMonthlyLogTitleWheel();
     wireMonthlySplitDivider();
-    if (!window._monthlyLogLaneResizeWired) {
-      window._monthlyLogLaneResizeWired = true;
+    if (!window._monthlyLogResizeWired) {
+      window._monthlyLogResizeWired = true;
       window.addEventListener('resize', function () {
-        if (state.currentView === 'calendar') positionMonthlyLogScheduleLabels();
+        if (state.currentView !== 'calendar') return;
+        // 창 크기가 바뀌어 슬롯 수가 달라질 때만 다시 그린다.
+        if (syncMonthlyLogDaySlotCount()) renderMonthlyLogRows();
+        positionMonthlyLogScheduleLabels();
       });
     }
   }
@@ -27226,7 +27164,7 @@ function wireMonthlyInboxMenuButtons() {
     renderCalendarTitle();
     wireCalendarDates();
     wireCalendarNav();
-    wireTodayMenuButton();111
+    wireTodayMenuButton();
     wireMonthlyLog();
   wireMonthlyLogMenuButton();
 wireMonthlyInboxMenuButtons();
