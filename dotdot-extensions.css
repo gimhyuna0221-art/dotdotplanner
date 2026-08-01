@@ -1,0 +1,36 @@
+/* DotDotPlanner Round D extensions: functional side views. */
+/* Functional side views adapted from the exploration prototype. */
+.dotdot-ext-overlay{position:fixed;background:var(--bg-page);z-index:80;overflow:auto;padding:28px 32px 60px;display:none;overscroll-behavior:contain}
+.dotdot-ext-overlay.open{display:block}
+.dotdot-ext-h1{font-size:19px;font-weight:750;color:var(--ink);margin:0 0 4px}
+.dotdot-ext-sub{font-size:12px;color:var(--muted);margin:0 0 18px}
+.dotdot-ext-card{background:var(--bg-card);border:1px solid var(--line);border-radius:14px;padding:16px 18px;margin-bottom:14px;box-shadow:0 1px 2px var(--shadow-soft)}
+.dotdot-ext-card h3{margin:0 0 10px;font-size:13px;font-weight:750;color:var(--ink)}
+.dotdot-ext-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+.dotdot-ext-btn{border:1px solid var(--line2);background:var(--bg-card);color:var(--ink);border-radius:8px;padding:5px 10px;font-size:12px;cursor:pointer;font-family:inherit}
+.dotdot-ext-btn:hover{background:var(--bg-hover)}
+.dotdot-ext-btn.primary{background:var(--lav);border-color:var(--lav);color:#fff}
+.dotdot-ext-btn.danger{color:var(--sun)}
+.dotdot-ext-btn:disabled{opacity:.4;cursor:default}
+.dotdot-ext-input,.dotdot-ext-select{border:1px solid var(--line2);background:var(--bg-input);color:var(--ink);border-radius:8px;padding:6px 9px;font-size:12px;font-family:inherit}
+.dotdot-ext-input{min-width:190px}
+.dotdot-ext-list{list-style:none;margin:0;padding:0}
+.dotdot-ext-list li{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--line);font-size:12.5px;color:var(--ink)}
+.dotdot-ext-list li:last-child{border-bottom:0}
+.dotdot-ext-tag{font-size:10.5px;color:var(--muted);border:1px solid var(--line2);border-radius:999px;padding:1px 7px;white-space:nowrap}
+.dotdot-ext-muted{color:var(--muted);font-size:12px}
+.dotdot-ext-note{font-size:11px;color:var(--muted);background:var(--bg-input);border:1px dashed var(--line2);border-radius:8px;padding:8px 10px;margin-bottom:14px;line-height:1.6}
+.dotdot-ext-kbd{font-family:ui-monospace,monospace;font-size:11px;border:1px solid var(--line2);border-bottom-width:2px;border-radius:6px;padding:1px 6px;background:var(--bg-input);color:var(--ink)}
+.dotdot-ext-stat{display:inline-block;min-width:118px;margin:0 14px 12px 0}
+.dotdot-ext-stat b{display:block;font-size:22px;color:var(--ink)}
+.dotdot-ext-stat span{font-size:11px;color:var(--muted)}
+.dotdot-ext-bar{height:8px;border-radius:999px;background:var(--bg-hover);overflow:hidden;margin-top:6px}
+.dotdot-ext-bar>i{display:block;height:100%;background:var(--lav)}
+.dotdot-ext-field{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid var(--line);font-size:12.5px;color:var(--ink)}
+.dotdot-ext-field:last-child{border-bottom:0}
+.profile{cursor:pointer}
+.profile.dotdot-profile-empty{background:var(--bg-input);color:var(--muted);border:1px dashed var(--line2);font-size:15px;font-weight:500}
+.dotdot-ext-avatar{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;background:var(--profile-bg);color:#fff;font-size:14px;font-weight:750;flex:none}
+.dotdot-ext-routine-days{display:inline-flex;gap:3px;flex-wrap:wrap}
+.dotdot-ext-day-toggle{display:inline-flex;align-items:center;gap:2px;font-size:11px;color:var(--muted)}
+@media(max-width:900px){.dotdot-ext-overlay{padding:22px 18px 50px}}
