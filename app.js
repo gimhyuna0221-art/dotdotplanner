@@ -1887,11 +1887,13 @@ endDateDraftActive: false,
 
   // 제목 앞에 프로젝트를 나타내는 작은 원 하나만 만든다(요구사항 -- 그룹의 왼쪽 선과는
   // 완전히 다른 채널, 배지·추가 배경·테두리 없음). 프로젝트가 없으면 null을 돌려주고
-  // 호출자는 아무것도 넣지 않는다(점 자리조차 만들지 않음). 실제 DOM 엘리먼트라 title
-  // (호버 툴팁)과 aria-label(접근성 이름)을 직접 가질 수 있다 -- 그룹색과 같아도 자동
-  // 변경 없이 프로젝트 고유 색을 그대로 쓴다. sizeClass는 'is-lg'(Daily/Weekly 6px)
-  // 또는 'is-sm'(Monthly 4px)만 받는다.
-  function buildProjectDot(entity, sizeClass) {
+  // 호출자는 아무것도 넣지 않는다(점 자리조차 만들지 않음). 브라우저 기본 title 툴팁에는
+  // 기대지 않는다 -- 이름은 dataset에만 담아 wireProjectDotTooltip()의 커스텀 툴팁이
+  // 읽고, aria-label로 접근성 이름을 별도 제공한다. 그룹색과 같아도 자동 변경 없이
+  // 프로젝트 고유 색을 그대로 쓴다. sizeClass는 'is-lg'(Daily/Weekly 6px) 또는
+  // 'is-sm'(Monthly 4px)만 받는다. groupName을 주면(월간 캘린더 그룹 칩) 툴팁·접근성
+  // 이름에 그룹명도 함께 담는다.
+  function buildProjectDot(entity, sizeClass, groupName) {
     var project = entity && entity.projectId ? findProjectById(entity.projectId) : null;
     if (!project) return null;
     var dot = document.createElement('span');
@@ -1899,9 +1901,73 @@ endDateDraftActive: false,
     dot.style.setProperty('--project-accent', project.color || 'var(--lav)');
     dot.tabIndex = 0;
     dot.setAttribute('role', 'img');
-    dot.setAttribute('aria-label', '프로젝트: ' + project.name);
-    dot.title = project.name;
+    var label = groupName ? ('그룹: ' + groupName + ' · 프로젝트: ' + project.name) : ('프로젝트: ' + project.name);
+    dot.setAttribute('aria-label', label);
+    dot.dataset.projectDotText = groupName ? (groupName + ' · ' + project.name) : project.name;
     return dot;
+  }
+
+  // 프로젝트 점 커스텀 툴팁 -- 브라우저 기본 title에 기대지 않고, hover 또는 keyboard
+  // focus 즉시(지연 애니메이션 없이) 표시한다. 공유 엘리먼트 하나를 재사용하고, 위치는
+  // 매번 대상 점을 기준으로 다시 계산한다. pointerleave/blur/Escape에서 닫는다.
+  var projectDotTooltipEl = null;
+  var projectDotTooltipTarget = null;
+  function ensureProjectDotTooltipEl() {
+    if (projectDotTooltipEl) return projectDotTooltipEl;
+    var el = document.createElement('div');
+    el.id = 'project-dot-tooltip';
+    el.className = 'project-dot-tooltip';
+    el.setAttribute('role', 'tooltip');
+    el.hidden = true;
+    document.body.appendChild(el);
+    projectDotTooltipEl = el;
+    return el;
+  }
+  function showProjectDotTooltip(dotEl) {
+    var text = dotEl.dataset.projectDotText;
+    if (!text) return;
+    var tip = ensureProjectDotTooltipEl();
+    tip.textContent = text;
+    tip.hidden = false;
+    var r = dotEl.getBoundingClientRect();
+    var tipRect = tip.getBoundingClientRect();
+    var top = r.top - tipRect.height - 6;
+    if (top < 4) top = r.bottom + 6;
+    var left = r.left + r.width / 2 - tipRect.width / 2;
+    left = Math.max(4, Math.min(left, window.innerWidth - tipRect.width - 4));
+    // position:fixed라 뷰포트 기준 좌표를 그대로 쓴다(스크롤 오프셋을 더하지 않음).
+    tip.style.top = Math.round(top) + 'px';
+    tip.style.left = Math.round(left) + 'px';
+    dotEl.setAttribute('aria-describedby', 'project-dot-tooltip');
+    projectDotTooltipTarget = dotEl;
+  }
+  function hideProjectDotTooltip() {
+    if (!projectDotTooltipEl || projectDotTooltipEl.hidden) return;
+    projectDotTooltipEl.hidden = true;
+    if (projectDotTooltipTarget) projectDotTooltipTarget.removeAttribute('aria-describedby');
+    projectDotTooltipTarget = null;
+  }
+  function wireProjectDotTooltip() {
+    document.addEventListener('pointerover', function (e) {
+      var dot = e.target.closest && e.target.closest('.project-dot');
+      if (dot) showProjectDotTooltip(dot);
+    });
+    // pointerleave/blur는 버블링하지 않으므로 캡처 단계에서 위임한다.
+    document.addEventListener('pointerleave', function (e) {
+      var dot = e.target.closest && e.target.closest('.project-dot');
+      if (dot) hideProjectDotTooltip();
+    }, true);
+    document.addEventListener('focusin', function (e) {
+      var dot = e.target.closest && e.target.closest('.project-dot');
+      if (dot) showProjectDotTooltip(dot);
+    });
+    document.addEventListener('blur', function (e) {
+      var dot = e.target.closest && e.target.closest('.project-dot');
+      if (dot) hideProjectDotTooltip();
+    }, true);
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && projectDotTooltipTarget) hideProjectDotTooltip();
+    });
   }
 
   // 최종 감사(2026-07-27) 7: 드래그 커밋(reorderItemsWithinDate) 직후, 같은
@@ -5522,6 +5588,7 @@ itemMarqueeSelectionState = null;
     // 4차 5: 텍스트 선택 floating toolbar — 상세 모달이 열려 있을 때만 의미 있으므로
     // onDescSelectionChange 내부에서 activeDetailDrawer 여부를 매번 확인한다.
     document.addEventListener('selectionchange', onDescSelectionChange);
+    wireProjectDotTooltip();
   }
 
   // ---------------------------------------------------------------------
@@ -15202,7 +15269,12 @@ endInput.classList.toggle(
     }
     // 그룹핑 정책: 날짜가 실제로 바뀌면(자동 이월/명시적 이동/드래그 전부 이 함수를
     // 거친다) 그룹에서 자동으로 빠진다 -- 그룹은 "같은 날짜"가 전제라, 구성원 하나가
-    // 다른 날짜로 옮겨가면 더 이상 그 그룹의 유효한 구성원이 아니다.
+    // 다른 날짜로 옮겨가면 더 이상 그 그룹의 유효한 구성원이 아니다. 다만 Monthly
+    // Calendar(state.currentView==='calendar')에서는 날짜 이동이 일상적인 조작이라
+    // 그룹 관계를 지우지 않고 새 날짜로 그대로 옮겨 적용한다(요구사항 -- 단일 멤버만
+    // 이동해도 그룹 관계 데이터를 유지한다).
+    var preserveGroupForCalendar = state.currentView === 'calendar';
+    var preservedGroupId = preserveGroupForCalendar ? getItemGroupIdAt(item, 'monthly-log', item.date) : null;
     clearAllGroupMembershipForItem(item);
     var oldStartDate = item.date;
 
@@ -15226,6 +15298,7 @@ endInput.classList.toggle(
       shiftScheduleCompletionMap(item, oldStartDate, item.date);
     }
     item.updatedAt = Date.now();
+    if (preservedGroupId) setItemGroupIdAt(item, 'monthly-log', item.date, preservedGroupId);
     return true;
   }
 
@@ -15380,7 +15453,15 @@ function applyMoveMenuRangeChange(
 item.originalDate = startDate;
 item.migratedFrom = null;
 item.rolloverPending = false;
-if (oldStartDate !== startDate) clearAllGroupMembershipForItem(item); // 날짜 범위가 바뀌면 기존 날짜별 그룹 소속을 정리한다.
+// 날짜 범위가 바뀌면 기존 날짜별 그룹 소속을 정리한다. 다만 Monthly Calendar
+// (state.currentView==='calendar')에서는 다일 이동도 일상적인 조작이라 그룹 관계를
+// 지우지 않고 새 시작일로 그대로 옮겨 적용한다(요구사항).
+if (oldStartDate !== startDate) {
+  var preserveGroupForCalendarRange = state.currentView === 'calendar';
+  var preservedRangeGroupId = preserveGroupForCalendarRange ? getItemGroupIdAt(item, 'monthly-log', oldStartDate) : null;
+  clearAllGroupMembershipForItem(item);
+  if (preservedRangeGroupId) setItemGroupIdAt(item, 'monthly-log', item.date, preservedRangeGroupId);
+}
     /*
      * 새 기간에 맞춰 날짜별 완료 기록을 정리한다(schedule 전용 -- task/memo는
      * item.completed 하나만 쓰고 완료 규칙 자체를 바꾸지 않는다).
@@ -17355,6 +17436,10 @@ function moveRegularItemsToMonthlyInbox(itemIds, monthKey) {
       createdAt: item.createdAt || Date.now(),
       updatedAt: Date.now(),
       deletedAt: null,
+
+      // 요구사항: 우측 패널(이번 달 할 일)로 드롭해도 groupId를 제거하지 않는다 --
+      // 이 항목이 속해 있던 그룹의 id를 그대로 옮겨 적는다.
+      groupId: getItemGroupIdAt(item, 'monthly-log', item.date) || null,
 
 // 월간 할 일로 이동해도 일반 인스턴스 연결 유지
 instanceGroupId: item.instanceGroupId || null,
@@ -22267,14 +22352,18 @@ if (typeBtn) {
     return host;
   }
 
+  // 요구사항: projectId가 없는 일정에는 팔레트 색을 자동 배정하지 않는다 -- 라이트·
+  // 다크 테마별 단일 neutral 색(--schedule-neutral-*, index.html :root)만 쓴다.
+  // projectId가 있는 일정만 프로젝트 고유 색을 쓴다. entry.palette/paletteIndex는
+  // 여전히 계산되어 저장되지만(monthlyLogScheduleColorIndex, 기존 데이터 필드 보존)
+  // 더 이상 렌더링에 쓰지 않는다.
   function applyMonthlyLogScheduleColors(el, entry) {
-    var palette = entry.palette || MONTHLY_LOG_SCHEDULE_PALETTE[0];
     var project = entry.item.projectId ? findProjectById(entry.item.projectId) : null;
     el.style.setProperty('--schedule-bg', project && project.color
       ? 'color-mix(in srgb, ' + project.color + ' 16%, var(--bg-card))'
-      : palette.bg);
-    el.style.setProperty('--schedule-border', project && project.color ? project.color : palette.border);
-    el.style.setProperty('--schedule-text', project && project.color ? project.color : palette.text);
+      : 'var(--schedule-neutral-bg)');
+    el.style.setProperty('--schedule-border', project && project.color ? project.color : 'var(--schedule-neutral-border)');
+    el.style.setProperty('--schedule-text', project && project.color ? project.color : 'var(--schedule-neutral-text)');
     return project;
   }
 
@@ -22285,8 +22374,18 @@ if (typeBtn) {
     el.setAttribute('role', 'button');
     el.setAttribute('aria-selected', 'false');
     if (isOccurrenceCompleted(item, dateStr)) el.classList.add('is-done');
+    // 요구사항: Monthly에는 별도 그룹 헤더/슬롯을 두지 않고, 그룹 항목 칩 왼쪽에 2px
+    // 그룹색 선만 표시한다(Daily/Weekly의 .group-member-row 왼쪽 선 기법과 같은 채널,
+    // 그룹 색상 자체는 바꾸지 않는다).
+    var groupId = getItemGroupIdAt(item, 'monthly-log', dateStr);
+    var group = groupId ? findGroupById(groupId) : null;
+    if (group) {
+      el.classList.add('has-group');
+      el.style.setProperty('--group-accent', group.color || 'var(--lav)');
+    }
     el.title = item.text + ' · ' + formatDotDate(item.date)
       + (item.endDate && item.endDate !== item.date ? '–' + formatDotDate(item.endDate) : '')
+      + (group ? ' · 그룹: ' + group.name : '')
       + (project ? ' · ' + project.name : '');
     el.setAttribute('aria-label', item.text + ', ' + formatDotDate(item.date) + '부터 '
       + formatDotDate(item.endDate || item.date) + '까지');
@@ -22295,7 +22394,14 @@ if (typeBtn) {
     title.className = 'monthly-log-item-title';
     if (item.instanceGroupId) title.classList.add('is-instance-linked');
     title.textContent = item.text || '제목 없음';
-    el.appendChild(title);
+    // 점을 .monthly-log-item-title 밖(래퍼의 형제)에 둔다 -- previewInstanceTitleWhileTyping이
+    // 그 안의 textContent를 통째로 덮어써서, 점이 그 안에 있으면 타이핑 중 사라진다.
+    var titleCell = document.createElement('span');
+    titleCell.className = 'monthly-log-title-cell';
+    var projectDot = buildProjectDot(item, 'is-sm', group ? group.name : null);
+    if (projectDot) titleCell.appendChild(projectDot);
+    titleCell.appendChild(title);
+    el.appendChild(titleCell);
   }
 
   function buildMonthlyLogDayChip(entry, dateStr) {

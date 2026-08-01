@@ -82,6 +82,13 @@
     --desc-color-purple:#9065b0;
     --desc-color-pink:#c14c8a;
     --desc-color-red:#d44c47;
+
+    /* projectId가 없는 일정의 기본 색 -- 팔레트 자동 배정 대신 테마별 단일 neutral
+       색 하나만 쓴다(요구사항). projectId가 있으면 applyMonthlyLogScheduleColors가
+       이 값을 프로젝트 색으로 덮어쓴다. */
+    --schedule-neutral-bg:#eef0f3;
+    --schedule-neutral-border:#c7cbd3;
+    --schedule-neutral-text:#565b66;
   }
   :root[data-theme="dark"]{
     color-scheme: dark;
@@ -133,6 +140,10 @@
     --desc-color-purple:#c9a4e8;
     --desc-color-pink:#ef9fc5;
     --desc-color-red:#ff8783;
+
+    --schedule-neutral-bg:#2b2e35;
+    --schedule-neutral-border:#454951;
+    --schedule-neutral-text:#c3c7d0;
   }
   *{box-sizing:border-box}
   /* 1/2: 지난 턴에 Weekly를 화면 바닥까지 늘리려고 artboard를 overflow-y:visible로 풀었더니,
@@ -1851,9 +1862,11 @@ body.dnd-active .group-drag{cursor:grabbing}
    원 하나뿐이다(요구사항: 그룹색은 왼쪽 선 전용, 프로젝트색은 원 전용이라 같은 색이어도
    서로 덮거나 자동으로 바뀌지 않는다). 프로젝트가 없는 항목은 buildProjectDot()이
    null을 돌려줘 이 엘리먼트 자체가 DOM에 없다 -- 점 자리도, 간격도 생기지 않는다.
-   실제 DOM 엘리먼트라 title(호버 툴팁)·aria-label(접근성 이름)·tabindex(키보드 포커스)를
-   가질 수 있다(::before로는 불가능). 배지·추가 배경·테두리 색은 만들지 않는다 --
-   테두리는 배경 대비용 1px 고정 색(var(--line2))뿐이고 채움색만 프로젝트색이다. */
+   실제 DOM 엘리먼트라 aria-label(접근성 이름)·tabindex(키보드 포커스)를 가질 수 있다
+   (::before로는 불가능). 호버 툴팁은 브라우저 기본 title이 아니라 아래
+   .project-dot-tooltip 커스텀 엘리먼트가 담당한다(wireProjectDotTooltip). 배지·추가
+   배경·테두리 색은 만들지 않는다 -- 테두리는 배경 대비용 1px 고정 색(var(--line2))뿐이고
+   채움색만 프로젝트색이다. */
 .project-dot{
   flex:none;
   display:inline-block;
@@ -1868,6 +1881,26 @@ body.dnd-active .group-drag{cursor:grabbing}
    통일해서, li/grid의 다른 gap과 겹쳐 항목마다 어긋나는 일이 없게 한다. */
 .project-dot.is-lg{width:6px;height:6px;margin-right:5px}
 .project-dot.is-sm{width:4px;height:4px;margin-right:4px}
+/* 프로젝트 점 커스텀 툴팁 -- 지연 애니메이션 없이 즉시 나타난다(transition 없음).
+   위치는 app.js의 showProjectDotTooltip이 매번 계산해 top/left로 직접 지정한다. */
+.project-dot-tooltip{
+  position:fixed;
+  z-index:200;
+  max-width:220px;
+  padding:4px 8px;
+  border-radius:6px;
+  background:var(--ink);
+  color:var(--bg-card);
+  font-size:11.5px;
+  font-weight:650;
+  line-height:1.35;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  box-shadow:0 4px 14px var(--shadow-drag);
+  pointer-events:none;
+}
+.project-dot-tooltip[hidden]{display:none}
 /* 점을 제목 텍스트(.row-title-text/.week-item-title/.monthly-item-title) 밖의 래퍼에
    두는 이유는 app.js 쪽 주석 참고 -- 실시간 편집 미리보기가 텍스트 엘리먼트의
    textContent를 통째로 덮어써서, 점이 그 안에 있으면 타이핑 중 사라지기 때문이다.
@@ -2343,6 +2376,11 @@ body.dnd-active .group-drag{cursor:grabbing}
 .monthly-log-day-item.is-done .monthly-log-item-title{text-decoration:line-through}
 .monthly-log-day-item.is-selected{outline:2px solid var(--lav);outline-offset:-1px}
 .monthly-log-day-item .monthly-log-drag{width:9px;flex:none}
+/* 요구사항: Monthly는 별도 그룹 헤더/슬롯 없이, 그룹에 속한 칩 자체의 왼쪽에 2px
+   그룹색 선만 표시한다(Daily/Weekly .group-member-row와 같은 채널, 값만 2px로 더 얇다).
+   프로젝트 점(제목 앞 4px)과는 서로 다른 채널이라 함께 유지된다. */
+.monthly-log-day-item.has-group{border-left-width:2px;border-left-color:var(--group-accent,var(--lav))}
+.monthly-log-title-cell{display:flex;align-items:center;min-width:0;flex:1 1 auto}
 .monthly-log-day-overflow{flex:0 0 auto;height:14px;padding:0 4px;font-size:10px;font-weight:750;color:transparent;line-height:14px;overflow:hidden;user-select:none}
 .monthly-log-day-overflow.has-overflow{color:var(--lav);cursor:default}
 .monthly-log-body{overflow-x:hidden}
@@ -2356,6 +2394,7 @@ body.dnd-active .group-drag{cursor:grabbing}
 .monthly-log-week-segment{display:flex!important;align-items:center;gap:3px;min-width:0;max-width:none!important;height:18px;margin:0 4px!important;padding:0 4px!important;border:1px solid var(--schedule-border);border-radius:4px;background:var(--schedule-bg);color:var(--schedule-text);font-size:11px;font-weight:700;line-height:1;overflow:hidden;box-sizing:border-box;pointer-events:auto;cursor:pointer}
 .monthly-log-week-segment .monthly-log-item-title{min-width:0;flex:1 1 auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .monthly-log-week-segment .monthly-log-drag{width:9px;flex:none}
+.monthly-log-week-segment.has-group{border-left-width:2px;border-left-color:var(--group-accent,var(--lav))}
 .monthly-log-week-segment.continues-before{margin-left:0!important;border-left-style:dashed;border-top-left-radius:0;border-bottom-left-radius:0}
 .monthly-log-week-segment.continues-after{margin-right:0!important;border-right-style:dashed;border-top-right-radius:0;border-bottom-right-radius:0}
 .monthly-log-week-segment.is-done{opacity:.55}
