@@ -2035,9 +2035,7 @@ body.dnd-active .group-drag{cursor:grabbing}
      기존 문서 흐름 그대로 유지). */
   .weekly-body.week-row-split{max-height:60vh;min-height:min(40vh,400px)}
   /* Monthly Log: .top/.weekly와 같은 grid 칸(사이드바 오른쪽, 두 행 전부)을 세로로
-     이어 쓴다 -- Monthly Log가 먼저(위), 월간함은 그 아래로 쌓는다(요구사항: "우선 전체
-     너비로 보여주고 오른쪽 월간함은 아래쪽으로 쌓는다"). 화면 밖으로 잘리는 고정 폭
-     패널을 만들지 않기 위해 flex-basis를 auto로 되돌린다. */
+     이어 쓴다. */
   .monthly-log-view{
     position:static !important;
     grid-column:2;
@@ -2053,9 +2051,37 @@ body.dnd-active .group-drag{cursor:grabbing}
     border-radius:14px;
   }
   .monthly-log-body{max-height:60vh}
-  .monthly-inbox-panel{flex:0 0 auto;border-left:none;border-top:1px solid var(--line2)}
-  .monthly-inbox-list{max-height:40vh}
+  /* 요구사항: 좁은 화면에서 "이달의 할 일"을 본문 아래로 쌓지 않고(예전 방식은 패널
+     콘텐츠의 nowrap 폭이 grid 칸보다 커지면 뷰포트 밖으로 잘렸다) 우측에서 슬라이드로
+     들어오는 오버레이로 전환한다. 폭이 min(340px,86vw)로 항상 뷰포트 안에 들어오므로
+     가로 스크롤이 필요 없다. 열기 버튼(.monthly-inbox-toggle-btn)은 달력 헤더에,
+     닫기 버튼(.monthly-inbox-close-btn)은 패널 자체 헤더에 항상 화면 안에 남아있다.
+     Today/Monthly의 날짜·선택·스크롤 상태는 건드리지 않는다(class/transform만 토글). */
+  .monthly-split-divider{display:none}
+  .monthly-inbox-panel{
+    position:fixed;
+    left:auto;
+    right:0;
+    top:0;
+    bottom:0;
+    width:min(340px,86vw);
+    height:auto;
+    flex:none;
+    border-left:1px solid var(--line2);
+    border-top:none;
+    box-shadow:-6px 0 20px var(--shadow-panel);
+    z-index:82;
+    transform:translateX(100%);
+    transition:transform .18s ease;
+  }
+  .monthly-inbox-panel.is-open{transform:translateX(0)}
+  .monthly-inbox-list{max-height:none}
+  .monthly-inbox-toggle-btn,.monthly-inbox-close-btn{display:grid}
 }
+.monthly-inbox-toggle-btn{display:none;border:0;background:none;padding:0;cursor:pointer;color:var(--icon-muted);width:26px;height:26px;border-radius:6px;place-items:center;font-size:15px;line-height:1;margin-left:4px}
+.monthly-inbox-toggle-btn:hover{background:var(--bg-hover);color:var(--ink)}
+.monthly-inbox-close-btn{display:none;border:0;background:none;padding:0;cursor:pointer;color:var(--icon-muted);width:26px;height:26px;border-radius:6px;place-items:center;font-size:16px;line-height:1}
+.monthly-inbox-close-btn:hover{background:var(--bg-hover);color:var(--ink)}
 /* Daily는 실제 제목 글자 위에서만 편집 커서를 표시 */
 /* 카드 영역은 정상 클릭되며, 실제 제목 글자에만 편집 커서를 표시 */
 #daily-list .row-title,
@@ -2383,7 +2409,22 @@ body.dnd-active .group-drag{cursor:grabbing}
 .monthly-log-day-item.has-group{border-left-width:2px;border-left-color:var(--group-accent,var(--lav))}
 .monthly-log-title-cell{display:flex;align-items:center;min-width:0;flex:1 1 auto}
 .monthly-log-day-overflow{flex:0 0 auto;height:14px;padding:0 4px;font-size:10px;font-weight:750;color:transparent;line-height:14px;overflow:hidden;user-select:none}
-.monthly-log-day-overflow.has-overflow{color:var(--lav);cursor:default}
+.monthly-log-day-overflow.has-overflow{color:var(--lav);cursor:pointer}
+.monthly-log-day-overflow.has-overflow:hover,.monthly-log-day-overflow.has-overflow:focus-visible{text-decoration:underline;outline:none}
+.monthly-log-day-overflow.has-overflow:focus-visible{outline:2px solid var(--lav);outline-offset:1px;border-radius:3px}
+/* +N 읽기 전용 팝오버 -- 새 작성/드래그 없음, 항목 클릭은 기존 상세 Drawer를 연다. */
+.monthly-log-overflow-popover{position:fixed;z-index:60;background:var(--bg-card);border:1px solid var(--line2);border-radius:10px;box-shadow:0 4px 16px var(--overlay-shadow);padding:8px;min-width:220px;max-width:300px}
+.monthly-log-overflow-popover-title{padding:4px 8px 8px;font-size:12px;font-weight:750;color:var(--muted);border-bottom:1px solid var(--line);margin-bottom:4px}
+.monthly-log-overflow-popover-list{max-height:280px;overflow-y:auto}
+.monthly-log-overflow-row{display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:6px;cursor:pointer;font-size:13px;color:var(--ink)}
+.monthly-log-overflow-row:hover,.monthly-log-overflow-row:focus-visible{background:var(--bg-hover);outline:none}
+.monthly-log-overflow-row.is-done{opacity:.55}
+.monthly-log-overflow-row.is-done .monthly-log-overflow-title{text-decoration:line-through}
+.monthly-log-overflow-row.has-group{border-left:2px solid var(--group-accent,var(--lav))}
+.monthly-log-overflow-icon{flex:none;display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;color:var(--icon-muted)}
+.monthly-log-overflow-title-cell{display:flex;align-items:center;min-width:0;flex:1 1 auto}
+.monthly-log-overflow-title{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.monthly-log-overflow-empty{padding:8px;font-size:12px;color:var(--muted)}
 /* 기본(auto-fit) 상태에서는 열이 항상 minmax(0,1fr)라 가로로 넘치지 않으므로 스크롤바가
    보이지 않는다. Ctrl/Shift+휠로 칸 너비를 본체보다 크게 늘렸을 때만(.has-custom-col-w)
    실제로 넘쳐서 가로 스크롤이 나타난다(요구사항 -- Monthly 본체 내부에서만 스크롤). */
@@ -2614,6 +2655,7 @@ body.dnd-active .monthly-log-week-segment{pointer-events:none}
           <button type="button" class="monthly-log-nav-btn" data-monthly-nav="today" aria-label="이번 달"><span class="ic-ring"></span></button>
           <button type="button" class="monthly-log-nav-btn" data-monthly-nav="1" aria-label="다음 달">›</button>
           <button type="button" class="monthly-log-menu-btn" aria-haspopup="menu" aria-expanded="false" aria-controls="monthly-log-menu" aria-label="Monthly Log 설정">⋯</button>
+          <button type="button" class="monthly-inbox-toggle-btn" id="monthly-inbox-toggle-btn" aria-haspopup="dialog" aria-expanded="false" aria-controls="monthly-inbox-panel" aria-label="이번 달 할 일 패널 열기">☰</button>
         </div>
       </div>
       <div class="monthly-log-body" id="monthly-log-body">
@@ -2635,6 +2677,12 @@ body.dnd-active .monthly-log-week-segment{pointer-events:none}
     aria-expanded="false"
     aria-label="이번 달 할 일 메뉴"
   >⋯</button>
+  <button
+    type="button"
+    class="monthly-inbox-close-btn"
+    id="monthly-inbox-close-btn"
+    aria-label="이번 달 할 일 패널 닫기"
+  >×</button>
 </div>
       <div class="monthly-quick" id="monthly-inbox-quick">
         <span class="monthly-quick-modes" role="group" aria-label="입력 종류">

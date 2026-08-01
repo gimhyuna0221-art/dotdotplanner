@@ -22345,7 +22345,12 @@ if (typeBtn) {
           takenSlots: takenSlots,
           total: total,
           overflow: Math.max(0, total - shown),
-          hiddenTitles: hiddenTitles
+          hiddenTitles: hiddenTitles,
+          // +N 팝오버 전용 -- 보이는/숨겨진 항목을 가리지 않은 이 날짜의 전체 단일 일정·
+          // 다일 세그먼트(이미 기존 정렬/슬롯 배정 순서). 패킹 규칙 자체는 바꾸지 않고
+          // 팝오버가 읽을 참조만 추가로 들고 있는다.
+          allSingles: singles,
+          allSegments: segmentsOnDate
         };
       }
 
@@ -22458,7 +22463,14 @@ if (typeBtn) {
       overflow.classList.add('has-overflow');
       overflow.textContent = '+' + hiddenCount + '개';
       overflow.title = (day.hiddenTitles || []).join(' · ');
-      overflow.setAttribute('aria-label', formatAnnounceDate(dateStr) + ', 더 있는 일정 ' + hiddenCount + '개');
+      overflow.setAttribute('aria-label', formatAnnounceDate(dateStr) + ', 더 있는 일정 ' + hiddenCount + '개 -- 펼쳐서 전체 보기');
+      // +N 읽기 전용 팝오버 진입점. 새 UI를 새로 만들지 않고 기존 고정 초과 영역
+      // 자체를 클릭/키보드로 열 수 있게 한다(요구사항).
+      overflow.dataset.date = dateStr;
+      overflow.setAttribute('role', 'button');
+      overflow.tabIndex = 0;
+      overflow.setAttribute('aria-haspopup', 'dialog');
+      overflow.setAttribute('aria-expanded', 'false');
     }
     host.appendChild(overflow);
 
@@ -23225,6 +23237,72 @@ if (typeBtn) {
     if (divider) divider.hidden = false;
   }
 
+  // ---------------------------------------------------------------------
+  // 좁은 화면(<1200px)의 "이번 달 할 일" 우측 패널 -- 예전에는 본문 아래로 항상
+  // 쌓아 두었는데, 패널 안 콘텐츠의 nowrap 폭이 grid 칸보다 커지면 뷰포트 밖으로
+  // 잘렸다(요구사항으로 발견). 데스크톱 구조(분할 flex)는 그대로 두고, 좁은 화면
+  // 에서만 위치:fixed 슬라이드 오버레이로 전환한다. class/transform만 토글하고
+  // currentView·렌더·날짜·선택·스크롤 상태는 건드리지 않는다.
+  // ---------------------------------------------------------------------
+  var monthlyInboxPanelOpenNarrow = false;
+
+  function onMonthlyInboxPanelNarrowKeydown(e) {
+    if (e.key !== 'Escape') return;
+    e.preventDefault();
+    closeMonthlyInboxPanelNarrow();
+  }
+  function onMonthlyInboxPanelNarrowOutsideDown(e) {
+    var panel = document.getElementById('monthly-inbox-panel');
+    var toggleBtn = document.getElementById('monthly-inbox-toggle-btn');
+    if (!panel || panel.contains(e.target)) return;
+    if (toggleBtn && toggleBtn.contains(e.target)) return;
+    closeMonthlyInboxPanelNarrow(false);
+  }
+  function openMonthlyInboxPanelNarrow() {
+    var panel = document.getElementById('monthly-inbox-panel');
+    if (!panel || monthlyInboxPanelOpenNarrow) return;
+    monthlyInboxPanelOpenNarrow = true;
+    panel.classList.add('is-open');
+    var toggleBtn = document.getElementById('monthly-inbox-toggle-btn');
+    if (toggleBtn) toggleBtn.setAttribute('aria-expanded', 'true');
+    document.addEventListener('keydown', onMonthlyInboxPanelNarrowKeydown, true);
+    document.addEventListener('pointerdown', onMonthlyInboxPanelNarrowOutsideDown, true);
+  }
+  function closeMonthlyInboxPanelNarrow(restoreFocus) {
+    var panel = document.getElementById('monthly-inbox-panel');
+    if (!panel || !monthlyInboxPanelOpenNarrow) return;
+    monthlyInboxPanelOpenNarrow = false;
+    panel.classList.remove('is-open');
+    var toggleBtn = document.getElementById('monthly-inbox-toggle-btn');
+    if (toggleBtn) {
+      toggleBtn.setAttribute('aria-expanded', 'false');
+      if (restoreFocus !== false) toggleBtn.focus();
+    }
+    document.removeEventListener('keydown', onMonthlyInboxPanelNarrowKeydown, true);
+    document.removeEventListener('pointerdown', onMonthlyInboxPanelNarrowOutsideDown, true);
+  }
+  function toggleMonthlyInboxPanelNarrow() {
+    if (monthlyInboxPanelOpenNarrow) closeMonthlyInboxPanelNarrow(); else openMonthlyInboxPanelNarrow();
+  }
+  function wireMonthlyInboxPanelNarrowToggle() {
+    var toggleBtn = document.getElementById('monthly-inbox-toggle-btn');
+    var closeBtn = document.getElementById('monthly-inbox-close-btn');
+    if (toggleBtn && !toggleBtn._narrowWired) {
+      toggleBtn._narrowWired = true;
+      toggleBtn.addEventListener('click', toggleMonthlyInboxPanelNarrow);
+    }
+    if (closeBtn && !closeBtn._narrowWired) {
+      closeBtn._narrowWired = true;
+      closeBtn.addEventListener('click', function () { closeMonthlyInboxPanelNarrow(false); });
+    }
+    if (!window._monthlyInboxNarrowResizeWired) {
+      window._monthlyInboxNarrowResizeWired = true;
+      window.addEventListener('resize', function () {
+        if (window.innerWidth >= 1200 && monthlyInboxPanelOpenNarrow) closeMonthlyInboxPanelNarrow(false);
+      });
+    }
+  }
+
   // Monthly Log도 Today 패널과 같은 원칙: .artboard 바깥에 실제 여유 공간이 있으면(1625px
   // 보다 넓은 화면) 오른쪽 월간 할일 패널만 그 공간으로 빼내 왼쪽으로 넓힌다
   // (position:fixed, getMonthlyPanelDockGap/MONTHLY_PANEL_MIN_WIDTH·MAX_WIDTH 재사용).
@@ -23423,6 +23501,7 @@ if (typeBtn) {
   }
 
   function navigateMonthlyLog(delta) {
+    closeMonthlyLogOverflowPopover(false);
     var current = parseLocalDate(state.monthlyLogViewMonth);
     var next = new Date(current.getFullYear(), current.getMonth() + delta, 1);
     state.monthlyLogViewMonth = formatLocalDate(next);
@@ -23432,6 +23511,7 @@ if (typeBtn) {
   }
 
   function navigateMonthlyLogToToday() {
+    closeMonthlyLogOverflowPopover(false);
     var today = parseLocalDate(state.todayDate);
     var monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
     state.monthlyLogViewMonth = formatLocalDate(monthStart);
@@ -23469,6 +23549,12 @@ if (typeBtn) {
   function handleMonthlyLogRowsClick(e) {
     if (suppressNextItemGutterClick) { suppressNextItemGutterClick = false; return; }
     if (e.target.closest('.group-header')) return;
+    var overflowEl = e.target.closest('.monthly-log-day-overflow.has-overflow');
+    if (overflowEl) {
+      e.stopPropagation();
+      openMonthlyLogOverflowPopover(overflowEl.dataset.date, overflowEl);
+      return;
+    }
     var checkboxBtn = e.target.closest('[data-action="toggle-complete"]');
     if (checkboxBtn) { e.stopPropagation(); toggleItemCompleted(checkboxBtn.dataset.itemId, checkboxBtn.dataset.occurrenceDate); return; }
     var typeBtn = e.target.closest('[data-action="type-menu"]');
@@ -23566,6 +23652,12 @@ if (typeBtn) {
       return;
     }
     if (e.key !== 'Enter' && e.key !== ' ') return;
+    var overflowEl = e.target.closest('.monthly-log-day-overflow.has-overflow');
+    if (overflowEl) {
+      e.preventDefault();
+      openMonthlyLogOverflowPopover(overflowEl.dataset.date, overflowEl);
+      return;
+    }
     var itemEl = e.target.closest('.monthly-log-item');
     if (!itemEl) return;
     e.preventDefault();
@@ -23598,6 +23690,7 @@ if (typeBtn) {
     loadMonthlyLogCustomSize();
     applyMonthlyLogCustomSizeDom();
     wireMonthlyLogSizeWheel();
+    wireMonthlyInboxPanelNarrowToggle();
     var rows = document.getElementById('monthly-log-rows');
     if (rows) {
       rows.addEventListener('click', handleMonthlyLogRowsClick);
@@ -26551,6 +26644,154 @@ originalEndTime: state.timeDraft.endTime || null,
       btn.setAttribute('aria-expanded', 'false');
       if (restoreFocus !== false) btn.focus();
     }
+  }
+
+  // ---------------------------------------------------------------------
+  // +N 읽기 전용 팝오버 -- 날짜 칸에 다 못 들어간 항목을 그 자리에서 확인만 한다.
+  // 새 작성·수정·드래그는 없고(요구사항), 항목 클릭은 기존 상세 Drawer를 그대로 연다.
+  // 기존 패킹/정렬 규칙은 건드리지 않고 buildMonthlyLogScheduleGridPlan이 이미 계산해
+  // 둔 day.allSingles/day.allSegments(보이는 것 + 숨겨진 것 전부, 기존 정렬 순서)만 읽는다.
+  // ---------------------------------------------------------------------
+  var activeMonthlyLogOverflowPopover = null; // { el, dateStr, anchorEl }
+
+  function buildMonthlyLogOverflowRow(item, dateStr) {
+    var row = document.createElement('div');
+    row.className = 'monthly-log-overflow-row';
+    row.setAttribute('role', 'menuitem');
+    row.tabIndex = -1;
+    row.dataset.itemId = item.id;
+    if (isOccurrenceCompleted(item, dateStr)) row.classList.add('is-done');
+    var groupId = getItemGroupIdAt(item, 'monthly-log', dateStr);
+    var group = groupId ? findGroupById(groupId) : null;
+    if (group) {
+      row.classList.add('has-group');
+      row.style.setProperty('--group-accent', group.color || 'var(--lav)');
+    }
+    var iconWrap = document.createElement('span');
+    iconWrap.className = 'monthly-log-overflow-icon';
+    iconWrap.appendChild(iconForType(item, dateStr));
+    row.appendChild(iconWrap);
+    var titleCell = document.createElement('span');
+    titleCell.className = 'monthly-log-overflow-title-cell';
+    var dot = buildProjectDot(item, 'is-sm', group ? group.name : null);
+    if (dot) titleCell.appendChild(dot);
+    var title = document.createElement('span');
+    title.className = 'monthly-log-overflow-title';
+    title.textContent = item.text || '제목 없음';
+    titleCell.appendChild(title);
+    row.appendChild(titleCell);
+    row.addEventListener('click', function () {
+      closeMonthlyLogOverflowPopover(false);
+      openDetailDrawer(item.id, dateStr);
+    });
+    return row;
+  }
+
+  function moveMonthlyLogOverflowFocus(items, target) {
+    items.forEach(function (it) { it.tabIndex = -1; });
+    target.tabIndex = 0;
+    target.focus();
+  }
+
+  function onMonthlyLogOverflowKeydown(e) {
+    if (!activeMonthlyLogOverflowPopover) return;
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      e.stopPropagation();
+      closeMonthlyLogOverflowPopover();
+      return;
+    }
+    var items = Array.prototype.slice.call(activeMonthlyLogOverflowPopover.el.querySelectorAll('[role="menuitem"]'));
+    if (!items.length) return;
+    var currentIndex = items.indexOf(document.activeElement);
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      moveMonthlyLogOverflowFocus(items, items[(currentIndex + 1 + items.length) % items.length]);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      moveMonthlyLogOverflowFocus(items, items[(currentIndex - 1 + items.length) % items.length]);
+    } else if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      if (document.activeElement) document.activeElement.click();
+    }
+  }
+
+  function onOutsideMonthlyLogOverflowPointerDown(e) {
+    if (!activeMonthlyLogOverflowPopover) return;
+    if (activeMonthlyLogOverflowPopover.el.contains(e.target)) return;
+    if (activeMonthlyLogOverflowPopover.anchorEl && activeMonthlyLogOverflowPopover.anchorEl.contains(e.target)) return;
+    closeMonthlyLogOverflowPopover(false);
+  }
+
+  function closeMonthlyLogOverflowPopover(restoreFocus) {
+    if (!activeMonthlyLogOverflowPopover) return;
+    var anchor = activeMonthlyLogOverflowPopover.anchorEl;
+    activeMonthlyLogOverflowPopover.el.remove();
+    activeMonthlyLogOverflowPopover = null;
+    document.removeEventListener('pointerdown', onOutsideMonthlyLogOverflowPointerDown, true);
+    document.removeEventListener('keydown', onMonthlyLogOverflowKeydown, true);
+    if (anchor && anchor.isConnected) {
+      anchor.setAttribute('aria-expanded', 'false');
+      if (restoreFocus !== false) anchor.focus();
+    }
+  }
+
+  function openMonthlyLogOverflowPopover(dateStr, anchorEl) {
+    if (activeMonthlyLogOverflowPopover) {
+      var wasSameDate = activeMonthlyLogOverflowPopover.dateStr === dateStr;
+      closeMonthlyLogOverflowPopover(false);
+      if (wasSameDate) return;
+    }
+    if (activeMonthlyLogMenu) closeMonthlyLogMenu(false);
+    if (activeTypeMenu) closeTypeMenu(false);
+    if (activeMoveMenu) closeMoveDateMenu(false);
+
+    var day = monthlyLogScheduleGridPlan && monthlyLogScheduleGridPlan.byDate[dateStr];
+    if (!day) return;
+
+    var pop = document.createElement('div');
+    pop.className = 'monthly-log-overflow-popover';
+    pop.id = 'monthly-log-overflow-popover';
+    pop.setAttribute('role', 'dialog');
+    pop.setAttribute('aria-label', formatAnnounceDate(dateStr) + ' 전체 항목');
+
+    var titleEl = document.createElement('div');
+    titleEl.className = 'monthly-log-overflow-popover-title';
+    titleEl.textContent = formatAnnounceDate(dateStr);
+    pop.appendChild(titleEl);
+
+    var list = document.createElement('div');
+    list.className = 'monthly-log-overflow-popover-list';
+    list.setAttribute('role', 'menu');
+    list.setAttribute('aria-label', '항목 목록');
+    // 기존 Monthly 정렬 순서 유지: 다일 세그먼트는 이미 배정된 slot 오름차순(패킹이
+    // 부여한 우선순위), 단일 일정은 기존 정렬(order/생성시각/id) 그대로다.
+    (day.allSegments || []).slice().sort(function (a, b) { return a.slot - b.slot; }).forEach(function (seg) {
+      list.appendChild(buildMonthlyLogOverflowRow(seg.item, dateStr));
+    });
+    (day.allSingles || []).forEach(function (entry) {
+      list.appendChild(buildMonthlyLogOverflowRow(entry.item, dateStr));
+    });
+    if (!list.children.length) {
+      var empty = document.createElement('div');
+      empty.className = 'monthly-log-overflow-empty';
+      empty.textContent = '표시할 항목이 없습니다.';
+      list.appendChild(empty);
+    }
+    pop.appendChild(list);
+
+    document.body.appendChild(pop);
+    positionPopup(pop, anchorEl);
+    anchorEl.setAttribute('aria-expanded', 'true');
+    activeMonthlyLogOverflowPopover = { el: pop, dateStr: dateStr, anchorEl: anchorEl };
+
+    var firstRow = list.querySelector('[role="menuitem"]');
+    if (firstRow) { firstRow.tabIndex = 0; firstRow.focus(); }
+
+    setTimeout(function () {
+      document.addEventListener('pointerdown', onOutsideMonthlyLogOverflowPointerDown, true);
+      document.addEventListener('keydown', onMonthlyLogOverflowKeydown, true);
+    }, 0);
   }
 
   function toggleMonthlyLogLunarMenuItem() {
