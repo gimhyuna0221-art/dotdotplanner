@@ -140,6 +140,12 @@
   // 더 이상 읽지도 쓰지도 않는다(기존 저장값은 롤백을 위해 그대로 남겨 둔다).
   var DEFAULT_INPUT_MODE_KEY = STORAGE_PREFIX + 'defaultInputMode';
   var AUTO_ROLLOVER_ENABLED_KEY = STORAGE_PREFIX + 'autoRolloverEnabled';
+  // Future Log 3단계: 표시 시작 월('YYYY-MM')과 표시 개월 수(6/9/12). 새 컬렉션이 아니라
+  // 기존 preferences 저장 경로(savePreferences/loadState)에 얹는 화면 설정 값이다.
+  var FUTURE_LOG_START_MONTH_KEY = STORAGE_PREFIX + 'futureLogStartMonth';
+  var FUTURE_LOG_MONTH_COUNT_KEY = STORAGE_PREFIX + 'futureLogMonthCount';
+  var FUTURE_LOG_MONTH_COUNT_VALUES = [6, 9, 12];
+  var FUTURE_LOG_MONTH_COUNT_DEFAULT = 6;
   // 구버전에서 저장된 패널 경계선 표시값은 더 이상 사용하지 않는다. 패널 경계는 넓은
   // 화면에서 항상 보이며 마우스로 드래그해 폭을 조절한다.
   var MONTHLY_SPLIT_DIVIDER_VISIBLE_KEY = STORAGE_PREFIX + 'monthlySplitDividerVisible';
@@ -230,6 +236,10 @@
     // 빠른 입력 기본 유형과 자동 이월 사용 여부. 기존 사용자는 각각 task/true로 유지된다.
     defaultInputMode: 'task',
     autoRolloverEnabled: true,
+    // Future Log 3단계: 표시 시작 월('YYYY-MM')과 표시 개월 수. 실제 값은 init()에서
+    // loadState()가 오늘 날짜 기준으로 보정한 값으로 덮어쓴다(아래 loadState 참고).
+    futureLogStartMonth: null,
+    futureLogMonthCount: FUTURE_LOG_MONTH_COUNT_DEFAULT,
     // 선택 상태는 페이지가 열려 있는 동안만 유지한다(localStorage 저장 안 함,
     // 새로고침하면 초기화, item 데이터 자체에는 selected 필드를 두지 않는다).
     selectedItemIds: new Set(),
@@ -394,6 +404,14 @@ endDateDraftActive: false,
     var a = parseLocalDate(startDate);
     var b = parseLocalDate(endDate);
     return Math.round((b.getTime() - a.getTime()) / 86400000);
+  }
+
+  // monthKey('YYYY-MM')에 delta개월을 더한 monthKey를 돌려준다. Future Log 시작 월
+  // 이동/보정에 쓴다(navigateMonthlyLog의 월 단위 계산과 같은 방식, 대상만 monthKey).
+  function addMonthsToMonthKey(monthKey, delta) {
+    var d = parseLocalDate(monthKey + '-01');
+    var next = new Date(d.getFullYear(), d.getMonth() + delta, 1);
+    return formatLocalDate(next).slice(0, 7);
   }
 
   function formatDotDate(dateStr) {
@@ -970,6 +988,23 @@ endDateDraftActive: false,
     var rawAutoRolloverEnabled = safeGet(AUTO_ROLLOVER_ENABLED_KEY);
     var autoRolloverEnabled = rawAutoRolloverEnabled === null ? true : rawAutoRolloverEnabled !== 'false';
 
+    // Future Log 3단계: 시작 월은 형식이 'YYYY-MM'이 아니거나 이번 달 이하(과거 포함)면
+    // "다음 달"로 보정한다 -- Future Log는 항상 미래만 보여주는 화면이라 시작 월이
+    // 현재/과거로 남아있으면 의미가 없다. ›로 이동해 둔 미래 시작 월은 그대로 유지된다.
+    var currentMonthKey = state.todayDate.slice(0, 7);
+    var nextMonthKey = addMonthsToMonthKey(currentMonthKey, 1);
+    var rawFutureLogStartMonth = safeGet(FUTURE_LOG_START_MONTH_KEY);
+    var futureLogStartMonth = (
+      rawFutureLogStartMonth &&
+      /^\d{4}-\d{2}$/.test(rawFutureLogStartMonth) &&
+      rawFutureLogStartMonth > currentMonthKey
+    ) ? rawFutureLogStartMonth : nextMonthKey;
+    // 저장값이 없거나 6/9/12 중 하나가 아니면 6으로 보정한다.
+    var rawFutureLogMonthCount = parseInt(safeGet(FUTURE_LOG_MONTH_COUNT_KEY), 10);
+    var futureLogMonthCount = FUTURE_LOG_MONTH_COUNT_VALUES.indexOf(rawFutureLogMonthCount) !== -1
+      ? rawFutureLogMonthCount
+      : FUTURE_LOG_MONTH_COUNT_DEFAULT;
+
     return {
       items: items,
       projects: projects,
@@ -994,6 +1029,8 @@ endDateDraftActive: false,
       monthlyLogShowMemos: monthlyLogShowMemos,
       defaultInputMode: defaultInputMode,
       autoRolloverEnabled: autoRolloverEnabled,
+      futureLogStartMonth: futureLogStartMonth,
+      futureLogMonthCount: futureLogMonthCount,
       calendarWeekStartsOn: calendarWeekStartsOn,
       calendarMonthlySplitRatio: calendarMonthlySplitRatio,
       isFirstRun: isFirstRun,
@@ -1076,6 +1113,8 @@ endDateDraftActive: false,
       localStorage.setItem(MONTHLY_LOG_SHOW_MEMOS_KEY, String(state.monthlyLogShowMemos));
       localStorage.setItem(DEFAULT_INPUT_MODE_KEY, state.defaultInputMode || 'task');
       localStorage.setItem(AUTO_ROLLOVER_ENABLED_KEY, String(state.autoRolloverEnabled !== false));
+      localStorage.setItem(FUTURE_LOG_START_MONTH_KEY, state.futureLogStartMonth);
+      localStorage.setItem(FUTURE_LOG_MONTH_COUNT_KEY, String(state.futureLogMonthCount));
       reportStorageSuccessIfRecovering('preferences');
     } catch (e) {
       console.warn('[dotdotplanner] failed to save preferences:', e);
@@ -4126,22 +4165,25 @@ titleEl.appendChild(titleTextEl); // textContent만 사용 (XSS 방지)
     if (state.currentView === view) return;
     state.currentView = view;
     document.querySelectorAll('.side-item').forEach(function (el) { el.classList.remove('active'); });
-    var activeClass = view === 'trash' ? 'trash' : view === 'calendar' ? 'calendar' : 'today';
+    var activeClass = view === 'trash' ? 'trash' : view === 'calendar' ? 'calendar' : view === 'futureLog' ? 'future-log' : 'today';
     var target = document.querySelector('.side-item.' + activeClass);
     if (target) target.classList.add('active');
     var normalView = document.querySelector('.daily-normal-view');
     var trashView = document.getElementById('trash-view');
     if (normalView) normalView.hidden = view === 'trash';
     if (trashView) trashView.hidden = view !== 'trash';
-    // Monthly Log(달력 전체 화면) -- Today의 .top(미니 달력+Daily)/.weekly와 서로 배타적으로
-    // 보인다. DOM은 항상 존재하고 hidden만 토글하므로(기존 daily-normal-view/trash-view와
-    // 같은 방식) calendar<->today<->trash를 반복 전환해도 DOM/리스너가 중복 생성되지 않는다.
+    // Monthly Log(달력 전체 화면)/Future Log -- Today의 .top(미니 달력+Daily)/.weekly와
+    // 서로 배타적으로 보인다. DOM은 항상 존재하고 hidden만 토글하므로(기존
+    // daily-normal-view/trash-view와 같은 방식) today<->calendar<->futureLog<->trash를
+    // 반복 전환해도 DOM/리스너가 중복 생성되지 않는다.
     var topEl = document.querySelector('.top');
     var weeklyEl = document.querySelector('.weekly');
     var monthlyLogView = document.getElementById('monthly-log-view');
-    if (topEl) topEl.hidden = view === 'calendar';
-    if (weeklyEl) weeklyEl.hidden = view === 'calendar';
+    var futureLogView = document.getElementById('future-log-view');
+    if (topEl) topEl.hidden = view === 'calendar' || view === 'futureLog';
+    if (weeklyEl) weeklyEl.hidden = view === 'calendar' || view === 'futureLog';
     if (monthlyLogView) monthlyLogView.hidden = view !== 'calendar';
+    if (futureLogView) futureLogView.hidden = view !== 'futureLog';
     // 휴지통 진단: Daily/Weekly와 휴지통이 이제 같은 selectedItemIds를 공유하므로,
     // 어느 방향으로 전환하든 이전 화면의 선택이 새 화면에 잘못 남지 않게 항상
     // 초기화한다(기존에는 방향별로 다른 상태를 지웠지만, 이제 지울 상태가 하나뿐이다).
@@ -4176,6 +4218,7 @@ titleEl.appendChild(titleTextEl); // textContent만 사용 (XSS 방지)
     var todayBtn = document.querySelector('.side-item.today');
     var trashBtn = document.querySelector('.side-item.trash');
     var calendarBtn = document.querySelector('.side-item.calendar');
+    var futureLogBtn = document.querySelector('.side-item.future-log');
     function onKeydownActivate(handler) {
       return function (e) {
         if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handler(); }
@@ -4192,6 +4235,10 @@ titleEl.appendChild(titleTextEl); // textContent만 사용 (XSS 방지)
     if (calendarBtn) {
       calendarBtn.addEventListener('click', function () { setView('calendar'); });
       calendarBtn.addEventListener('keydown', onKeydownActivate(function () { setView('calendar'); }));
+    }
+    if (futureLogBtn) {
+      futureLogBtn.addEventListener('click', function () { setView('futureLog'); });
+      futureLogBtn.addEventListener('keydown', onKeydownActivate(function () { setView('futureLog'); }));
     }
   }
 
@@ -4259,6 +4306,7 @@ titleEl.appendChild(titleTextEl); // textContent만 사용 (XSS 방지)
     renderTrashList();
     renderTrashBadge();
     renderMonthlyLog();
+    renderFutureLogBody();
     // Monthly Log 기능 복구: renderMonthlyLog()가 #monthly-log-rows를 통째로 다시 그리므로
     // (replaceChildren) 그 이전에 적용된 선택 클래스는 새 DOM에 남지 않는다 -- 반드시
     // renderMonthlyLog() 다음에 호출해야 Monthly Log 항목의 .is-selected가 유지된다.
@@ -12618,6 +12666,12 @@ if (colHandle) {
       d.timeBtn.textContent = formatDetailTimeButtonText(item);
       d.timeBtn.dataset.itemId = item.id;
     }
+    // Future Log 2단계: 마스터일 때만 "날짜 배치" 섹션을 보이고 매번 다시 그린다
+    // (배치 개수가 바뀔 수 있으므로 hidden 토글 + 목록만 매번 교체).
+    if (d.placementsSectionEl) {
+      d.placementsSectionEl.hidden = !isMasterEntity;
+      if (isMasterEntity) renderMasterPlacementsList(item);
+    }
     // 프로젝트 버튼은 원본에도 보인다(날짜 개념과 무관한 전역 소속이므로 moveDateBtn/
     // timeBtn과 달리 숨기지 않는다).
     if (d.projectBtn) {
@@ -12639,6 +12693,60 @@ if (colHandle) {
     });
     if (d.typeIconEl && d.typeIconEl.parentNode) d.typeIconEl.replaceWith(newIcon);
     d.typeIconEl = newIcon;
+  }
+
+  // Future Log 2단계: 마스터 Drawer의 "날짜 배치" 목록. getMasterPlacements(1단계)로
+  // sourceMonthlyItemId 연결 배치를 전부 조회해 한 줄씩 그린다 -- "임의의 첫 배치만
+  // 연다"던 기존 openMonthlyItemDetail의 동작에는 기대지 않고, 여기서는 항상 전체를
+  // 나열한다. 날짜 변경/제거는 각각 기존 handleMoveDateClick·softDeleteItems를 그대로
+  // 호출하고(둘 다 이미 history+renderApp까지 포함), 그 renderApp -> syncDetailDrawer가
+  // 이 함수를 다시 불러 목록을 새로 그리므로 여기서 별도로 갱신을 예약할 필요가 없다.
+  function renderMasterPlacementsList(master) {
+    var d = activeDetailDrawer;
+    if (!d || !d.placementsListEl) return;
+    // 다른 마스터로 전환됐는데 날짜 선택기가 열려 있던 상태면(취소/확정 없이 Drawer를
+    // 나간 경우) 이전 마스터의 draft가 새 마스터 화면에 남지 않게 닫는다. 같은 마스터를
+    // 다시 그리는 것뿐이면(무관한 renderApp 등) 사용자가 입력 중인 picker를 건드리지 않는다.
+    if (d.placementsPickerMasterId !== master.id) {
+      if (d.closePlacementPicker) d.closePlacementPicker();
+      d.placementsPickerMasterId = master.id;
+    }
+    var placements = getMasterPlacements(master.id);
+    d.placementsListEl.replaceChildren();
+    if (!placements.length) {
+      var empty = document.createElement('p');
+      empty.className = 'detail-master-placements-empty';
+      empty.textContent = '아직 날짜에 배치되지 않았습니다.';
+      d.placementsListEl.appendChild(empty);
+      return;
+    }
+    placements.forEach(function (placement) {
+      var row = document.createElement('div');
+      row.className = 'detail-master-placement-row';
+      var label = document.createElement('span');
+      label.className = 'detail-master-placement-date';
+      label.textContent = (placement.endDate && placement.endDate !== placement.date)
+        ? formatDotDate(placement.date) + ' – ' + formatDotDate(placement.endDate)
+        : formatDotDate(placement.date);
+      row.appendChild(label);
+      var changeBtn = document.createElement('button');
+      changeBtn.type = 'button';
+      changeBtn.className = 'detail-action-btn detail-master-placement-change';
+      changeBtn.textContent = '날짜 변경';
+      changeBtn.addEventListener('click', function () {
+        handleMoveDateClick(placement.id, changeBtn);
+      });
+      row.appendChild(changeBtn);
+      var removeBtn = document.createElement('button');
+      removeBtn.type = 'button';
+      removeBtn.className = 'detail-action-btn detail-master-placement-remove';
+      removeBtn.textContent = '배치만 제거';
+      removeBtn.addEventListener('click', function () {
+        softDeleteItems([placement.id]);
+      });
+      row.appendChild(removeBtn);
+      d.placementsListEl.appendChild(row);
+    });
   }
 
   function buildDetailDrawerDom() {
@@ -12901,6 +13009,158 @@ body.addEventListener('scroll', hideDescLinkPreview, {
     });
     body.appendChild(addTodoBtn);
 
+    // Future Log 2단계: 월 단위 마스터 전용 "날짜 배치" 섹션. body 안(기존 스크롤 영역)에
+    // 두고, 마스터가 아닐 때는 숨긴다. 목록 내용은 renderDetailDrawerContent가 매번
+    // renderMasterPlacementsList로 다시 그린다(배치 개수가 매번 바뀌므로 이 셸만
+    // 한 번 만들고 자식은 매번 교체).
+    var placementsSection = document.createElement('div');
+    placementsSection.className = 'detail-master-placements';
+    placementsSection.hidden = true;
+    var placementsHeading = document.createElement('div');
+    placementsHeading.className = 'detail-master-placements-heading';
+    placementsHeading.textContent = '날짜 배치';
+    placementsSection.appendChild(placementsHeading);
+    var placementsList = document.createElement('div');
+    placementsList.className = 'detail-master-placements-list';
+    placementsSection.appendChild(placementsList);
+    var addPlacementBtn = document.createElement('button');
+    addPlacementBtn.type = 'button';
+    addPlacementBtn.className = 'detail-action-btn detail-master-placement-add';
+    addPlacementBtn.textContent = '+ 날짜 배치';
+
+    // 회귀 수정: 임시 오늘 날짜 배치를 먼저 만들고 나중에 고치는 방식은 금지됐다 -- 날짜를
+    // 먼저 고르고(취소하면 state/history 변화 없음) 확정할 때만 실제로 배치를 만든다.
+    // 새 모달을 만들지 않고 상세 날짜 이동 메뉴의 "직접 선택" 입력칸이 쓰는 저수준
+    // 헬퍼(wireMoveMenuDateInput -> openDateWheelPopup, 같은 date-wheel 문법)를 그대로
+    // 재사용하되, target의 applyDate/restore는 실제 항목이 아니라 이 지역 draft 객체
+    // (placementDraft)만 바꾼다 -- 그래서 휠을 아무리 돌려도 확정 버튼을 누르기 전까지는
+    // 어떤 state.items/history 변화도 없다.
+    var placementDraft = { start: null, end: null };
+    var picker = document.createElement('div');
+    picker.className = 'detail-master-placement-picker';
+    picker.hidden = true;
+
+    var startLabel = document.createElement('label');
+    startLabel.className = 'move-menu-range-field';
+    var startLabelText = document.createElement('span');
+    startLabelText.textContent = '날짜';
+    var startInput = document.createElement('input');
+    startInput.type = 'text';
+    startInput.autocomplete = 'off';
+    startInput.spellcheck = false;
+    startInput.placeholder = '연도-월-일';
+    startInput.className = 'move-menu-date';
+    startLabel.appendChild(startLabelText);
+    startLabel.appendChild(startInput);
+
+    var endLabel = document.createElement('label');
+    endLabel.className = 'move-menu-range-field';
+    var endLabelText = document.createElement('span');
+    endLabelText.textContent = '종료(선택)';
+    var endInput = document.createElement('input');
+    endInput.type = 'text';
+    endInput.autocomplete = 'off';
+    endInput.spellcheck = false;
+    endInput.placeholder = '연도-월-일';
+    endInput.className = 'move-menu-date';
+    endLabel.appendChild(endLabelText);
+    endLabel.appendChild(endInput);
+
+    function makeDraftTarget(key, fieldInput) {
+      return function () {
+        var before = placementDraft[key];
+        return {
+          getCurrentDate: function () { return placementDraft[key] || state.todayDate; },
+          applyDate: function (dateStr) {
+            placementDraft[key] = dateStr;
+            fieldInput.value = dateStr;
+            fieldInput.classList.remove('is-invalid');
+            fieldInput.removeAttribute('aria-invalid');
+          },
+          restore: function () {
+            placementDraft[key] = before;
+            fieldInput.value = before || '';
+          },
+          closeParentOnConfirm: false
+        };
+      };
+    }
+    wireMoveMenuDateInput(startInput, 'start', makeDraftTarget('start', startInput));
+    wireMoveMenuDateInput(endInput, 'end', makeDraftTarget('end', endInput));
+
+    var pickerActions = document.createElement('div');
+    pickerActions.className = 'detail-master-placement-picker-actions';
+    var confirmBtn = document.createElement('button');
+    confirmBtn.type = 'button';
+    confirmBtn.className = 'detail-action-btn';
+    confirmBtn.textContent = '배치 확정';
+    var cancelBtn = document.createElement('button');
+    cancelBtn.type = 'button';
+    cancelBtn.className = 'detail-action-btn';
+    cancelBtn.textContent = '취소';
+    pickerActions.appendChild(confirmBtn);
+    pickerActions.appendChild(cancelBtn);
+
+    picker.appendChild(startLabel);
+    picker.appendChild(endLabel);
+    picker.appendChild(pickerActions);
+
+    function closePlacementPicker() {
+      if (activeDateWheel) closeDateWheelPopup(false);
+      picker.hidden = true;
+      addPlacementBtn.hidden = false;
+    }
+
+    addPlacementBtn.addEventListener('click', function () {
+      // 열 때마다 초기화 -- 화면에 보여줄 시작값만 오늘로 채워둘 뿐, 이 시점엔 아무것도
+      // 만들지 않는다(취소하면 이 draft는 그냥 버려진다).
+      placementDraft.start = state.todayDate;
+      placementDraft.end = null;
+      startInput.value = placementDraft.start;
+      startInput.classList.remove('is-invalid');
+      endInput.value = '';
+      endInput.classList.remove('is-invalid');
+      addPlacementBtn.hidden = true;
+      picker.hidden = false;
+      startInput.focus();
+      startInput.select();
+    });
+
+    cancelBtn.addEventListener('click', function () {
+      // state/history를 전혀 건드리지 않고 그냥 닫는다(요구사항 -- 취소 시 변화 없음).
+      closePlacementPicker();
+    });
+
+    confirmBtn.addEventListener('click', function () {
+      var master = findMonthlyItemById(state.activeDetailItemId);
+      if (!master) { closePlacementPicker(); return; }
+      var startParsed = parseYmdDateInput(startInput.value) || placementDraft.start;
+      if (!startParsed) {
+        startInput.classList.add('is-invalid');
+        startInput.setAttribute('aria-invalid', 'true');
+        return;
+      }
+      var endRaw = endInput.value.trim();
+      var endParsed = null;
+      if (endRaw) {
+        endParsed = parseYmdDateInput(endRaw);
+        if (!endParsed) {
+          endInput.classList.add('is-invalid');
+          endInput.setAttribute('aria-invalid', 'true');
+          return;
+        }
+      }
+      // 확정한 이 순간에만 실제로 배치를 만든다 -- createPlacementsFromMonthlyItems
+      // 자체가 withHistoryTransaction으로 감싸져 있어 한 번의 Undo 단위로 기록된다.
+      var created = createPlacementsFromMonthlyItems([master.id], startParsed, endParsed);
+      if (created.length) renderApp();
+      closePlacementPicker();
+    });
+
+    placementsSection.appendChild(addPlacementBtn);
+    placementsSection.appendChild(picker);
+    body.appendChild(placementsSection);
+
     var footer = document.createElement('div');
 footer.className = 'detail-footer';
 
@@ -13009,6 +13269,8 @@ footer.appendChild(trashBtn);
       checkboxEl: checkboxPlaceholder, closeBtn: closeBtn,
       descriptionEditorEl: descEditor,
      moveDateBtn: moveDateBtn, timeBtn: timeBtn, projectBtn: projectBtn, trashBtn: trashBtn,
+      placementsSectionEl: placementsSection, placementsListEl: placementsList,
+      closePlacementPicker: closePlacementPicker,
       returnFocusEl: document.activeElement
     };
   }
@@ -20219,6 +20481,655 @@ projectId: master.projectId || null,
     return Math.max.apply(null, existing.map(function (it) { return it.order; })) + 1;
   }
 
+  // ---------------------------------------------------------------------
+  // Future Log 데이터 조회(1단계) -- 새 컬렉션·새 필드 없음. state.monthlyItems를
+  // 미래 monthKey로 묶어 읽고, state.items의 날짜 항목을 월 단위 projection으로 잘라
+  // 읽는 순수 조회 함수만 여기 둔다(렌더링 없음). 마스터가 이미 여러 곳에서 쓰던
+  // "state.items.filter(sourceMonthlyItemId===id)" 인라인 패턴을 getMasterPlacements로
+  // 한 곳에 모은다(동작은 그대로, 중복 제거).
+  // ---------------------------------------------------------------------
+  function getMasterPlacements(monthlyItemId) {
+    return state.items
+      .filter(function (it) { return it.sourceMonthlyItemId === monthlyItemId && !it.deletedAt; })
+      .sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; });
+  }
+
+  // 배치 목록 -> 카드 행에 붙일 짧은 날짜 요약. 0개면 null(마스터만 표시).
+  function formatFutureLogPlacementBadge(placements) {
+    if (!placements.length) return null;
+    var first = placements[0];
+    var firstText = (first.endDate && first.endDate !== first.date)
+      ? formatDotShortDate(first.date) + '–' + formatDotShortDate(first.endDate)
+      : formatDotShortDate(first.date);
+    if (placements.length === 1) return firstText;
+    return firstText + ' 외 ' + (placements.length - 1) + '개';
+  }
+
+  // 기존 formatDotDate("2026.10.15")는 월 카드에 넣기엔 길어 와이어프레임과 같은
+  // "10/15" 짧은 표기를 여기서만 새로 만든다(다른 화면 포맷은 건드리지 않음).
+  function formatDotShortDate(dateStr) {
+    var d = parseLocalDate(dateStr);
+    return (d.getMonth() + 1) + '/' + d.getDate();
+  }
+
+  function getMonthKeyBounds(monthKey) {
+    var year = Number(monthKey.slice(0, 4));
+    var month0 = Number(monthKey.slice(5, 7)) - 1;
+    var start = monthKey + '-01';
+    var end = monthKey + '-' + String(daysInMonthFromParts(year, month0)).padStart(2, '0');
+    return { start: start, end: end };
+  }
+
+  // 마스터에 딸린 배치(sourceMonthlyItemId 있음)는 항상 그 마스터의 행으로만 표시되므로
+  // 여기서는 제외한다 -- 그래야 같은 항목이 마스터 행 + projection 행 두 번 안 나온다.
+  // 월 경계를 걸치면 이 monthKey 구간만 잘라(segStart/segEnd) 반환하고, 원본 date/endDate는
+  // 바꾸지 않는다(다른 monthKey 카드에서 같은 원본이 자기 구간으로 또 한 번 잘려 나온다).
+  function getFutureLogProjectionsForMonth(monthKey) {
+    var bounds = getMonthKeyBounds(monthKey);
+    return state.items
+      .filter(function (it) {
+        if (it.deletedAt || it.sourceMonthlyItemId) return false;
+        if (it.type === 'divider' || !it.date) return false;
+        var end = it.endDate || it.date;
+        return it.date <= bounds.end && end >= bounds.start;
+      })
+      .map(function (it) {
+        var end = it.endDate || it.date;
+        var segStart = it.date < bounds.start ? bounds.start : it.date;
+        var segEnd = end > bounds.end ? bounds.end : end;
+        return {
+          item: it,
+          segStart: segStart,
+          segEnd: segEnd,
+          continuesBefore: it.date < segStart,
+          continuesAfter: end > segEnd
+        };
+      })
+      .sort(function (a, b) { return a.segStart < b.segStart ? -1 : a.segStart > b.segStart ? 1 : 0; });
+  }
+
+  // 카드 하나가 그릴 최종 행 목록. identity는 화면 전용 계산값이라 저장하지 않는다:
+  // - 마스터(+배치 묶음) 행: rowKey = 'm:'+master.id
+  // - 독립 projection 행: rowKey = 'p:'+item.id (월 경계를 걸쳐도 그 달 카드당 한 행뿐)
+  function buildFutureLogMonthRows(monthKey) {
+    var rows = [];
+    getMonthlyItemsForMonth(monthKey).forEach(function (master) {
+      var placements = getMasterPlacements(master.id);
+      rows.push({
+        kind: 'master',
+        rowKey: 'm:' + master.id,
+        master: master,
+        placements: placements,
+        dateBadge: formatFutureLogPlacementBadge(placements),
+        order: master.order
+      });
+    });
+    getFutureLogProjectionsForMonth(monthKey).forEach(function (proj) {
+      var dateBadge = (proj.continuesBefore || proj.continuesAfter)
+        ? (proj.continuesBefore ? '← ' : '') + formatDotShortDate(proj.segStart) + '–' + formatDotShortDate(proj.segEnd) + (proj.continuesAfter ? ' →' : '')
+        : (proj.item.endDate && proj.item.endDate !== proj.item.date
+          ? formatDotShortDate(proj.item.date) + '–' + formatDotShortDate(proj.item.endDate)
+          : formatDotShortDate(proj.item.date));
+      rows.push({
+        kind: 'projection',
+        rowKey: 'p:' + proj.item.id,
+        item: proj.item,
+        // 이 카드(월)가 실제로 보여주는 구간(segStart~segEnd) -- occurrence 단위 완료/그룹
+        // 조회에 item.date(원본 전체 시작일, 다른 달일 수 있음) 하나만 쓰면 안 되고, 이
+        // 구간에 걸친 날짜 전체를 봐야 한다(다일 projection의 완료/그룹 집계 참고).
+        segStart: proj.segStart,
+        segEnd: proj.segEnd,
+        dateBadge: dateBadge,
+        order: Number(proj.item.order) || 0
+      });
+    });
+    return rows;
+  }
+
+  // ---------------------------------------------------------------------
+  // Future Log 3단계 -- 화면 골격과 헤더(기간 이동 ‹›, 표시 개월 수 −+)만 구현한다.
+  // 월 카드·quick-add·projection 렌더링은 다음 단계다.
+  // ---------------------------------------------------------------------
+
+  // "2026년 9월 – 2027년 2월" 형태로 시작 월부터 (monthCount-1)개월 뒤까지 표기한다.
+  function formatFutureLogPeriodLabel(startMonthKey, monthCount) {
+    var startDate = parseLocalDate(startMonthKey + '-01');
+    var endMonthKey = addMonthsToMonthKey(startMonthKey, monthCount - 1);
+    var endDate = parseLocalDate(endMonthKey + '-01');
+    return startDate.getFullYear() + '년 ' + (startDate.getMonth() + 1) + '월 – ' +
+      endDate.getFullYear() + '년 ' + (endDate.getMonth() + 1) + '월';
+  }
+
+  function renderFutureLogHeader() {
+    var periodLabel = document.getElementById('future-log-period-label');
+    if (periodLabel) {
+      periodLabel.textContent = formatFutureLogPeriodLabel(state.futureLogStartMonth, state.futureLogMonthCount);
+    }
+    var countLabel = document.getElementById('future-log-count-label');
+    if (countLabel) countLabel.textContent = state.futureLogMonthCount + '개월';
+    // ‹의 하한은 항상 "다음 달"이다(loadState가 저장값을 이미 이 하한 이상으로 보정해
+    // 두므로, 여기서는 현재 값이 그 하한과 같은지만 확인하면 된다).
+    var nextMonthKey = addMonthsToMonthKey(state.todayDate.slice(0, 7), 1);
+    var prevBtn = document.getElementById('future-log-prev-btn');
+    if (prevBtn) prevBtn.disabled = state.futureLogStartMonth <= nextMonthKey;
+    var minusBtn = document.getElementById('future-log-count-minus-btn');
+    if (minusBtn) minusBtn.disabled = state.futureLogMonthCount <= FUTURE_LOG_MONTH_COUNT_VALUES[0];
+    var plusBtn = document.getElementById('future-log-count-plus-btn');
+    if (plusBtn) plusBtn.disabled = state.futureLogMonthCount >= FUTURE_LOG_MONTH_COUNT_VALUES[FUTURE_LOG_MONTH_COUNT_VALUES.length - 1];
+  }
+
+  // delta=-1(‹)/+1(›). 하한(다음 달) 밑으로는 내려가지 않는다 -- disabled 버튼이 막아주지만
+  // 방어적으로 여기서도 clamp한다.
+  function navigateFutureLogStartMonth(delta) {
+    var nextMonthKey = addMonthsToMonthKey(state.todayDate.slice(0, 7), 1);
+    var candidate = addMonthsToMonthKey(state.futureLogStartMonth, delta);
+    state.futureLogStartMonth = candidate < nextMonthKey ? nextMonthKey : candidate;
+    savePreferences();
+    renderFutureLogHeader();
+    renderFutureLogBody();
+  }
+
+  // delta=-1(−)/+1(+). FUTURE_LOG_MONTH_COUNT_VALUES 안에서만 한 단계씩 이동하고,
+  // 양 끝(6/12)에서는 그대로 멈춘다. 시작 월은 건드리지 않는다.
+  function stepFutureLogMonthCount(delta) {
+    var idx = FUTURE_LOG_MONTH_COUNT_VALUES.indexOf(state.futureLogMonthCount);
+    if (idx === -1) idx = FUTURE_LOG_MONTH_COUNT_VALUES.indexOf(FUTURE_LOG_MONTH_COUNT_DEFAULT);
+    idx = Math.max(0, Math.min(FUTURE_LOG_MONTH_COUNT_VALUES.length - 1, idx + delta));
+    state.futureLogMonthCount = FUTURE_LOG_MONTH_COUNT_VALUES[idx];
+    savePreferences();
+    renderFutureLogHeader();
+    renderFutureLogBody();
+  }
+
+  function wireFutureLogHeader() {
+    var prevBtn = document.getElementById('future-log-prev-btn');
+    var nextBtn = document.getElementById('future-log-next-btn');
+    var minusBtn = document.getElementById('future-log-count-minus-btn');
+    var plusBtn = document.getElementById('future-log-count-plus-btn');
+    if (prevBtn) prevBtn.addEventListener('click', function () { navigateFutureLogStartMonth(-1); });
+    if (nextBtn) nextBtn.addEventListener('click', function () { navigateFutureLogStartMonth(1); });
+    if (minusBtn) minusBtn.addEventListener('click', function () { stepFutureLogMonthCount(-1); });
+    if (plusBtn) plusBtn.addEventListener('click', function () { stepFutureLogMonthCount(1); });
+  }
+
+  // ---------------------------------------------------------------------
+  // Future Log 4단계 -- 월 카드 렌더링·quick-add·동적 +N·월 카드 간 드래그.
+  // 1단계 데이터 함수(buildFutureLogMonthRows 등)와 2단계 마스터 Drawer를 그대로
+  // 재사용하고, 새 컬렉션/새 데이터 필드는 추가하지 않는다.
+  // ---------------------------------------------------------------------
+
+  // 카드 하나 안에서 한 줄(행)이 차지하는 고정 높이 -- "고정 높이 행" 요구사항.
+  var FUTURE_LOG_ROW_HEIGHT = 22;
+  var FUTURE_LOG_ROW_GAP = 4;
+  var FUTURE_LOG_SLOT_MIN = 1;
+  // 실측 전 최초 렌더에서만 쓰는 추정값 -- 렌더 직후 rAF가 실제 높이로 보정한다.
+  var futureLogSlotCount = 4;
+  var futureLogSlotSyncGuard = false;
+  // 드래그 중인 마스터(배치가 없는 monthlyItem)의 id와 원래 monthKey -- 같은 카드에
+  // 드롭하면 아무 것도 하지 않기 위해 원래 monthKey를 함께 기억해 둔다. 세션 한정.
+  var futureLogDragMasterId = null;
+  var futureLogDragOriginMonth = null;
+
+  function computeFutureLogSlotCount(availableHeight) {
+    var per = FUTURE_LOG_ROW_HEIGHT + FUTURE_LOG_ROW_GAP;
+    var count = Math.floor((availableHeight + FUTURE_LOG_ROW_GAP) / per);
+    if (!isFinite(count)) count = futureLogSlotCount;
+    return Math.max(FUTURE_LOG_SLOT_MIN, count);
+  }
+
+  // 카드는 전부 같은 높이(CSS)라 대표로 첫 카드 하나만 실측하면 모든 카드에 그대로
+  // 적용할 수 있다(Monthly Log처럼 주마다 다른 높이를 갖지 않는다).
+  function syncFutureLogSlotCount() {
+    var rowsEl = document.querySelector('.future-log-card-rows');
+    if (!rowsEl) return false;
+    var height = rowsEl.getBoundingClientRect().height;
+    if (!height) return false;
+    var next = computeFutureLogSlotCount(height);
+    if (next === futureLogSlotCount) return false;
+    futureLogSlotCount = next;
+    return true;
+  }
+
+  // 기본은 "9월"처럼 짧게, 이 렌더에서 맨 처음 보여주는 카드(index 0)와 1월 카드만
+  // 연도를 붙인다(연속된 달이므로 연도가 바뀌는 지점은 항상 1월이다).
+  function formatFutureLogCardTitle(monthKey, index) {
+    var d = parseLocalDate(monthKey + '-01');
+    var month = d.getMonth() + 1;
+    if (index === 0 || month === 1) return d.getFullYear() + '년 ' + month + '월';
+    return month + '월';
+  }
+
+  // master(월간 할일)는 날짜 필드가 없어 iconForType의 진행률 계산(computeSchedulePct)이
+  // 맞지 않는다 -- 기존 이달의 할 일 목록(buildMonthlyItemRowEl)과 같은 단순 종류 기호로만.
+  function buildFutureLogTypeIconEl(row) {
+    if (row.kind === 'master') {
+      var span = document.createElement('span');
+      span.className = row.master.type === 'task' ? 'ic-dot' : (row.master.type === 'memo' ? 'ic-dash' : 'ic-ring');
+      return span;
+    }
+    return iconForType(row.item, row.segStart);
+  }
+
+  // segStart~segEnd(이 카드가 실제로 보여주는 구간) 안의 모든 날짜를 돌려준다. 다일
+  // projection의 완료/그룹은 구간 전체를 봐야 하므로(대표 하루만으로 근사하지 않음) 이
+  // 반복에 쓴다. getOccurrenceDates의 MAX_OCCURRENCE_SPAN_DAYS 상한을 그대로 재사용해
+  // 손상 데이터로 인한 무한 루프를 막는다.
+  function futureLogDatesInRange(start, end) {
+    var span = differenceInCalendarDays(start, end);
+    if (!isFinite(span) || span < 0) return [start];
+    if (span > MAX_OCCURRENCE_SPAN_DAYS) span = MAX_OCCURRENCE_SPAN_DAYS;
+    var dates = [];
+    for (var i = 0; i <= span; i++) dates.push(addCalendarDays(start, i));
+    return dates;
+  }
+
+  // 다일 projection은 구간의 모든 날짜가 완료돼야만 완료로 표시한다(하나라도 미완료거나
+  // 섞여 있으면 미완료). 새 "구간 완료" 저장 필드를 만들지 않고 기존
+  // isOccurrenceCompleted를 날짜마다 호출해 매번 계산만 한다.
+  function isFutureLogRowFullyCompleted(row) {
+    if (row.kind === 'master') return !!row.master.completed;
+    return futureLogDatesInRange(row.segStart, row.segEnd).every(function (d) {
+      return isOccurrenceCompleted(row.item, d);
+    });
+  }
+
+  // 다일 projection은 구간의 모든 날짜가 같은 groupId를 가질 때만 그 그룹을 대표로
+  // 보여준다. 날짜별 groupId가 갈리거나 일부만 그룹이 있으면 null(그룹 표시 없음) --
+  // 잘못된 한 그룹을 대표로 보여주지 않는다.
+  function getFutureLogRowUniformGroupId(row) {
+    if (row.kind === 'master') return getItemGroupIdAt(row.master, 'monthly-inbox', null);
+    var groupIds = futureLogDatesInRange(row.segStart, row.segEnd).map(function (d) {
+      return getItemGroupIdAt(row.item, 'monthly-log', d);
+    });
+    var first = groupIds[0];
+    if (!first) return null;
+    return groupIds.every(function (g) { return g === first; }) ? first : null;
+  }
+
+  // opts.forPopover면 오버플로우 팝오버 전용 행(role="menuitem", 드래그 핸들 없음)으로 만든다.
+  function buildFutureLogRowEl(row, monthKey, opts) {
+    opts = opts || {};
+    var entity = row.kind === 'master' ? row.master : row.item;
+    var el = document.createElement('div');
+    el.className = 'future-log-row' + (opts.forPopover ? ' future-log-overflow-row' : '');
+    el.dataset.rowKey = row.rowKey;
+    if (opts.forPopover) {
+      el.setAttribute('role', 'menuitem');
+      el.tabIndex = -1;
+    } else {
+      el.setAttribute('role', 'button');
+      el.tabIndex = 0;
+    }
+    // master(월간 할일)는 항상 item.completed 하나만 쓴다(occurrenceDate/completionByDate
+    // 개념이 없음). projection은 이 카드(월)가 실제로 보여주는 구간(segStart~segEnd)
+    // 전체를 봐서, 구간 전부가 완료·같은 그룹일 때만 완료/그룹을 표시한다(대표 하루만
+    // 보는 근사 금지) -- isFutureLogRowFullyCompleted/getFutureLogRowUniformGroupId 참고.
+    var isCompleted = isFutureLogRowFullyCompleted(row);
+    if (isCompleted) el.classList.add('is-done');
+
+    var groupId = getFutureLogRowUniformGroupId(row);
+    var group = groupId ? findGroupById(groupId) : null;
+    if (group) {
+      el.classList.add('has-group');
+      el.style.setProperty('--group-accent', group.color || 'var(--lav)');
+    }
+
+    // 드래그 가능: 배치가 하나도 없는 월 단위 마스터만, 팝오버 안에서는 제공하지 않는다.
+    var draggable = !opts.forPopover && row.kind === 'master' && row.placements.length === 0;
+    if (draggable) {
+      var handle = buildDotHandle('future-log-row-drag');
+      handle.draggable = true;
+      handle.addEventListener('click', function (e) { e.stopPropagation(); });
+      handle.addEventListener('dragstart', function (e) {
+        e.stopPropagation();
+        if (e.dataTransfer) {
+          e.dataTransfer.effectAllowed = 'move';
+          e.dataTransfer.setData('text/plain', row.master.id);
+        }
+        futureLogDragMasterId = row.master.id;
+        futureLogDragOriginMonth = row.master.monthKey;
+        el.classList.add('is-dragging');
+      });
+      handle.addEventListener('dragend', function () {
+        futureLogDragMasterId = null;
+        futureLogDragOriginMonth = null;
+        el.classList.remove('is-dragging');
+        document.querySelectorAll('.future-log-card.is-drop-target').forEach(function (c) {
+          c.classList.remove('is-drop-target');
+        });
+      });
+      el.appendChild(handle);
+    }
+
+    var iconWrap = document.createElement('span');
+    iconWrap.className = 'future-log-row-icon';
+    iconWrap.appendChild(buildFutureLogTypeIconEl(row));
+    el.appendChild(iconWrap);
+
+    var titleCell = document.createElement('span');
+    titleCell.className = 'future-log-row-title-cell';
+    var dot = buildProjectDot(entity, 'is-sm', group ? group.name : null);
+    if (dot) titleCell.appendChild(dot);
+    var title = document.createElement('span');
+    title.className = 'future-log-row-title';
+    title.textContent = entity.text || '제목 없음';
+    titleCell.appendChild(title);
+    el.appendChild(titleCell);
+
+    if (row.dateBadge) {
+      var badge = document.createElement('span');
+      badge.className = 'future-log-row-date';
+      badge.textContent = row.dateBadge;
+      el.appendChild(badge);
+    }
+
+    function openRowDetail() {
+      // 팝오버 안의 행이면 Drawer를 열기 전에 먼저 닫는다(Monthly의 buildMonthlyLogOverflowRow와
+      // 같은 순서) -- 그러지 않으면 팝오버가 Drawer 뒤에 그대로 남는다.
+      if (opts.forPopover) closeFutureLogOverflowPopover(false);
+      if (row.kind === 'master') openDetailDrawer(row.master.id, null, 'monthly-master');
+      else openDetailDrawer(row.item.id, row.segStart);
+    }
+    el.addEventListener('click', function (e) {
+      if (e.target.closest('.future-log-row-drag')) return;
+      openRowDetail();
+    });
+    el.addEventListener('keydown', function (e) {
+      if ((e.key === 'Enter' || e.key === ' ') && !e.target.closest('.future-log-row-drag')) {
+        e.preventDefault();
+        openRowDetail();
+      }
+    });
+
+    return el;
+  }
+
+  // ---------------------------------------------------------------------
+  // Future Log 오버플로우 팝오버 -- Monthly Log의 위치(positionPopup)·Escape/방향키
+  // (moveOverflowPopoverFocus)·닫기 셸과 같은 저수준 규칙을 따르되, 데이터는
+  // monthlyLogScheduleGridPlan이 아니라 buildFutureLogMonthRows(monthKey)만 읽는다.
+  // 기존 Monthly 오버플로우 팝오버의 상태(activeMonthlyLogOverflowPopover)와 동작은
+  // 건드리지 않는다.
+  // ---------------------------------------------------------------------
+  var activeFutureLogOverflowPopover = null; // { el, monthKey, anchorEl }
+
+  function closeFutureLogOverflowPopover(restoreFocus) {
+    if (!activeFutureLogOverflowPopover) return;
+    var anchor = activeFutureLogOverflowPopover.anchorEl;
+    activeFutureLogOverflowPopover.el.remove();
+    activeFutureLogOverflowPopover = null;
+    document.removeEventListener('pointerdown', onOutsideFutureLogOverflowPointerDown, true);
+    document.removeEventListener('keydown', onFutureLogOverflowKeydown, true);
+    if (anchor && anchor.isConnected) {
+      anchor.setAttribute('aria-expanded', 'false');
+      if (restoreFocus !== false) anchor.focus();
+    }
+  }
+
+  function onOutsideFutureLogOverflowPointerDown(e) {
+    if (!activeFutureLogOverflowPopover) return;
+    if (activeFutureLogOverflowPopover.el.contains(e.target)) return;
+    if (activeFutureLogOverflowPopover.anchorEl && activeFutureLogOverflowPopover.anchorEl.contains(e.target)) return;
+    closeFutureLogOverflowPopover(false);
+  }
+
+  function onFutureLogOverflowKeydown(e) {
+    if (!activeFutureLogOverflowPopover) return;
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      e.stopPropagation();
+      closeFutureLogOverflowPopover();
+      return;
+    }
+    var items = Array.prototype.slice.call(activeFutureLogOverflowPopover.el.querySelectorAll('[role="menuitem"]'));
+    if (!items.length) return;
+    var currentIndex = items.indexOf(document.activeElement);
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      moveOverflowPopoverFocus(items, items[(currentIndex + 1 + items.length) % items.length]);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      moveOverflowPopoverFocus(items, items[(currentIndex - 1 + items.length) % items.length]);
+    } else if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      if (document.activeElement) document.activeElement.click();
+    }
+  }
+
+  function openFutureLogOverflowPopover(monthKey, anchorEl) {
+    if (activeFutureLogOverflowPopover) {
+      var wasSameMonth = activeFutureLogOverflowPopover.monthKey === monthKey;
+      closeFutureLogOverflowPopover(false);
+      if (wasSameMonth) return;
+    }
+
+    var monthDate = parseLocalDate(monthKey + '-01');
+    var titleText = monthDate.getFullYear() + '년 ' + (monthDate.getMonth() + 1) + '월';
+
+    var pop = document.createElement('div');
+    pop.className = 'monthly-log-overflow-popover future-log-overflow-popover';
+    pop.setAttribute('role', 'dialog');
+    pop.setAttribute('aria-label', titleText + ' 전체 항목');
+
+    var titleEl = document.createElement('div');
+    titleEl.className = 'monthly-log-overflow-popover-title';
+    titleEl.textContent = titleText;
+    pop.appendChild(titleEl);
+
+    var list = document.createElement('div');
+    list.className = 'monthly-log-overflow-popover-list';
+    list.setAttribute('role', 'menu');
+    list.setAttribute('aria-label', '항목 목록');
+    var rows = buildFutureLogMonthRows(monthKey).map(function (row) {
+      return buildFutureLogRowEl(row, monthKey, { forPopover: true });
+    });
+    if (rows.length) {
+      rows.forEach(function (row) { list.appendChild(row); });
+    } else {
+      var empty = document.createElement('div');
+      empty.className = 'monthly-log-overflow-empty';
+      empty.textContent = '표시할 항목이 없습니다.';
+      list.appendChild(empty);
+    }
+    pop.appendChild(list);
+
+    document.body.appendChild(pop);
+    positionPopup(pop, anchorEl);
+    anchorEl.setAttribute('aria-expanded', 'true');
+    activeFutureLogOverflowPopover = { el: pop, monthKey: monthKey, anchorEl: anchorEl };
+
+    var firstRow = list.querySelector('[role="menuitem"]');
+    if (firstRow) { firstRow.tabIndex = 0; firstRow.focus(); }
+
+    setTimeout(function () {
+      document.addEventListener('pointerdown', onOutsideFutureLogOverflowPointerDown, true);
+      document.addEventListener('keydown', onFutureLogOverflowKeydown, true);
+    }, 0);
+  }
+
+  // ---------------------------------------------------------------------
+  // 월 카드 -- 카드 껍데기(헤더/행 영역/quick-add)는 monthKey별로 재사용한다(매 렌더마다
+  // 통째로 새로 만들면 타이핑 중인 quick-add 입력이 다른 화면 조작만으로도 사라진다).
+  // 행 영역 내용과 헤더 라벨만 매번 다시 그린다.
+  // ---------------------------------------------------------------------
+
+  function wireFutureLogQuickAddModeButtons(wrapEl) {
+    [['task', '할 일', 'ic-dot'], ['memo', '메모', 'ic-dash']].forEach(function (m, idx) {
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'monthly-quick-mode';
+      btn.dataset.type = m[0];
+      btn.setAttribute('aria-pressed', String(idx === 0));
+      btn.setAttribute('aria-label', m[1]);
+      btn.dataset.tooltipLabel = m[1];
+      var icon = document.createElement('span');
+      icon.className = m[2];
+      btn.appendChild(icon);
+      wrapEl.appendChild(btn);
+    });
+  }
+
+  // 기존 이달의 할 일 quick-add 셸(.monthly-quick)을 그대로 재사용하되, 모드 버튼은
+  // task/memo 둘만 만든다(schedule 없음) -- wireMonthlyQuickInput은 wrapEl 안에 실제로
+  // 존재하는 .monthly-quick-mode만 찾아 배선하므로 이 두 개만으로 충분하다.
+  function buildFutureLogQuickAddEl(monthKey) {
+    var wrap = document.createElement('div');
+    wrap.className = 'monthly-quick future-log-quick';
+    var modes = document.createElement('span');
+    modes.className = 'monthly-quick-modes';
+    modes.setAttribute('role', 'group');
+    modes.setAttribute('aria-label', '입력 종류');
+    wireFutureLogQuickAddModeButtons(modes);
+    wrap.appendChild(modes);
+    var input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'monthly-quick-input';
+    input.placeholder = MODE_PLACEHOLDER.task;
+    input.autocomplete = 'off';
+    input.spellcheck = false;
+    input.setAttribute('aria-label', '할 일/메모 빠른 입력');
+    wrap.appendChild(input);
+    wireMonthlyQuickInput(wrap, function () { return monthKey; });
+    return wrap;
+  }
+
+  function wireFutureLogCardDragTarget(card) {
+    card.addEventListener('dragenter', function () {
+      if (!futureLogDragMasterId || card.dataset.monthKey === futureLogDragOriginMonth) return;
+      card.classList.add('is-drop-target');
+    });
+    card.addEventListener('dragover', function (e) {
+      if (!futureLogDragMasterId || card.dataset.monthKey === futureLogDragOriginMonth) return;
+      e.preventDefault();
+      if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+    });
+    card.addEventListener('dragleave', function (e) {
+      if (e.relatedTarget && card.contains(e.relatedTarget)) return;
+      card.classList.remove('is-drop-target');
+    });
+    card.addEventListener('drop', function (e) {
+      card.classList.remove('is-drop-target');
+      var masterId = futureLogDragMasterId;
+      var targetMonthKey = card.dataset.monthKey;
+      if (!masterId || targetMonthKey === futureLogDragOriginMonth) return;
+      e.preventDefault();
+      futureLogDragMasterId = null;
+      futureLogDragOriginMonth = null;
+      moveMonthlyItemsToMonth([masterId], targetMonthKey);
+      renderFutureLogBody();
+    });
+  }
+
+  function buildFutureLogCardShellEl(monthKey) {
+    var card = document.createElement('div');
+    card.className = 'future-log-card';
+    card.dataset.monthKey = monthKey;
+
+    var header = document.createElement('div');
+    header.className = 'future-log-card-header';
+    card.appendChild(header);
+
+    var rows = document.createElement('div');
+    rows.className = 'future-log-card-rows';
+    card.appendChild(rows);
+
+    card.appendChild(buildFutureLogQuickAddEl(monthKey));
+
+    wireFutureLogCardDragTarget(card);
+    return card;
+  }
+
+  // 용량 제한: 실제 행이 slotCount보다 많으면 (slotCount-1)개만 그리고 마지막 한 자리는
+  // "+N개"가 차지한다. 슬롯에 다 들어가면 +N DOM 자체를 만들지 않는다.
+  function renderFutureLogCard(card, monthKey, index) {
+    var header = card.querySelector('.future-log-card-header');
+    if (header) header.textContent = formatFutureLogCardTitle(monthKey, index);
+
+    var rowsEl = card.querySelector('.future-log-card-rows');
+    if (!rowsEl) return;
+    var rows = buildFutureLogMonthRows(monthKey);
+    rowsEl.replaceChildren();
+    rowsEl.classList.toggle('is-empty', !rows.length);
+    if (!rows.length) {
+      var empty = document.createElement('p');
+      empty.className = 'future-log-card-empty';
+      empty.textContent = '이 달에는 아직 할 일이 없어요.';
+      rowsEl.appendChild(empty);
+      return;
+    }
+    var visibleRows, overflowCount;
+    if (rows.length <= futureLogSlotCount) {
+      visibleRows = rows;
+      overflowCount = 0;
+    } else {
+      visibleRows = rows.slice(0, Math.max(0, futureLogSlotCount - 1));
+      overflowCount = rows.length - visibleRows.length;
+    }
+    visibleRows.forEach(function (row) {
+      rowsEl.appendChild(buildFutureLogRowEl(row, monthKey));
+    });
+    if (overflowCount > 0) {
+      var moreBtn = document.createElement('button');
+      moreBtn.type = 'button';
+      moreBtn.className = 'future-log-row future-log-overflow-btn';
+      moreBtn.setAttribute('aria-haspopup', 'dialog');
+      moreBtn.setAttribute('aria-expanded', 'false');
+      moreBtn.setAttribute('aria-label', formatFutureLogCardTitle(monthKey, index) + ' 전체 ' + rows.length + '개 항목 보기');
+      moreBtn.textContent = '+' + overflowCount + '개';
+      moreBtn.addEventListener('click', function () {
+        openFutureLogOverflowPopover(monthKey, moreBtn);
+      });
+      rowsEl.appendChild(moreBtn);
+    }
+  }
+
+  // monthKey가 이미 그려진 카드는 DOM을 그대로 재사용한다(quick-add에 타이핑 중인 값과
+  // 포커스를 보존) -- 표시 범위에서 빠진 monthKey의 카드만 버려진다.
+  function renderFutureLogBody() {
+    var container = document.getElementById('future-log-months');
+    if (!container) return;
+    var monthKeys = [];
+    for (var i = 0; i < state.futureLogMonthCount; i++) {
+      monthKeys.push(addMonthsToMonthKey(state.futureLogStartMonth, i));
+    }
+    var existing = {};
+    Array.prototype.forEach.call(container.querySelectorAll('.future-log-card'), function (el) {
+      existing[el.dataset.monthKey] = el;
+    });
+    var frag = document.createDocumentFragment();
+    monthKeys.forEach(function (monthKey, index) {
+      var card = existing[monthKey] || buildFutureLogCardShellEl(monthKey);
+      renderFutureLogCard(card, monthKey, index);
+      frag.appendChild(card);
+    });
+    container.replaceChildren(frag);
+
+    // 실제 배치가 끝난 뒤 한 번만 실측해 slotCount를 보정한다 -- 값이 바뀌면 한 번 더
+    // 그리는 것으로 수렴한다(Monthly Log의 syncMonthlyLogDaySlotCounts와 같은 가드).
+    if (!futureLogSlotSyncGuard) {
+      requestAnimationFrame(function () {
+        if (state.currentView !== 'futureLog') return;
+        if (!syncFutureLogSlotCount()) return;
+        futureLogSlotSyncGuard = true;
+        try { renderFutureLogBody(); } finally { futureLogSlotSyncGuard = false; }
+      });
+    }
+  }
+
+  function wireFutureLogResize() {
+    if (window._futureLogResizeWired) return;
+    window._futureLogResizeWired = true;
+    var futureLogResizeRaf = null;
+    window.addEventListener('resize', function () {
+      if (futureLogResizeRaf) return;
+      futureLogResizeRaf = requestAnimationFrame(function () {
+        futureLogResizeRaf = null;
+        if (state.currentView !== 'futureLog') return;
+        renderFutureLogBody();
+      });
+    });
+  }
+
   function createMonthlyItem(opts) {
     var item;
     withHistoryTransaction(function () {
@@ -20491,8 +21402,12 @@ projectId: master.projectId || null,
 // 본문이 moveMonthlyItemsToRegularItems와 동일한 "이동" 로직으로 잘못 덮어써져 있던
 // 실제 회귀를 여기서 원래의 복사/배치 동작으로 되돌렸다(재현 확인: 수정 전에는 배치가
 // 전혀 생성되지 않고 원본만 조용히 사라지는 상태였다).
-function createPlacementsFromMonthlyItems(monthlyItemIds, targetDate) {
+// targetEndDate는 선택 인자다(생략하면 기존과 동일하게 targetDate 하루짜리) -- Future Log
+// 2단계 "+ 날짜 배치"가 날짜 범위를 지정할 때만 넘긴다. 기존 호출부(인자 2개)는 그대로
+// 동작이 바뀌지 않는다.
+function createPlacementsFromMonthlyItems(monthlyItemIds, targetDate, targetEndDate) {
   if (!targetDate) return [];
+  var endDate = (targetEndDate && targetEndDate >= targetDate) ? targetEndDate : targetDate;
 
   var uniqueIds = Array.from(new Set(monthlyItemIds));
   var created = [];
@@ -20516,7 +21431,7 @@ function createPlacementsFromMonthlyItems(monthlyItemIds, targetDate) {
         type: master.type,
         text: master.text,
         date: targetDate,
-        endDate: targetDate,
+        endDate: endDate,
         order: baseOrder + index,
         description: master.description || '',
         descriptionBlocks: Array.isArray(master.descriptionBlocks)
@@ -27095,7 +28010,9 @@ originalEndTime: state.timeDraft.endTime || null,
     }
   }
 
-  function moveMonthlyLogOverflowFocus(items, target) {
+  // 저수준 공유 helper -- Monthly Log와 Future Log의 오버플로우 팝오버가 함께 쓰는
+  // 방향키 포커스 이동(role="menuitem" 목록 안에서만 동작, 데이터 소스와는 무관).
+  function moveOverflowPopoverFocus(items, target) {
     items.forEach(function (it) { it.tabIndex = -1; });
     target.tabIndex = 0;
     target.focus();
@@ -27114,10 +28031,10 @@ originalEndTime: state.timeDraft.endTime || null,
     var currentIndex = items.indexOf(document.activeElement);
     if (e.key === 'ArrowDown') {
       e.preventDefault();
-      moveMonthlyLogOverflowFocus(items, items[(currentIndex + 1 + items.length) % items.length]);
+      moveOverflowPopoverFocus(items, items[(currentIndex + 1 + items.length) % items.length]);
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
-      moveMonthlyLogOverflowFocus(items, items[(currentIndex - 1 + items.length) % items.length]);
+      moveOverflowPopoverFocus(items, items[(currentIndex - 1 + items.length) % items.length]);
     } else if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
       if (document.activeElement) document.activeElement.click();
@@ -28066,6 +28983,8 @@ function wireMonthlyInboxMenuButtons() {
     state.monthlyLogShowMemos = loaded.monthlyLogShowMemos;
     state.defaultInputMode = loaded.defaultInputMode || 'task';
     state.autoRolloverEnabled = loaded.autoRolloverEnabled !== false;
+    state.futureLogStartMonth = loaded.futureLogStartMonth;
+    state.futureLogMonthCount = loaded.futureLogMonthCount;
     state.inputMode = state.defaultInputMode;
 
     // 표시 일수가 7이 아니면(저장된 값 복원) .week-card DOM 개수와 grid 레이아웃부터
@@ -28122,6 +29041,10 @@ wireMonthlyPanelToggle();
     wireRolloverControls();
     wireMonthlyOverdueControls();
     wireSidebarNav();
+    wireFutureLogHeader();
+    renderFutureLogHeader();
+    wireFutureLogResize();
+    renderFutureLogBody();
     wireTrashFilter();
     wireTrashBulkBar();
     wireEmptyTrashButton();
