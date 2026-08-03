@@ -261,13 +261,22 @@
   .cal-nav .ic-ring{width:11px;height:11px;border-width:1.6px;transform:translateY(1.5px)}
   /* 반응형: width:360px 고정 대신 left+right로 앵커링해, calendar-card 자체 폭이
      minmax(300px,405px) 범위 안에서 줄어들어도 그 폭에 맞춰 같이 줄어든다(내부는 여전히
-     7열 1fr 그리드라 셀이 찌그러지거나 겹치지 않는다). */
-  .weekdays{position:absolute;left:20px;right:20px;top:68px;display:grid;grid-template-columns:repeat(7,1fr);font-size:12px;font-weight:700;text-align:center}
+     7열 1fr 그리드라 셀이 찌그러지거나 겹치지 않는다).
+     버그 수정(QA): 이 "300px 밑으로는 안 내려간다"는 전제가 1199px 이하 구간에서 깨진다
+     -- .calendar-card{width:100%}(아래, max-width:1199px 규칙)로 바뀌면서 minmax(300px,..)
+     그리드 열 보장이 사라져, 380px 뷰포트에서 실제로 calendar-card가 220px까지 줄어드는
+     것을 확인했다(Playwright 실측). repeat(7,1fr)의 각 트랙은 .date{width:36px} 때문에
+     기본 min-width:auto가 36px로 해석돼 7×36=252px 밑으로 못 줄어들어, 실제 폭(220px 안쪽,
+     좌우 20px씩 제외하면 180px)보다 넓어져 토요일 칸이 문서 밖으로 넘쳤다(실측: Sat 칸
+     우측 끝이 뷰포트를 29px 초과, 문서 전체 가로 스크롤 발생). minmax(0,1fr)로 트랙 최소
+     폭을 0으로 낮추면 300px 이상에서는 지금과 동일하게 렌더되고(공간이 충분해 어차피
+     36px 이상으로 풀리므로), 300px 밑에서만 실제로 줄어들어 넘치지 않는다. */
+  .weekdays{position:absolute;left:20px;right:20px;top:68px;display:grid;grid-template-columns:repeat(7,minmax(0,1fr));font-size:12px;font-weight:700;text-align:center}
   .weekdays .sun{color:var(--sun)} .weekdays .sat{color:var(--sat)}
   /* 1: grid-auto-rows 대신 grid-template-rows로 항상 6행을 고정 확보한다 — 5주만 필요한
      달도 42칸(6행)을 그려 달마다 달력 높이가 달라지지 않는다(overflow는 기본값 visible
      그대로라 남는 6번째 줄을 잘라 숨기지 않는다). */
-  .dates{position:absolute;left:20px;right:20px;top:91px;display:grid;grid-template-columns:repeat(7,1fr);grid-template-rows:repeat(6,58px);align-items:center;justify-items:center;font-size:14px;font-weight:600}
+  .dates{position:absolute;left:20px;right:20px;top:91px;display:grid;grid-template-columns:repeat(7,minmax(0,1fr));grid-template-rows:repeat(6,58px);align-items:center;justify-items:center;font-size:14px;font-weight:600}
   .date{position:relative;width:36px;height:36px;display:grid;place-items:center;border-radius:12px;user-select:none;cursor:pointer}
 /* 양력 숫자는 항상 기존 중앙 좌표에 고정한다. 음력 텍스트는 별도 absolute 레이어로
    아래에 놓여, 음력 표시를 켜도 양력 숫자가 위로 밀리지 않는다. */
@@ -465,7 +474,13 @@
   .q-slot{width:20px;height:20px;display:grid;place-items:center;border:0;background:none;padding:0;cursor:pointer}
   .q-slot[aria-pressed="true"]{color:var(--lav)}
   .quick .placeholder{font-weight:600}
-  #quick-input{border:0;background:transparent;outline:none;font:inherit;color:var(--ink);flex:1;padding:0}
+  /* 버그 수정(QA): <input>은 flex item의 기본 min-width:auto가 내용 기반 intrinsic 폭(이
+     입력창은 실측 약 203px)으로 해석돼, flex:1과 부모의 min-width:0을 둬도 그 아래로는
+     줄어들지 않았다 -- 좁은 화면(380px 이하)에서 이 입력창이 .quick 밖으로 넘쳐 문서
+     전체에 가로 스크롤을 만드는 실제 버그였다(Playwright로 확인: #quick-input 우측 끝이
+     뷰포트를 80px 초과). input 자신에게 min-width:0을 줘야 flex-shrink가 실제로 먹는다
+     (표준적인 flex+input 오버플로 수정 패턴). */
+  #quick-input{border:0;background:transparent;outline:none;font:inherit;color:var(--ink);flex:1;min-width:0;padding:0}
   #quick-input::placeholder{color:var(--text-placeholder);font-weight:600}
   .rollover{height:49px;display:flex;align-items:center;padding:0 9px;border-bottom:1px solid var(--line);font-size:13px;color:var(--faint);gap:15px}
   .rollover-toggle{border:0;background:none;padding:0;cursor:pointer;font:inherit;display:flex;align-items:center;gap:6px;color:var(--muted)}
@@ -595,8 +610,13 @@
   .trash-group-header{margin:16px 0 8px;font-size:12px;font-weight:800;color:var(--muted)}
   .trash-group-header:first-child{margin-top:0}
 
-  /* 5/10: 휴지통 상단 필터 + 비우기 버튼. */
-  .trash-toolbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+  /* 5/10: 휴지통 상단 필터 + 비우기 버튼.
+     버그 수정(QA): flex-wrap:nowrap이라 320px처럼 아주 좁은 화면에서 필터 4개 + "휴지통
+     비우기" 버튼이 한 줄에 다 안 들어가면, 줄바꿈 대신 "휴지통 비우기"의 텍스트가 버튼
+     안에서 세로로 줄바꿈되며 찌그러지고 그래도 폭이 모자라 문서 전체가 23px 가로로
+     넘쳤다(Playwright 실측). 다른 헤더들(.detail-footer, .future-log-header 등)과 같은
+     flex-wrap:wrap 패턴으로 통일해, 공간이 부족하면 버튼이 다음 줄로 내려가게 한다. */
+  .trash-toolbar{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;row-gap:8px;margin-bottom:14px}
   .trash-filter{display:flex;align-items:center;gap:6px}
   .trash-filter-btn{border:1px solid var(--line2);background:var(--bg-card);border-radius:999px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;color:var(--muted);font-family:inherit;display:flex;align-items:center;justify-content:center}
   .trash-filter-btn[aria-pressed="true"]{color:var(--lav);border-color:var(--lav);background:var(--lav-soft)}
@@ -1697,7 +1717,11 @@ body.desc-block-dnd-active .desc-block-add{
 .monthly-log-row.range-preview .monthly-log-row-label,.monthly-log-row.range-selected-start .monthly-log-row-label,.monthly-log-row.range-selected-middle .monthly-log-row-label,.monthly-log-row.range-selected-end .monthly-log-row-label,.monthly-log-row.range-selected-single .monthly-log-row-label{color:var(--lav);background:var(--lav-soft);border-radius:7px}
 .monthly-log-row.range-selected-start .monthly-log-row-label,.monthly-log-row.range-selected-end .monthly-log-row-label,.monthly-log-row.range-selected-single .monthly-log-row-label{font-weight:800;box-shadow:inset 0 0 0 2px var(--lav)}
 .monthly-log-row-label{flex:0 0 auto;min-width:0;position:relative;display:flex;align-items:center;gap:4px;height:18px;font-size:12px;font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums;cursor:pointer;user-select:none;z-index:45;overflow:hidden}
-.monthly-log-row-weekday{font-size:12px;font-weight:700;color:var(--muted)}
+/* CSS-first 재설계(QA): 공휴일 이름은 day-num/음력 사이에서 유일하게 줄어드는
+   요소다 -- min-width:0으로 flex 기본 min-width:auto(콘텐츠 폭 하한)를 없애야
+   실제로 0까지 줄어들 수 있고, overflow:hidden+text-overflow:ellipsis로 줄어드는
+   중간에는 "..."로 보인다(완전히 안 보이는 것과 다름). */
+.monthly-log-row-weekday{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;font-weight:700;color:var(--muted)}
 .monthly-log-row.is-sun .monthly-log-row-label{color:var(--sun)}
 .monthly-log-row.is-sun .monthly-log-row-weekday{color:var(--sun)}
 .monthly-log-row.is-sat .monthly-log-row-label{color:var(--sat)}
@@ -1865,14 +1889,21 @@ body.monthly-split-dragging,body.monthly-split-dragging *{cursor:col-resize!impo
 
 /* 음력 보조 텍스트(미니 달력 날짜 칸 / Monthly Log 날짜 행) -- 실제 날짜보다 작고 옅게. */
 .date-lunar{position:absolute;left:50%;top:25px;transform:translateX(-50%);display:block;font-size:9px;font-weight:600;color:var(--text-tertiary);line-height:1;margin:0;white-space:nowrap;pointer-events:none}
-/* 버그 수정: 예전엔 flex 흐름 안에 있어(flex-shrink:0인 부모의 min-width:auto 기본값
-   때문에) 음력 텍스트 길이가 .monthly-log-row-label 자체의 렌더 폭을 48px보다 넓게
-   밀어내, 그 오른쪽의 일정 격자 시작 x좌표가 음력 유무에 따라 행마다 달라지는 실제
-   버그였다(재현 확인: 음력이 있는 행과 없는 행의 같은 컬럼 셀 x좌표가 어긋남 -> 단일
-   칸 선택도 함께 어긋남). .date-lunar(미니 달력)와 같은 절대 위치 기법으로 완전히
-   흐름 밖으로 빼, 있든 없든 label의 렌더 폭(따라서 격자 좌표)에 전혀 영향을 주지 않게
-   한다. pointer-events:none으로 겹치는 영역의 클릭도 항상 아래(격자 셀)로 통과시킨다. */
-.monthly-log-row-lunar{position:absolute;left:0;bottom:3px;max-width:46px;font-size:9px;font-weight:600;color:var(--text-tertiary);line-height:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none}
+/* 버그 수정(CSS-first 재설계, QA): 이전에는 음력 캡션을 position:absolute로 흐름 밖에
+   빼고 고정 left 값(day-num 폭 기준)으로 옮겼다 -- 그런데 공휴일 이름
+   (.monthly-log-row-weekday)이 day-num 뒤에 하나 더 끼어드는 날은 그 폭이 "추석"(2글자)
+   부터 "부처님오신날"(6글자, 항상 음력과 함께 나옴)까지 날마다 달라 고정 left로는
+   안전하게 커버할 수 없었다(실측 확인: 2027-09-15 "추석"+"음 8.15" 겹침 210px²).
+   대신 day-num/공휴일 이름/음력 세 개를 label의 같은 flex 행에 정상적으로 배치하고,
+   공휴일 이름 하나만 줄어들게 한다(아래 규칙들) -- day-num과 음력은 flex:0 0 auto라
+   무슨 상황에도 줄어들지 않고 항상 완전히 보이고, 공휴일 이름만 min-width:0 +
+   text-overflow:ellipsis로 공간이 부족할 때 먼저 말줄임된다. label 자체는 여전히
+   flex-direction:column인 부모의 cross-axis stretch로 행 전체 폭(약 147px)까지
+   늘어나 있고(변경 없음), day-num+음력의 합쳐진 최소 폭은 그보다 한참 작아
+   (약 50~60px) 공휴일 이름이 0까지 줄어들어도 절대 넘치지 않는다. 실제 렌더 폭을
+   JS로 측정해 위치를 재계산하는 방식은 쓰지 않는다(요구사항) -- resize/zoom 때마다
+   다시 계산할 필요 자체가 없다. */
+.monthly-log-row-lunar{flex:0 0 auto;font-size:9px;font-weight:600;color:var(--text-tertiary);line-height:1;white-space:nowrap;pointer-events:none}
 
 /* 공휴일 -- 일요일과 같은 빨강 처리(토요일이어도 우선), 이름은 JS가 요일 자리에 넣는다. */
 .monthly-log-row.is-holiday .monthly-log-row-label,.monthly-log-row.is-holiday .monthly-log-row-weekday{color:var(--sun)}
@@ -2566,7 +2597,9 @@ body.dnd-active .group-drag{cursor:grabbing}
 .monthly-log-row.is-outside-month .monthly-log-row-label{color:var(--text-disabled)}
 .monthly-log-row.is-outside-month .monthly-log-day-item{opacity:.62}
 .monthly-log-row.is-today .monthly-log-day-num{background:var(--lav);color:#fff;border-radius:99px}
-.monthly-log-day-num{display:inline-grid;place-items:center;min-width:18px;height:18px;padding:0 4px;line-height:1}
+/* CSS-first 재설계(QA): 날짜 숫자는 day-num/공휴일 이름/음력 세 flex 자식 중
+   flex-shrink:0으로 절대 줄어들지 않는 두 요소 중 하나다(항상 완전히 표시). */
+.monthly-log-day-num{flex:0 0 auto;display:inline-grid;place-items:center;min-width:18px;height:18px;padding:0 4px;line-height:1}
 .monthly-log-row-lunar{font-size:9.5px;font-weight:650;color:var(--muted)}
 .monthly-log-day-slots{flex:0 0 auto;height:calc(var(--monthly-slot-count,3)*var(--monthly-slot-h,18px) + (var(--monthly-slot-count,3) - 1)*var(--monthly-slot-gap,2px));overflow:hidden}
 .monthly-log-day-item{display:flex!important;align-items:center;gap:3px;width:100%;max-width:none!important;height:18px;margin:0!important;padding:0 4px!important;border:1px solid var(--schedule-border);border-radius:4px;background:var(--schedule-bg);color:var(--schedule-text);font-size:11px;font-weight:700;line-height:1;overflow:hidden;box-sizing:border-box}
