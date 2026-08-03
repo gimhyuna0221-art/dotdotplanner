@@ -1442,13 +1442,10 @@ body.desc-block-dnd-active .desc-block-add{
      순서·footer 높이·모달 크기는 그대로 두고 margin-left:auto만으로 해결한다(줄바꿈 시
      자기 줄에서는 자연히 왼쪽부터 배치돼 안전하다). */
   .detail-trash-btn{color:var(--sun);margin-left:auto}
-  /* Future Log 2단계: 마스터 Drawer의 "날짜 배치" 섹션. body(기존 스크롤 영역) 안에
-     둬서 목록이 길어져도 Drawer 자체 스크롤을 그대로 쓴다(별도 스크롤 없음). 버튼은
-     .detail-action-btn을 그대로 재사용해 새 버튼 스타일을 만들지 않는다. */
-  .detail-master-placements{display:flex;flex-direction:column;gap:8px;margin-top:16px;padding-top:16px;border-top:1px solid var(--line)}
-  .detail-master-placements-heading{font-size:12px;font-weight:750;color:var(--muted)}
-  .detail-master-placements-list{display:flex;flex-direction:column;gap:6px}
-  .detail-master-placements-empty{margin:0;font-size:13px;color:var(--text-tertiary)}
+  /* 마스터 Drawer 하단 날짜 버튼(moveDateBtn)이 배치 0/1/N개를 모두 처리한다(별도 상시
+     "날짜 배치" 섹션 없음). 배치가 0개 또는 2개 이상일 때만 이 목록/추가 UI가 뜨는
+     팝오버(.move-menu) 안에 쓰인다 -- 버튼은 .detail-action-btn을 그대로 재사용한다. */
+  .detail-master-placements-list{display:flex;flex-direction:column;gap:6px;min-width:220px}
   .detail-master-placement-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
   .detail-master-placement-date{font-size:13px;font-weight:700;color:var(--ink);flex:1 1 auto;min-width:0}
   .detail-master-placement-change,.detail-master-placement-remove{padding:5px 10px;font-size:12px}
@@ -1574,18 +1571,26 @@ body.desc-block-dnd-active .desc-block-add{
 .future-log-nav-btn{border:0;background:none;padding:0;cursor:pointer;color:var(--icon-muted);width:26px;height:26px;border-radius:6px;display:grid;place-items:center;font-size:18px;line-height:1}
 .future-log-nav-btn:hover{background:var(--bg-hover)}
 .future-log-nav-btn:disabled{opacity:.35;cursor:default;pointer-events:none}
-.future-log-month-count{display:flex;align-items:center;gap:8px;margin-left:auto;font-size:13px;font-weight:700;color:var(--muted)}
-.future-log-count-btn{border:0;background:none;padding:0;cursor:pointer;color:var(--icon-muted);width:26px;height:26px;border-radius:6px;display:grid;place-items:center;font-size:16px;line-height:1}
-.future-log-count-btn:hover{background:var(--bg-hover)}
-.future-log-count-btn:disabled{opacity:.35;cursor:default;pointer-events:none}
-.future-log-count-label{font-size:13px;font-weight:800;color:var(--ink);min-width:36px;text-align:center}
-.future-log-body{flex:1 1 auto;min-height:0;overflow-y:auto;overflow-x:auto;overscroll-behavior-y:contain;scrollbar-gutter:stable;scrollbar-width:thin}
-/* Future Log 4단계: 월 카드 그리드 -- 데스크톱 3열(반응형 규칙은 아래 기존 1199px/640px
-   구간에서 2열/1열로 줄인다). 같은 grid 행의 카드는 align-items:stretch(기본값)로 자동
-   같은 높이가 된다 -- 카드 자체 높이(.future-log-card-rows)는 고정값이라 6/9/12개월로
-   늘어도 카드가 눌리지 않고 아래로 행만 추가된다. */
-.future-log-months{min-height:100%;box-sizing:border-box;padding:0 24px 20px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;align-items:stretch}
-.future-log-card{display:flex;flex-direction:column;border:1px solid var(--line2);border-radius:14px;background:var(--bg-card);overflow:hidden}
+/* "이번 달" -- 정렬 계산 없이 시작월을 오늘이 속한 월로 되돌린다(요구사항). */
+.future-log-today-btn{border:1px solid var(--line2);background:none;color:var(--muted);padding:4px 10px;border-radius:999px;font-size:12px;font-weight:700;cursor:pointer}
+.future-log-today-btn:hover{background:var(--bg-hover);color:var(--ink)}
+/* 3/6/12개월 segmented control -- rolling 시작월은 그대로 두고 표시 개월 수만 바꾼다. */
+.future-log-period-mode{display:flex;align-items:center;gap:2px;margin-left:auto;padding:3px;border-radius:999px;background:var(--bg-input)}
+.future-log-mode-btn{border:0;background:none;padding:5px 12px;border-radius:999px;font-size:12.5px;font-weight:700;color:var(--muted);cursor:pointer}
+.future-log-mode-btn[aria-pressed="true"]{background:var(--bg-card);color:var(--lav);box-shadow:0 1px 3px var(--shadow-toggle)}
+.future-log-body{flex:1 1 auto;min-height:0;overflow-y:auto;overflow-x:auto;overscroll-behavior-y:contain;scrollbar-gutter:stable;scrollbar-width:thin;container-type:inline-size;container-name:future-log-body}
+/* Future Log 5단계: rolling 3개월 열 컨테이너. 열(.future-log-column)은 3개월 블록을
+   위→아래로 묶는 얇은 래퍼일 뿐이라 테두리·배경을 따로 주지 않고 헤더+간격으로만
+   구분한다. 열 배치는 뷰포트가 아니라 .future-log-body의 실제 폭(container query)을
+   기준으로 한다 -- 1200px 이상이면 한 행에 열 2개, 1199px 이하면 1개(요구사항). */
+.future-log-months{min-height:100%;box-sizing:border-box;padding:0 24px 20px;display:grid;grid-template-columns:repeat(1,minmax(0,1fr));gap:28px;align-items:start}
+@container future-log-body (min-width:1200px){.future-log-months{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.future-log-column{display:flex;flex-direction:column;gap:16px;min-width:0}
+.future-log-column-header{flex:0 0 auto;padding:0 2px;font-size:13px;font-weight:800;color:var(--ink)}
+/* 4단계: 월 블록 내부(미니 캘린더 좌우/상하 전환)는 열/뷰포트 폭이 아니라 이 카드
+   자신의 실제 렌더 폭을 기준으로 판단해야 한다(요구사항) -- 카드가 rolling 열 1개/2개
+   중 어디에 있든, 실제로 받은 폭이 640px을 넘으면 좌우, 아니면 상하로 스스로 결정한다. */
+.future-log-card{display:flex;flex-direction:column;border:1px solid var(--line2);border-radius:14px;background:var(--bg-card);overflow:hidden;container-type:inline-size;container-name:future-log-card}
 /* 드롭 가능한 카드에만 주는 최소 강조 -- Monthly Log의 .is-selected와 같은 outline 문법. */
 .future-log-card.is-drop-target{outline:2px solid var(--lav);outline-offset:-2px}
 .future-log-card-header{flex:0 0 auto;padding:10px 14px 8px;border-bottom:1px solid var(--line);font-size:13px;font-weight:800;color:var(--ink)}
@@ -1612,6 +1617,68 @@ body.desc-block-dnd-active .desc-block-add{
 /* quick-add는 기존 .monthly-quick(이달의 할 일 입력창) 그대로 재사용하되, 24px 좌우
    margin은 좁은 카드 안에서는 어울리지 않아 이 컨텍스트에서만 덮어쓴다. */
 .future-log-quick.monthly-quick{flex:0 0 auto;margin:0;border:0;border-top:1px solid var(--line);border-radius:0;padding:8px 12px}
+/* 요구사항: 아이콘만으로는 할 일 입력창인지 알기 어려워, 문자 라벨("할 일"/"메모")이
+   보이는 소형 segmented 토글로 바꾼다(기존 .monthly-quick-mode 아이콘 전용 크기를
+   이 컨텍스트에서만 덮어씀). */
+.monthly-quick-mode.future-log-quick-mode{width:auto;height:22px;display:flex;align-items:center;gap:4px;padding:0 8px;border-radius:999px;font-size:11.5px;font-weight:700;color:var(--muted)}
+.monthly-quick-mode.future-log-quick-mode[aria-pressed="true"]{background:var(--lav-soft);color:var(--lav)}
+.future-log-quick-mode-label{white-space:nowrap}
+/* 월 블록 안을 미니 캘린더(왼쪽)+목록/quick-add(오른쪽)로 나눈다. 목록이 달력보다
+   좁아지지 않게 달력은 고정 폭(154px)만 차지하고 나머지는 전부 목록이 가져간다. */
+.future-log-block-main{display:flex;align-items:flex-start;gap:12px;padding:10px 12px 0}
+.future-log-block-list{flex:1 1 auto;min-width:0;display:flex;flex-direction:column}
+/* 미니 캘린더 -- Today의 .dates/.date 관례(요일 순서, 오늘/선택/도트 표현)만 참고하고
+   전용 클래스로 새로 만든다(전역 .dates/.date와 절대 섞이지 않게). */
+.future-log-mini-cal{flex:0 0 auto;width:154px}
+/* 4단계 감사: repeat(7,1fr)의 각 트랙은 기본적으로 minmax(auto,1fr)로 취급돼(암묵적
+   min-width:auto) 요일 텍스트/숫자의 콘텐츠 최소 폭보다 카드가 좁아지면 트랙이 그
+   아래로 줄지 못하고 grid 전체가 넘친다 -- 380px에서는 안 보였지만(카드가 아직
+   충분히 넓어서) 320px에서는 실제로 넘쳐서 .future-log-card의 overflow:hidden에
+   토요일 열이 조용히 잘리는 것을 실측으로 확인했다. minmax(0,1fr)로 트랙의 최소
+   폭을 0으로 낮춰 카드 폭에 맞게 균등하게 계속 줄어들게 한다(고정/최소 폭 강제 없음). */
+.future-log-mini-cal-weekdays{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:1px;font-size:9.5px;font-weight:700;text-align:center;color:var(--muted);margin-bottom:2px}
+/* 4단계 감사: 각 요일 라벨을 자기 grid 칸 안에 가둔다 -- 트랙 자체는 minmax(0,1fr)로
+   더 이상 넘치지 않지만(위), "Wed"/"Thu"처럼 3글자 라벨은 극단적으로 좁은 칸(320px에서
+   실측 14px)보다 넓어서 이웃 칸으로 텍스트가 시각적으로 번져 겹쳐 보이는 문제가 실제로
+   있었다(레이아웃 overflow가 아니라 인라인 텍스트가 칸 경계를 무시하고 그려지는 것).
+   overflow:hidden으로 각 라벨을 자기 칸 폭만큼만 그리게 한다 -- 문서/카드 수준
+   overflow:hidden(구조적 클리핑을 숨기는 것)과는 다른, 텍스트 하나를 자기 칸에 가두는
+   정상적인 방법이다. */
+.future-log-mini-cal-weekdays span{overflow:hidden;white-space:nowrap}
+.future-log-mini-cal-weekdays .sun{color:var(--sun)}
+.future-log-mini-cal-weekdays .sat{color:var(--sat)}
+.future-log-mini-cal-dates{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));grid-auto-rows:20px}
+.future-log-mini-cal-date{position:relative;border:0;background:none;padding:0;margin:0;font:inherit;font-size:10.5px;font-weight:600;color:var(--ink);display:flex;align-items:center;justify-content:center;cursor:pointer;border-radius:6px}
+@media (hover: hover) and (pointer: fine) {
+  .future-log-mini-cal-date:hover:not(:disabled){background:rgba(var(--lav-rgb),.08)}
+}
+.future-log-mini-cal-date:disabled{cursor:default;color:var(--faint)}
+.future-log-mini-cal-date.sun{color:var(--sun)}
+.future-log-mini-cal-date.sat{color:var(--sat)}
+.future-log-mini-cal-date.other-month{color:var(--faint)}
+.future-log-mini-cal-date.today{background:var(--today-ring)}
+.future-log-mini-cal-date.selected{box-shadow:inset 0 0 0 2px var(--lav);color:var(--lav);font-weight:800}
+.future-log-mini-cal-date.has-dot:after{content:"";position:absolute;right:2px;top:2px;width:4px;height:4px;border-radius:50%;background:var(--lav)}
+/* 4단계: 이 카드 자신의 실제 폭이 640px 이하면(rolling 열이 1개든 2개든 무관, 이
+   카드가 실제로 받은 공간 기준) 미니 캘린더를 위로, 목록/quick-add를 아래로 쌓는다.
+   미니 캘린더는 이때 카드 전체 폭을 쓰므로 셀이 자연히 커지지만(터치 영역 확보,
+   요구사항), 요일 헤더·셀 폰트도 함께 키워서 숫자·도트·선택 표시가 큰 셀 안에서
+   서로 겹치지 않고 균형 있게 보이도록 한다. 이 블록은 위 기본 규칙들보다 뒤에 있어야
+   한다(같은 우선순위에서 소스 순서가 이긴다 -- 앞에 두면 뒤의 기본 .has-dot:after
+   규칙이 다시 덮어써 좁은 폭에서도 도트 크기가 커지지 않는 실제 버그가 있었다). */
+@container future-log-card (max-width:640px){
+  .future-log-block-main{flex-direction:column;gap:10px}
+  .future-log-mini-cal{width:100%}
+  .future-log-mini-cal-weekdays{font-size:11px}
+  .future-log-mini-cal-dates{grid-auto-rows:34px}
+  .future-log-mini-cal-date{font-size:13px}
+  .future-log-mini-cal-date.has-dot:after{width:5px;height:5px;right:4px;top:4px}
+}
+/* 날짜 선택 표시줄 -- 선택된 날짜가 있을 때만 quick-add 위에 보인다(요구사항). */
+.future-log-quick-date-indicator{flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;gap:6px;padding:4px 12px;font-size:11.5px;font-weight:700;color:var(--lav);background:var(--lav-soft)}
+.future-log-quick-date-indicator[hidden]{display:none}
+.future-log-quick-date-indicator-clear{border:0;background:none;padding:0;width:16px;height:16px;display:grid;place-items:center;color:inherit;cursor:pointer;border-radius:4px;font-size:13px;line-height:1}
+.future-log-quick-date-indicator-clear:hover{background:rgba(var(--lav-rgb),.15)}
 /* Future Log 오버플로우 팝오버는 Monthly Log의 팝오버 셸(.monthly-log-overflow-popover/
    -title/-list/-empty)을 그대로 쓴다 -- 새 클래스를 추가하지 않는다. */
 /* 날짜 행: 왼쪽 날짜·요일(고정 폭) + 오른쪽 압축 항목 목록. 종이 Monthly Log의 가로줄을
@@ -2158,8 +2225,6 @@ body.dnd-active .group-drag{cursor:grabbing}
     border-radius:14px;
   }
   .future-log-body{max-height:60vh}
-  /* 태블릿(1199px 이하): 3열 -> 2열. 기존 반응형 기준(1199px)을 그대로 재사용한다. */
-  .future-log-months{grid-template-columns:repeat(2,minmax(0,1fr))}
   /* 요구사항: 좁은 화면에서 "이달의 할 일"을 본문 아래로 쌓지 않고(예전 방식은 패널
      콘텐츠의 nowrap 폭이 grid 칸보다 커지면 뷰포트 밖으로 잘렸다) 우측에서 슬라이드로
      들어오는 오버레이로 전환한다. 폭이 min(340px,86vw)로 항상 뷰포트 안에 들어오므로
@@ -2187,9 +2252,6 @@ body.dnd-active .group-drag{cursor:grabbing}
   .monthly-inbox-list{max-height:none}
   .monthly-inbox-toggle-btn,.monthly-inbox-close-btn{display:grid}
 }
-/* 모바일(640px 이하): 기존 반응형 기준(위 1199px 블록)을 재사용해 2열 -> 1열. 이 규칙은
-   1199px 블록보다 뒤에 있어야 같은 우선순위에서 더 좁은 화면의 1열이 이긴다. */
-@media (max-width:640px){.future-log-months{grid-template-columns:1fr}}
 .monthly-inbox-toggle-btn{display:none;border:0;background:none;padding:0;cursor:pointer;color:var(--icon-muted);width:26px;height:26px;border-radius:6px;place-items:center;font-size:15px;line-height:1;margin-left:4px}
 .monthly-inbox-toggle-btn:hover{background:var(--bg-hover);color:var(--ink)}
 .monthly-inbox-close-btn{display:none;border:0;background:none;padding:0;cursor:pointer;color:var(--icon-muted);width:26px;height:26px;border-radius:6px;place-items:center;font-size:16px;line-height:1}
@@ -2852,14 +2914,15 @@ body.dnd-active .monthly-log-week-segment{pointer-events:none}
     <div class="future-log-header">
       <h1 class="future-log-title">퓨처로그</h1>
       <div class="future-log-period-nav">
-        <button type="button" class="future-log-nav-btn" id="future-log-prev-btn" aria-label="이전 달로 이동">‹</button>
+        <button type="button" class="future-log-nav-btn" id="future-log-prev-btn" aria-label="이전 기간으로 이동">‹</button>
         <span class="future-log-period-label" id="future-log-period-label"></span>
-        <button type="button" class="future-log-nav-btn" id="future-log-next-btn" aria-label="다음 달로 이동">›</button>
+        <button type="button" class="future-log-nav-btn" id="future-log-next-btn" aria-label="다음 기간으로 이동">›</button>
+        <button type="button" class="future-log-today-btn" id="future-log-today-btn">이번 달</button>
       </div>
-      <div class="future-log-month-count" role="group" aria-label="표시 개월 수">
-        <button type="button" class="future-log-count-btn" id="future-log-count-minus-btn" aria-label="표시 개월 수 줄이기">−</button>
-        <span class="future-log-count-label" id="future-log-count-label"></span>
-        <button type="button" class="future-log-count-btn" id="future-log-count-plus-btn" aria-label="표시 개월 수 늘리기">+</button>
+      <div class="future-log-period-mode" role="group" aria-label="표시 개월 수">
+        <button type="button" class="future-log-mode-btn" data-mode-count="3" aria-pressed="true">3개월</button>
+        <button type="button" class="future-log-mode-btn" data-mode-count="6" aria-pressed="false">6개월</button>
+        <button type="button" class="future-log-mode-btn" data-mode-count="12" aria-pressed="false">12개월</button>
       </div>
     </div>
     <div class="future-log-body" id="future-log-body">
