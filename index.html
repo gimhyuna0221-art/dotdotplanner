@@ -1622,11 +1622,7 @@ body.desc-block-dnd-active .desc-block-add{
 .future-log-card{display:flex;flex-direction:column;border:1px solid var(--line2);border-radius:14px;background:var(--bg-card);overflow:hidden;container-type:inline-size;container-name:future-log-card}
 /* 드롭 가능한 카드에만 주는 최소 강조 -- Monthly Log의 .is-selected와 같은 outline 문법. */
 .future-log-card.is-drop-target{outline:2px solid var(--lav);outline-offset:-2px}
-/* 요구사항 3: 넓은 카드는 제목+quick-add가 같은 상단 행에, 좁은 카드는 제목 아래에
-   quick-add가 온다. flex-wrap만 맡기고 실제 줄바꿈 기준은 아래 640px 컨테이너 쿼리
-   (미니 캘린더 좌우/상하 전환과 같은 기준)로 명시적으로 정한다. */
-.future-log-card-header-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 14px 8px;border-bottom:1px solid var(--line)}
-.future-log-card-header{flex:0 0 auto;display:flex;align-items:center;gap:4px;font-size:13px;font-weight:800;color:var(--ink)}
+.future-log-card-header{flex:0 0 auto;display:flex;align-items:center;gap:4px;padding:10px 12px 0;font-size:13px;font-weight:800;color:var(--ink)}
 .future-log-card-calendar-btn{flex:none;border:0;background:none;padding:0;width:20px;height:20px;display:grid;place-items:center;color:var(--icon-muted);cursor:pointer;border-radius:6px}
 .future-log-card-calendar-btn:hover{background:var(--bg-hover);color:var(--ink)}
 /* 실제 항목 영역 -- 높이가 뷰포트에 반응(clamp)하므로 JS가 매번 실측해 slotCount를
@@ -1634,12 +1630,19 @@ body.desc-block-dnd-active .desc-block-add{
    만들지 않기 위함(요구사항) -- +N 계산이 맞으면 실제로 넘치지 않는다. */
 .future-log-card-rows{flex:0 0 auto;height:clamp(180px,26vh,260px);overflow:hidden;padding:8px 10px;display:flex;flex-direction:column;gap:4px;box-sizing:border-box}
 .future-log-card-empty{margin:0;padding:4px 2px;font-size:12px;color:var(--muted)}
-.future-log-row{display:flex!important;align-items:center;gap:6px;height:22px;flex:0 0 22px;padding:0 6px;border-radius:6px;font-size:12.5px;font-weight:650;color:var(--ink);cursor:pointer;overflow:hidden;box-sizing:border-box}
+/* 요구사항 4(4차 감사): 배치가 4개 이상이면 고정 68px 날짜 칸 안에서 배지가 줄바꿈
+   되므로(아래 .future-log-row-datecol) 행 자체도 그만큼 늘어나야 잘리지 않는다 --
+   고정 height/overflow:hidden을 min-height + 내용에 따른 자동 높이로 바꾼다(증상을
+   부모 overflow:hidden으로 덮지 않음, 요구사항). */
+.future-log-row{display:flex!important;align-items:center;gap:6px;min-height:22px;flex:0 0 auto;padding:2px 6px;border-radius:6px;font-size:12.5px;font-weight:650;color:var(--ink);cursor:pointer;box-sizing:border-box}
 .future-log-row:hover,.future-log-row:focus-visible{background:var(--bg-hover);outline:none}
 .future-log-row.is-done{opacity:.82}
 .future-log-row.is-done .future-log-row-title{text-decoration:line-through}
 .future-log-row.has-group{border-left-width:2px;border-left-style:solid;border-left-color:var(--group-accent,var(--lav))}
 .future-log-row.is-dragging{opacity:.4}
+/* 요구사항 1(4차 감사): 순서 재정렬 drag 중 "이 행 앞에 끼워진다"는 인디케이터 --
+   기존 is-drop-target(outline)과 같은 lav 강조 언어를 위쪽 테두리 하나로만 재사용한다. */
+.future-log-row.future-log-row-drop-before{box-shadow:inset 0 2px 0 var(--lav)}
 /* 요구사항 4(2차 감사): 배치가 있는 항목은 날짜 배지 자체가 drag 소스다(핸들 없음). */
 .future-log-row-date.is-dragging{opacity:.4}
 /* 요구사항 3(2차 감사): Future Log 행 선택 -- 기존 .monthly-item-row.is-selected와
@@ -1651,29 +1654,45 @@ body.desc-block-dnd-active .desc-block-add{
 .future-log-row-icon .ic-ring{width:11px;height:11px;border-width:1.6px}
 .future-log-row-title-cell{display:flex;align-items:center;min-width:0;flex:1 1 auto;gap:4px}
 .future-log-row-title{min-width:0;flex:1 1 auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* 요구사항 2(3차 감사): 날짜 칸은 폭을 고정해 모든 행(날짜 있음/없음)에서 뒤따르는
+   유형 기호·제목이 같은 x좌표에서 시작하게 한다 -- 내용이 없어도 칸 자체는 항상
+   만든다(buildFutureLogRowDateColEl). 배치가 여러 개인 행은 배지 여러 개가 이 고정
+   폭 안에 나란히 들어가야 하므로 gap을 좁게, 배지 자체도 소형으로 둔다. */
+/* 요구사항 4(4차 감사): 고정 68px 폭은 유지하되, 배지가 4개 이상이면(각 배지 폭
+   ~20px 안팎) 한 줄에 다 안 들어가므로 칸 안에서 줄바꿈한다(overflow:hidden으로
+   가리지 않고 실제로 다 보이게). 세로로 몇 줄이 되든 이 칸의 실제 필요 높이가
+   부모 .future-log-row의 min-height를 넘으면 위 min-height 규칙 덕분에 행 자체가
+   그만큼 커진다. */
+.future-log-row-datecol{flex:0 0 68px;width:68px;display:flex;flex-wrap:wrap;align-items:center;align-content:center;gap:3px;overflow:visible}
 /* 요구사항 4: 날짜 배지를 그 항목의 실제 시작 날짜로 Calendar 이동하는 버튼으로 쓴다
    -- <button> 기본 테두리/배경/폰트를 지워 기존 <span> 배지와 같은 모양을 유지한다. */
 .future-log-row-date{flex:none;border:0;background:none;padding:0;font:inherit;font-size:10.5px;font-weight:700;color:var(--muted);white-space:nowrap;cursor:pointer}
+/* placement가 여러 개라 배지가 한 칸에 여럿 들어갈 때만 살짝 축소한다(고정 폭 안에
+   맞추기 위함, 단일 배지는 그대로 10.5px 유지) -- buildFutureLogRowDateColEl이
+   2개 이상일 때만 이 클래스를 붙인다. */
+.future-log-row-date.is-compact{font-size:9px}
 .future-log-row-date:hover,.future-log-row-date:focus-visible{color:var(--lav);text-decoration:underline;outline:none}
 .future-log-overflow-btn{background:none;border:1px dashed var(--line2);color:var(--lav);justify-content:center;font-weight:750;cursor:pointer}
 .future-log-overflow-btn:hover,.future-log-overflow-btn:focus-visible{background:var(--lav-soft);outline:none}
-/* quick-add는 기존 .monthly-quick(이달의 할 일 입력창) 그대로 재사용한다. 카드 상단
-   헤더 행에서 제목+달력버튼 바로 오른쪽에 왼쪽 정렬로 붙고(요구사항: 카드 중앙에 뜨지
-   않음), 남는 가로 공간만큼 입력창이 늘어난다(24px 좌우 margin/구분선은 이 위치에는
-   어울리지 않아 제거). */
-.future-log-quick.monthly-quick{flex:1 1 auto;min-width:0;margin:0;border:0;padding:0}
+/* 요구사항 1(3차 감사): quick-add는 기존 .monthly-quick(이달의 할 일 입력창) 그대로
+   재사용하되, 이제 오른쪽 목록 영역(.future-log-block-right) 맨 위 자신의 행 하나를
+   차지한다(카드 헤더나 제목 옆이 아님, 첨부 이미지 기준). */
+.future-log-quick.monthly-quick{flex:0 0 auto;min-width:0;margin:0;border:0;border-bottom:1px solid var(--line);padding:10px 12px}
 /* 2차 감사: Today 빠른 입력(.q-slot)과 완전히 같은 아이콘 전용 모양으로 되돌린다 --
    상시 텍스트 라벨은 제거하고 기존 .monthly-quick-mode 기본 크기(18x18)를 그대로
    쓴다(이 컨텍스트 전용 pill/라벨 오버라이드를 두지 않음). 이름은 hover/focus 시
    기존 공통 인라인 툴팁(data-tooltip-label)으로만 보여준다. */
 .monthly-quick-mode:disabled{opacity:.35;cursor:default;pointer-events:none}
-/* 월 블록 안을 미니 캘린더(왼쪽)+목록(오른쪽)으로 나눈다. 목록이 달력보다 좁아지지
-   않게 달력은 고정 폭(154px)만 차지하고 나머지는 전부 목록이 가져간다. */
-.future-log-block-main{display:flex;align-items:flex-start;gap:12px;padding:10px 12px 0}
-.future-log-block-list{flex:1 1 auto;min-width:0;display:flex;flex-direction:column}
+/* 요구사항 1(3차 감사): 월 블록을 왼쪽(제목+Calendar 이동 버튼+미니 달력)/오른쪽
+   (quick-add+목록)으로 나눈다. 오른쪽 영역의 왼쪽 테두리가 첨부 이미지의 검은 세로선
+   역할을 한다(기존 --line 색 재사용, 새 색 도입 없음). 왼쪽은 달력이 자연스러운
+   고정 폭(154px, 기존 미니 캘린더 폭 그대로)만 차지하고 나머지는 전부 오른쪽이 가져간다. */
+.future-log-block-main{display:flex;align-items:stretch}
+.future-log-block-left{flex:0 0 154px;width:154px;box-sizing:border-box;padding:0 0 10px}
+.future-log-block-right{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;border-left:1px solid var(--line)}
 /* 미니 캘린더 -- Today의 .dates/.date 관례(요일 순서, 오늘/선택/도트 표현)만 참고하고
    전용 클래스로 새로 만든다(전역 .dates/.date와 절대 섞이지 않게). */
-.future-log-mini-cal{flex:0 0 auto;width:154px}
+.future-log-mini-cal{padding:8px 12px 0}
 /* 4단계 감사: repeat(7,1fr)의 각 트랙은 기본적으로 minmax(auto,1fr)로 취급돼(암묵적
    min-width:auto) 요일 텍스트/숫자의 콘텐츠 최소 폭보다 카드가 좁아지면 트랙이 그
    아래로 줄지 못하고 grid 전체가 넘친다 -- 380px에서는 안 보였지만(카드가 아직
@@ -1715,14 +1734,33 @@ body.desc-block-dnd-active .desc-block-add{
    한다(같은 우선순위에서 소스 순서가 이긴다 -- 앞에 두면 뒤의 기본 .has-dot:after
    규칙이 다시 덮어써 좁은 폭에서도 도트 크기가 커지지 않는 실제 버그가 있었다). */
 @container future-log-card (max-width:640px){
-  .future-log-block-main{flex-direction:column;gap:10px}
+  /* 요구사항 1(3차 감사): 좁은 카드는 왼쪽 블록(제목+달력) 전체가 위, 오른쪽 블록
+     (quick-add+목록) 전체가 아래로 쌓인다 -- 세로 구분선(border-left)도 가로
+     구분선으로 바뀐다. */
+  .future-log-block-main{flex-direction:column}
+  .future-log-block-left{width:100%;flex-basis:auto;padding-bottom:0}
+  .future-log-block-right{border-left:0;border-top:1px solid var(--line)}
   .future-log-mini-cal{width:100%}
   .future-log-mini-cal-weekdays{font-size:11px}
   .future-log-mini-cal-dates{grid-auto-rows:34px}
   .future-log-mini-cal-date{font-size:13px}
   .future-log-mini-cal-date.has-dot:after{width:5px;height:5px;right:4px;top:4px}
-  /* 요구사항 3: 좁은 카드는 제목 아래에 quick-add를 쌓는다(같은 640px 기준 재사용). */
-  .future-log-card-header-row{flex-direction:column;align-items:stretch}
+}
+/* 요구사항 3(4차 감사): 320px 실측(카드 실폭 ~124px, 행 폭 ~102px) -- 이전 시도(핸들
+   display:none + 날짜 칸만 24px로 축소)는 제목이 35px로 여전히 실사용 불가능하다는
+   피드백에 따라 폐기한다. 대신 진짜 2줄 레이아웃으로 바꾼다: 날짜 칸(.future-log-row-datecol,
+   DOM 위치는 그대로, [핸들][체크박스][날짜칸][유형][제목] 순서 자체는 안 바꾼다)만
+   order로 시각적으로 맨 뒤로 보내고 flex-basis:100%로 강제 줄바꿈시켜 둘째 줄로
+   내려보낸다 -- 첫째 줄에는 자연히 [핸들][체크박스][유형][제목]만 남는다(요구사항
+   그대로, DOM 재배치가 아니라 순수 CSS만으로). 핸들은 숨기지 않고 폭만 유지한다
+   (요구사항: 터치/마우스로 계속 접근 가능). 날짜가 없는 행은 날짜 칸에 자식이 없어
+   :empty로 자연히 접혀 둘째 줄 자체가 생기지 않는다(새 JS 분기 없이 순수 CSS).
+   margin-left(57px)는 첫째 줄의 실제 폭 구성(핸들9+gap6+체크박스16+gap6+유형14+gap6)을
+   그대로 더한 값이다 -- 임의 숫자가 아니라 이미 이 파일에 있는 실제 폭들의 합. */
+@container future-log-card (max-width:360px){
+  .future-log-row{flex-wrap:wrap;gap:3px;padding:2px 4px}
+  .future-log-row-datecol{order:5;flex:0 0 100%;width:auto;box-sizing:border-box;margin-left:57px;overflow:visible}
+  .future-log-row-datecol:empty{display:none;margin:0}
 }
 /* 날짜 선택 표시줄 -- 선택된 날짜가 있을 때만 quick-add 위에 보인다(요구사항). 요구사항
    4: "달력에서 보기" 버튼이 추가돼 텍스트/보기/취소 세 요소가 되므로 justify-content

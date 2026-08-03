@@ -5543,7 +5543,7 @@ handleItemPointerSelect(
       // 표시줄/오버플로우 버튼 위에서는 marquee를 시작하지 않는다(행 자체는 위
       // [data-item-id]로 이미 제외됨).
       target.closest('.future-log-quick') || target.closest('.future-log-mini-cal') ||
-      target.closest('.future-log-card-header-row') || target.closest('.future-log-quick-date-indicator') ||
+      target.closest('.future-log-card-header') || target.closest('.future-log-quick-date-indicator') ||
       target.closest('.future-log-overflow-btn'));
   }
 
@@ -17997,6 +17997,77 @@ function reorderMonthlyItemsWithinMonth(
 
   return changed;
 }
+
+// Future Log 행 순서 재정렬(4차 감사 요구사항 1) -- reorderItemsWithinDate/
+// reorderMonthlyItemsWithinMonth와 완전히 같은 moving/staying 분할 + 재삽입 + 순번
+// 재부여 알고리즘을 그대로 재사용하되, 대상만 단일 컬렉션이 아니라 Future Log가 실제
+// 화면에 보여주는 "이 달의 master+projection 병합 목록"(buildFutureLogMonthRows) 전체로
+// 넓힌다. 새 순서 필드를 만들지 않고 각 행의 기존 필드(master.order 또는 item.order)에
+// 그대로 되쓴다 -- Future Log 전용 임시 순서 체계 아님.
+// 주의: item(projection) 행의 order를 여기서 재부여하면 그 항목이 속한 날짜(Daily/Weekly)
+// 안에서의 상대 순서도 함께 바뀔 수 있다. Daily/Weekly는 항상 "같은 date를 가진 항목들
+// 끼리"만 order를 비교하므로(reorderItemsWithinDate 참고), Future Log 재정렬로 값 자체가
+// 커져도 같은 날짜 항목들 사이의 상대 순서만 내부적으로 일관되면 문제가 생기지 않는다.
+function reorderFutureLogRows(ids, monthKey, overRowKey, dropPosition) {
+  var all = buildFutureLogMonthRows(monthKey);
+  function rowId(row) { return row.kind === 'master' ? row.master.id : row.item.id; }
+  var movingSet = {};
+  ids.forEach(function (id) { movingSet[id] = true; });
+  var moving = all.filter(function (row) { return movingSet[rowId(row)]; });
+  var staying = all.filter(function (row) { return !movingSet[rowId(row)]; });
+  if (!moving.length) return false;
+
+  var insertAt = staying.length;
+  if (dropPosition === 'before' && overRowKey) {
+    var index = staying.findIndex(function (row) { return row.rowKey === overRowKey; });
+    if (index !== -1) insertAt = index;
+  }
+
+  var result = staying.slice(0, insertAt).concat(moving, staying.slice(insertAt));
+  var changed = false;
+  result.forEach(function (row, index) {
+    var entity = row.kind === 'master' ? row.master : row.item;
+    if (entity.order !== index) {
+      entity.order = index;
+      entity.updatedAt = Date.now();
+      changed = true;
+    }
+  });
+  return changed;
+}
+
+// 위 재정렬을 한 번의 Undo/Redo 단위(withHistoryTransaction)로 감싸고 저장·재렌더까지
+// 처리하는 호출 지점 -- 실제 drop 핸들러가 이 함수 하나만 부른다.
+function applyFutureLogRowReorder(ids, monthKey, overRowKey, dropPosition) {
+  var changed = false;
+  withHistoryTransaction(function () {
+    changed = reorderFutureLogRows(ids, monthKey, overRowKey, dropPosition);
+  });
+  if (changed) {
+    saveItems();
+    saveMonthlyItems();
+    renderFutureLogBody();
+  }
+  return changed;
+}
+
+// 5차 감사(혼합 행 순서 검증 -- 실제 재현으로 발견): reorderFutureLogRows는 항상
+// "행의 정체성"으로 매칭한다(master 행은 배치 개수와 무관하게 master.id, item/projection
+// 행은 그 item.id -- buildFutureLogMonthRows/rowId 참고). 그런데 배치가 1개인 master의
+// 핸들 payload는 kind:'placement'+그 배치 자신의 id를 쓴다(날짜 셀/카드 빈 영역 drop에서
+// "기존 확정 규칙대로" 그 배치를 일반 item처럼 옮기기 위한 의도적 설계, buildFutureLogRowDragPayload
+// 참고) -- 이 id를 그대로 재정렬에 넘기면 어떤 행과도 매칭되지 않아 아무 일도 일어나지
+// 않는 실제 버그가 있었다(재현: 배치 1개 master 행을 드래그해도 순서가 전혀 안 바뀜).
+// 재정렬 전용으로만 placement id를 그 placement가 딸린 master id로 되돌린다 -- 일반
+// dated item(sourceMonthlyItemId 없음)과 master 자신의 id(state.items에 없음)는 그대로 둔다.
+function resolveFutureLogReorderIds(p) {
+  var rawIds = p.kind === 'multi' ? p.ids : [p.id];
+  return rawIds.map(function (id) {
+    var it = findItemById(id);
+    return (it && it.sourceMonthlyItemId) ? it.sourceMonthlyItemId : id;
+  });
+}
+
 // Daily·Weekly의 일반 항목을 "이번 달 할 일"로 실제 이동한다.
 // 복사본을 만들지 않고 state.items에서 제거한 뒤
 // 같은 id를 유지한 monthlyItem으로 state.monthlyItems에 넣는다.
@@ -20787,6 +20858,24 @@ projectId: master.projectId || null,
         order: Number(proj.item.order) || 0
       });
     });
+    // 요구사항 1(4차 감사): master/projection을 각각 모아 이어붙이기만 하던 기존 순서를
+    // 실제 order 값 기준 하나의 목록으로 합친다 -- reorderFutureLogRows가 이 정렬된
+    // 목록을 그대로 드래그 앞/뒤 판정에 쓰므로, 여기서 정렬해 둬야 렌더/재정렬 양쪽이
+    // 같은 순서를 본다.
+    // 5차 감사(혼합 행 순서 검증): master.order와 item.order는 서로 다른 컬렉션이라
+    // 우연히 같은 값(둘 다 기본값 0 등)을 가질 수 있다 -- 이 동점을 Array.sort의 엔진별
+    // 안정 정렬(삽입 순서 유지)에 암묵적으로 기대지 않고, 각 행의 실제 엔티티가 이미
+    // 갖고 있는 결정적 필드(createdAt, 그래도 같으면 id 문자열 비교)로 명시적으로 끊는다
+    // -- 새 순서 저장 필드를 추가하지 않는다.
+    rows.sort(function (a, b) {
+      if (a.order !== b.order) return a.order - b.order;
+      var aEntity = a.kind === 'master' ? a.master : a.item;
+      var bEntity = b.kind === 'master' ? b.master : b.item;
+      var aCreated = Number(aEntity.createdAt) || 0;
+      var bCreated = Number(bEntity.createdAt) || 0;
+      if (aCreated !== bCreated) return aCreated - bCreated;
+      return aEntity.id < bEntity.id ? -1 : (aEntity.id > bEntity.id ? 1 : 0);
+    });
     return rows;
   }
 
@@ -21207,14 +21296,19 @@ projectId: master.projectId || null,
   // 이동 핸들(dragstart에서 stopPropagation해 상위 행 클릭으로 번지지 않게 하던 관례)을
   // handle뿐 아니라 배지에도 그대로 적용한다. dragTargetEl은 .is-dragging 표시를 줄
   // 대상(보통 행 전체)이다.
-  function wireFutureLogDragSource(handleEl, dragTargetEl, payload) {
+  // 요구사항 1(4차 감사): 행 핸들의 payload는 dragstart "시점"의 선택 상태를 반영해야
+  // 한다(렌더 시점에 미리 굳혀 두면 선택이 그 뒤 바뀌어도 낡은 payload로 드래그된다) --
+  // payloadOrFn이 함수면 dragstart에서 그때 호출해 얻는다. 배지(buildFutureLogDateBadgeEl)는
+  // 여전히 고정 객체를 넘기므로(선택과 무관하게 항상 그 배치 하나만) 그대로 동작한다.
+  function wireFutureLogDragSource(handleEl, dragTargetEl, payloadOrFn) {
     handleEl.draggable = true;
     handleEl.addEventListener('click', function (e) { e.stopPropagation(); });
     handleEl.addEventListener('dragstart', function (e) {
       e.stopPropagation();
+      var payload = typeof payloadOrFn === 'function' ? payloadOrFn() : payloadOrFn;
       if (e.dataTransfer) {
         e.dataTransfer.effectAllowed = 'move';
-        e.dataTransfer.setData('text/plain', payload.id);
+        e.dataTransfer.setData('text/plain', payload.id || (payload.ids && payload.ids[0]) || '');
       }
       futureLogDragPayload = payload;
       dragTargetEl.classList.add('is-dragging');
@@ -21248,6 +21342,77 @@ projectId: master.projectId || null,
     });
     if (dragPayload) wireFutureLogDragSource(badge, badge, dragPayload);
     return badge;
+  }
+
+  // 요구사항 2(3차 감사): 컬럼 정렬 통일 -- 날짜 칸은 항상 만들어서 폭을 고정시킨다
+  // (내용이 없어도 칸 자체는 남아, 뒤따르는 유형 기호/제목의 x좌표가 날짜 유무와
+  // 무관하게 모든 행에서 같다, CSS의 고정폭 .future-log-row-datecol이 담당).
+  // master 행은 여러 배치를 가질 수 있는데, 배지 하나로 요약해 버리면(기존 dateBadge
+  // 문자열) 어느 배치를 옮길지 구분할 수 없다 -- 배치가 2개 이상이면 배치마다 개별
+  // 배지를 이 칸 안에 만들어 "여러 placement 중 하나만" drag로 옮길 수 있게 한다.
+  function buildFutureLogRowDateColEl(row, opts) {
+    var col = document.createElement('span');
+    col.className = 'future-log-row-datecol';
+    if (row.kind === 'master' && row.placements.length > 1) {
+      row.placements.forEach(function (p) {
+        var text = (p.endDate && p.endDate !== p.date)
+          ? formatDotShortDate(p.date) + '–' + formatDotShortDate(p.endDate)
+          : formatDotShortDate(p.date);
+        var badge = buildFutureLogDateBadgeEl(text, p.date, opts.forPopover ? null : { kind: 'placement', id: p.id });
+        badge.classList.add('is-compact'); // 고정폭 칸 안에 여러 배지가 들어가므로 축소.
+        col.appendChild(badge);
+      });
+    } else if (row.dateBadge) {
+      // 요구사항 4: 클릭/드래그 대상 날짜는 이 카드(월)가 보여주는 구간(segStart, 월
+      // 경계로 잘렸을 수 있음)이 아니라 원본 항목의 실제 시작일을 쓴다.
+      var badgeTargetDate = row.kind === 'master' ? row.placements[0].date : row.item.date;
+      var badgePayload = opts.forPopover ? null : (row.kind === 'master'
+        ? { kind: 'placement', id: row.placements[0].id }
+        : { kind: 'item', id: row.item.id });
+      col.appendChild(buildFutureLogDateBadgeEl(row.dateBadge, badgeTargetDate, badgePayload));
+    }
+    return col;
+  }
+
+  // 요구사항 3(3차 감사): 모든 행이 같은 핸들 하나로 드래그된다 -- kind/제약은 행
+  // 상태에 따라 갈린다.
+  // - projection(일반 dated item): kind:'item' -- 날짜 칸 drop=날짜 이동, 카드 빈
+  //   영역 drop=대상 월의 같은 일(day-of-month, 말일 초과 시 자동 보정)로 이동(요구사항
+  //   4: 날짜 있는 행도 월 카드 간 이동 가능).
+  // - 배치 0개 master: kind:'master', allowPlacementCreate:true -- 날짜 칸 drop=첫
+  //   배치 생성, 카드 빈 영역 drop=월 이동(기존).
+  // - 배치 1개 master: kind:'placement'(그 배치 자신) -- "임의로 고르지 않음", 기존
+  //   placement를 그대로 옮긴다(중복 생성 금지, 요구사항).
+  // - 배치 2개 이상 master: kind:'master', allowPlacementCreate:false -- 행 핸들은
+  //   "전체 항목의 월 이동 용도로만" 쓴다(요구사항) -- 날짜 칸 drop은 무시하고(어느
+  //   배치인지 알 수 없으므로 새로 만들지도 않음), 카드 빈 영역 drop만 master의
+  //   monthKey를 옮긴다. 개별 배치 이동은 각 날짜 배지가 계속 담당한다.
+  // 요구사항 1(4차 감사): 이 행의 엔티티가 이미 2개 이상 선택된 무리(state.selectedItemIds)에
+  // 속해 있으면 -- 기존 onMonthlyInboxDragHandlePointerDown의 isPartOfExistingMultiSelection
+  // 판정과 같은 기준(선택 크기 >=2 + 클릭/드래그한 항목이 그 선택에 포함) -- 선택 전체를
+  // 하나의 'multi' payload로 옮긴다(기존 다중 이동 규칙, 새 다중 드래그 체계 아님).
+  // primaryId는 실제로 핸들을 잡은 행의 엔티티 -- getFutureLogDragPayloadMonthKey가 "이
+  // 드래그가 지금 속한 월"을 판정할 대표값으로 쓴다(다중 선택이 여러 달에 걸쳐 있어도
+  // 판정 기준은 하나여야 하므로).
+  function buildFutureLogRowDragPayload(row) {
+    var entityId = row.kind === 'master' ? row.master.id : row.item.id;
+    if (state.selectedItemIds.size >= 2 && state.selectedItemIds.has(entityId)) {
+      return { kind: 'multi', ids: Array.from(state.selectedItemIds), primaryId: entityId };
+    }
+    if (row.kind === 'master') {
+      if (row.placements.length === 0) {
+        return { kind: 'master', id: row.master.id, originMonthKey: row.master.monthKey, allowPlacementCreate: true, allowCardBodyMove: true };
+      }
+      if (row.placements.length === 1) {
+        return { kind: 'placement', id: row.placements[0].id };
+      }
+      // 요구사항 2(4차 감사): 배치 2개 이상인 master는 카드 빈 영역 drop(월 이동)을
+      // 더 이상 받지 않는다 -- placements 날짜는 그대로인데 master의 소속 월만 바뀌는
+      // 의미가 어긋나는 동작이라 제거(아래 wireFutureLogCardDragTarget에서 이 플래그로
+      // 가로막는다). 행 위/행 사이 재정렬과 날짜 칸 거부는 기존 그대로 유지.
+      return { kind: 'master', id: row.master.id, originMonthKey: row.master.monthKey, allowPlacementCreate: false, allowCardBodyMove: false };
+    }
+    return { kind: 'item', id: row.item.id };
   }
 
   // opts.forPopover면 오버플로우 팝오버 전용 행(role="menuitem", 드래그 핸들 없음)으로 만든다.
@@ -21289,23 +21454,17 @@ projectId: master.projectId || null,
       el.style.setProperty('--group-accent', group.color || 'var(--lav)');
     }
 
-    // 드래그 핸들(●●●) -- 배치가 하나도 없는 월 단위 마스터만, 팝오버 안에서는 제공하지
-    // 않는다. 카드 빈 영역 드롭(월 이동, 기존)과 날짜 칸 드롭(첫 배치 생성, 요구사항 4)
-    // 둘 다 이 핸들 하나로 시작한다 -- 실제 동작은 drop을 받는 쪽(카드 vs 날짜 칸)이
-    // 결정한다. 배치가 이미 있는 항목은 핸들이 아니라 날짜 배지 자체가 drag 소스다
-    // (아래 배지 섹션 -- "여러 placement 중 하나만" 옮기려면 배지 단위여야 하므로).
-    var draggableHandle = !opts.forPopover && row.kind === 'master' && row.placements.length === 0;
-    if (draggableHandle) {
+    // 요구사항 3(3차 감사): 컬럼 순서 = [핸들][체크박스][날짜][유형 기호][제목].
+    // 팝오버 안 행에는 핸들/체크박스를 두지 않는다(선택·drag 대상이 아니고 상세는
+    // 항상 즉시 열림) -- 날짜 칸/유형/제목은 팝오버에도 그대로 보여준다(정보 표시 목적).
+    if (!opts.forPopover) {
       var handle = buildDotHandle('future-log-row-drag');
-      wireFutureLogDragSource(handle, el, { kind: 'master', id: row.master.id, originMonthKey: row.master.monthKey });
+      wireFutureLogDragSource(handle, el, function () { return buildFutureLogRowDragPayload(row); });
       el.appendChild(handle);
+      el.appendChild(buildFutureLogCheckboxEl(row));
     }
 
-    // 체크박스 복원(2차 감사): Daily/Weekly/이달의 할 일과 같은 순서(핸들 -> 체크박스 ->
-    // 유형 기호 -> 제목)로 배치한다. task/schedule/memo 전부 표시(요구사항, 기존 앱
-    // 어디에도 유형별 숨김 규칙이 없음을 확인함). 팝오버 안 행에는 두지 않는다(선택
-    // 대상이 아니고, 상세는 항상 즉시 열림).
-    if (!opts.forPopover) el.appendChild(buildFutureLogCheckboxEl(row));
+    el.appendChild(buildFutureLogRowDateColEl(row, opts));
 
     var iconWrap = document.createElement('span');
     iconWrap.className = 'future-log-row-icon';
@@ -21321,27 +21480,6 @@ projectId: master.projectId || null,
     title.textContent = entity.text || '제목 없음';
     titleCell.appendChild(title);
     el.appendChild(titleCell);
-
-    // 요구사항 4: 날짜 배지 -- master 행은 여러 배치를 가질 수 있는데, 배지 하나로
-    // 요약해 버리면(기존 dateBadge 문자열) 어느 배치를 옮길지 구분할 수 없다. 배치가
-    // 2개 이상이면 배치마다 개별 배지를 만들어 "여러 placement 중 하나만" drag로
-    // 옮길 수 있게 한다(요구사항). 0/1개거나 projection이면 기존과 같은 배지 하나.
-    if (row.kind === 'master' && row.placements.length > 1) {
-      row.placements.forEach(function (p) {
-        var text = (p.endDate && p.endDate !== p.date)
-          ? formatDotShortDate(p.date) + '–' + formatDotShortDate(p.endDate)
-          : formatDotShortDate(p.date);
-        el.appendChild(buildFutureLogDateBadgeEl(text, p.date, opts.forPopover ? null : { kind: 'placement', id: p.id }));
-      });
-    } else if (row.dateBadge) {
-      // 요구사항 4: 클릭/드래그 대상 날짜는 이 카드(월)가 보여주는 구간(segStart, 월
-      // 경계로 잘렸을 수 있음)이 아니라 원본 항목의 실제 시작일을 쓴다.
-      var badgeTargetDate = row.kind === 'master' ? row.placements[0].date : row.item.date;
-      var badgePayload = opts.forPopover ? null : (row.kind === 'master'
-        ? { kind: 'placement', id: row.placements[0].id }
-        : { kind: 'item', id: row.item.id });
-      el.appendChild(buildFutureLogDateBadgeEl(row.dateBadge, badgeTargetDate, badgePayload));
-    }
 
     function openRowDetail() {
       // 팝오버 안의 행이면 Drawer를 열기 전에 먼저 닫는다(Monthly의 buildMonthlyLogOverflowRow와
@@ -21612,20 +21750,25 @@ projectId: master.projectId || null,
       el.addEventListener('click', function () {
         setFutureLogSelectedQuickDate(dateStr.slice(0, 7), dateStr);
       });
-      // 요구사항 4/5(2차 감사): 항목을 이 날짜 칸에 끌어다 놓으면 kind에 따라 첫 배치를
-      // 만들거나(master) 기존 항목/배치의 날짜를 옮긴다(item/placement). stopPropagation으로
-      // 카드 레벨 드롭(wireFutureLogCardDragTarget, 월 이동 전용)보다 이 칸을 우선시킨다
-      // (요구사항: 날짜 셀 drop이 카드 빈 영역 drop보다 우선). 네이티브 HTML5 DnD는
-      // drop 뒤에 별도의 click을 합성하지 않으므로(기존 카드 간 이동 드래그도 동일하게
-      // 별도 억제 플래그 없이 동작), "drop 직후 날짜 클릭 선택이 실행되지 않게" 요구사항은
-      // 추가 조치 없이 자동으로 만족된다.
+      // 요구사항 4/5(2차 감사, 3차 감사): 항목을 이 날짜 칸에 끌어다 놓으면 kind에 따라
+      // 첫 배치를 만들거나(master, allowPlacementCreate) 기존 항목/배치의 날짜를 옮긴다
+      // (item/placement). stopPropagation으로 카드 레벨 드롭(wireFutureLogCardDragTarget,
+      // 월 이동 전용)보다 이 칸을 우선시킨다(요구사항: 날짜 셀 drop이 카드 빈 영역 drop
+      // 보다 우선). 네이티브 HTML5 DnD는 drop 뒤에 별도의 click을 합성하지 않으므로,
+      // "drop 직후 날짜 클릭 선택이 실행되지 않게" 요구사항은 추가 조치 없이 만족된다.
+      // 3차 감사: 배치가 2개 이상인 master 행 핸들(allowPlacementCreate=false)은 "어느
+      // 배치인지 알 수 없어 임의로 고르지 않는다" 요구사항에 따라 날짜 칸 자체를
+      // 드롭 대상으로 받지 않는다(카드 빈 영역 월 이동만 허용, 아래 wireFutureLogCardDragTarget).
+      function isValidDateCellDrop(payload) {
+        return !!payload && (payload.kind !== 'master' || payload.allowPlacementCreate !== false);
+      }
       el.addEventListener('dragenter', function (e) {
-        if (!futureLogDragPayload) return;
+        if (!isValidDateCellDrop(futureLogDragPayload)) return;
         e.stopPropagation();
         el.classList.add('future-log-drop-target-date');
       });
       el.addEventListener('dragover', function (e) {
-        if (!futureLogDragPayload) return;
+        if (!isValidDateCellDrop(futureLogDragPayload)) return;
         e.preventDefault();
         e.stopPropagation();
         if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
@@ -21636,7 +21779,7 @@ projectId: master.projectId || null,
       });
       el.addEventListener('drop', function (e) {
         var payload = futureLogDragPayload;
-        if (!payload) return;
+        if (!isValidDateCellDrop(payload)) return;
         e.preventDefault();
         e.stopPropagation();
         el.classList.remove('future-log-drop-target-date');
@@ -21646,6 +21789,10 @@ projectId: master.projectId || null,
           // 이미 단일 undo 단위 + sourceMonthlyItemId로만 연결해 복제 없이 안전하다).
           var created = createPlacementsFromMonthlyItems([payload.id], dateStr);
           if (created.length) renderApp();
+        } else if (payload.kind === 'multi') {
+          // 요구사항 1(4차 감사): 다중 선택 묶음을 날짜 칸에 놓으면 기존 다중 이동 규칙을
+          // 그대로 따른다(각 항목 kind별 분기, 배치 2개 이상 master는 제외).
+          if (applyFutureLogMultiDateMove(payload.ids, dateStr)) renderApp();
         } else {
           // item/placement -> 기존 항목의 날짜만 옮긴다(복사 아님, 새 배치를 만들지
           // 않으므로 중복 생성 여지가 없다). applyMoveItemsToDate가 다일 항목의 기간
@@ -21815,15 +21962,129 @@ projectId: master.projectId || null,
   // 날짜 칸(buildFutureLogMiniCalDateCell)의 자체 dragover/drop이 stopPropagation으로
   // 이 카드 레벨 핸들러보다 먼저 처리되므로, 날짜 칸 위에 드롭하면 이 코드는 실행되지
   // 않는다(요구사항: 날짜 셀 drop이 카드 빈 영역 drop보다 우선).
+  // 요구사항 4(3차 감사): "날짜 있는 행도 월 카드 간 이동 가능" -- 카드 빈 영역 drop을
+  // master 전용에서 item/placement까지 확장한다. master는 원래 날짜가 없어 월(monthKey)
+  // 자체를 옮기지만, item/placement는 이미 날짜가 있으므로 "월"만으로는 목적지가
+  // 정해지지 않는다 -- 기존 날짜의 일(day)을 그대로 목적 월에 적용하고, 그 달에 없는
+  // 날짜(예: 31일 -> 30일까지인 달)면 그 달의 말일로 자동 보정한다(같은 월로의 드롭은
+  // 무의미하므로 무시). applyMoveItemsToDate가 다일 항목의 기간 길이를 그대로 보존한다.
+  function computeFutureLogCardBodyTargetDate(sourceDateStr, targetMonthKey) {
+    var day = Number(sourceDateStr.slice(8, 10));
+    var year = Number(targetMonthKey.slice(0, 4));
+    var month0 = Number(targetMonthKey.slice(5, 7)) - 1;
+    var lastDay = daysInMonthFromParts(year, month0);
+    return targetMonthKey + '-' + String(Math.min(day, lastDay)).padStart(2, '0');
+  }
+
+  // payload가 현재 속한 "월"을 돌려준다 -- master는 originMonthKey를 그대로 쓰고,
+  // item/placement는 실제 항목을 찾아 현재 date에서 월을 뽑는다(이동 중 다른 곳에서
+  // 날짜가 바뀌었을 수도 있으니 payload에 캐시해 두지 않고 매번 조회한다).
+  function getFutureLogDragPayloadMonthKey(p) {
+    if (p.kind === 'master') return p.originMonthKey;
+    // 요구사항 1(4차 감사): 다중 선택은 여러 달에 걸칠 수 있지만, "지금 이 카드가 이
+    // 드래그를 재정렬 대상으로 볼지 월 이동 대상으로 볼지" 판정은 하나의 기준이 필요하다
+    // -- 실제로 핸들을 잡은 행(primaryId)의 월을 대표값으로 쓴다.
+    var id = p.kind === 'multi' ? p.primaryId : p.id;
+    var master = findMonthlyItemById(id);
+    if (master) return master.monthKey;
+    var it = findItemById(id);
+    return it ? it.date.slice(0, 7) : null;
+  }
+
+  // 5차 감사(다중선택 이동 검증): 다중 선택 안의 id 하나를 실제로 어떤 "이동 단위"로
+  // 다룰지 -- 단일 drag의 buildFutureLogRowDragPayload와 완전히 같은 기준을 그대로
+  // 재사용한다(배치 0개 master=master 자신, 배치 1개 master="기존 확정 규칙대로"
+  // 그 배치 자신을 일반 item처럼 다룸, 배치 2개 이상=처리하지 않음 -- 임의 placement
+  // 선택·중복 생성 금지). 이전 버전은 배치 1개 master를 placements.length 체크에서
+  // 조용히 걸러내 아무 동작도 하지 않는 실제 버그가 있었다(단일 drag에서는 이미
+  // kind:'placement'로 정상 이동하는 것과 달라 불일치) -- 여기서 단일 drag와 같은
+  // 기준으로 통일해 바로잡는다.
+  function resolveFutureLogMultiMoveUnit(id) {
+    var master = findMonthlyItemById(id);
+    if (master) {
+      var placements = getMasterPlacements(id);
+      if (placements.length === 0) return { kind: 'master', id: id };
+      if (placements.length === 1) return { kind: 'item', id: placements[0].id };
+      return null;
+    }
+    if (findItemById(id)) return { kind: 'item', id: id };
+    return null;
+  }
+
+  // 요구사항 1(4차 감사): 다중 선택 행 묶음을 하나의 핸들로 끌어 날짜 칸에 놓을 때 쓰는
+  // helper -- applyFutureLogMultiCardBodyMove와 같은 이유로 기존 createPlacementsFromMonthlyItems/
+  // applyMoveItemsToDate를 그대로 호출하고 바깥을 한 번 더 withHistoryTransaction으로 감싸
+  // 하나의 Undo 단위로 합친다. 배치 2개 이상인 master는 대상에서 제외(임의 선택 금지).
+  function applyFutureLogMultiDateMove(ids, dateStr) {
+    var masterIds = [], itemIds = [];
+    ids.forEach(function (id) {
+      var unit = resolveFutureLogMultiMoveUnit(id);
+      if (!unit) return;
+      if (unit.kind === 'master') masterIds.push(unit.id);
+      else itemIds.push(unit.id);
+    });
+    if (!masterIds.length && !itemIds.length) return false;
+    var any = false;
+    withHistoryTransaction(function () {
+      if (masterIds.length) { var created = createPlacementsFromMonthlyItems(masterIds, dateStr); if (created.length) any = true; }
+      if (itemIds.length) { var touched = applyMoveItemsToDate(itemIds, dateStr); if (touched.length) any = true; }
+    });
+    return any;
+  }
+
+  // 요구사항 2(4차 감사): 카드 빈 영역 drop을 받아도 되는 payload인지 -- 배치 2개 이상인
+  // master(allowCardBodyMove:false)는 월 이동 자체를 처리하지 않는다(placements 날짜는
+  // 그대로인데 master의 소속 월만 바뀌면 의미가 어긋나고, 어느 배치를 옮긴 것인지도
+  // 불명확하기 때문). 그 외(master 0/1배치, item, multi)는 그대로 허용.
+  function isValidFutureLogCardBodyDrop(p) {
+    return !!p && (p.kind !== 'master' || p.allowCardBodyMove !== false);
+  }
+
+  // 요구사항 1(4차 감사): 다중 선택 행 묶음을 하나의 핸들로 끌어 다른 월 카드 빈 영역에
+  // 놓으면 기존 다중 이동 규칙(각 항목의 kind별 처리)을 그대로 따른다. 기존
+  // createPlacementsFromMonthlyItems/moveMonthlyItemsToMonth/applyMoveItemsToDate를 그대로
+  // 호출하되 바깥을 한 번 더 withHistoryTransaction으로 감싸 재진입(depth 카운트)으로
+  // 하나의 Undo 단위에 합친다(각 함수가 내부에서 다시 이 함수를 불러도 중첩 호출은 새
+  // 스냅샷을 만들지 않는다). 배치 2개 이상인 master는 요구사항 2와 같은 이유로 대상에서
+  // 제외한다(임의 placement 선택 금지).
+  function applyFutureLogMultiCardBodyMove(ids, targetMonthKey) {
+    var masterIds = [];
+    var entityMoves = [];
+    ids.forEach(function (id) {
+      var unit = resolveFutureLogMultiMoveUnit(id);
+      if (!unit) return;
+      if (unit.kind === 'master') {
+        var master = findMonthlyItemById(unit.id);
+        if (master.monthKey !== targetMonthKey) masterIds.push(unit.id);
+        return;
+      }
+      var it = findItemById(unit.id);
+      if (it) {
+        var targetDate = computeFutureLogCardBodyTargetDate(it.date, targetMonthKey);
+        if (targetDate !== it.date) entityMoves.push({ id: unit.id, targetDate: targetDate });
+      }
+    });
+    if (!masterIds.length && !entityMoves.length) return false;
+    var any = false;
+    withHistoryTransaction(function () {
+      if (masterIds.length) { moveMonthlyItemsToMonth(masterIds, targetMonthKey); any = true; }
+      entityMoves.forEach(function (m) {
+        var touched = applyMoveItemsToDate([m.id], m.targetDate);
+        if (touched.length) any = true;
+      });
+    });
+    return any;
+  }
+
   function wireFutureLogCardDragTarget(card) {
     card.addEventListener('dragenter', function () {
       var p = futureLogDragPayload;
-      if (!p || p.kind !== 'master' || card.dataset.monthKey === p.originMonthKey) return;
+      if (!isValidFutureLogCardBodyDrop(p) || card.dataset.monthKey === getFutureLogDragPayloadMonthKey(p)) return;
       card.classList.add('is-drop-target');
     });
     card.addEventListener('dragover', function (e) {
       var p = futureLogDragPayload;
-      if (!p || p.kind !== 'master' || card.dataset.monthKey === p.originMonthKey) return;
+      if (!isValidFutureLogCardBodyDrop(p) || card.dataset.monthKey === getFutureLogDragPayloadMonthKey(p)) return;
       e.preventDefault();
       if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
     });
@@ -21835,13 +22096,58 @@ projectId: master.projectId || null,
       card.classList.remove('is-drop-target');
       var p = futureLogDragPayload;
       var targetMonthKey = card.dataset.monthKey;
-      if (!p || p.kind !== 'master' || targetMonthKey === p.originMonthKey) return;
+      if (!isValidFutureLogCardBodyDrop(p) || targetMonthKey === getFutureLogDragPayloadMonthKey(p)) return;
       e.preventDefault();
-      var masterId = p.id;
       futureLogDragPayload = null;
-      moveMonthlyItemsToMonth([masterId], targetMonthKey);
-      renderFutureLogBody();
+      if (p.kind === 'master') {
+        moveMonthlyItemsToMonth([p.id], targetMonthKey);
+        renderFutureLogBody();
+      } else if (p.kind === 'multi') {
+        if (applyFutureLogMultiCardBodyMove(p.ids, targetMonthKey)) renderFutureLogBody();
+      } else {
+        var it = findItemById(p.id);
+        if (!it) return;
+        var targetDate = computeFutureLogCardBodyTargetDate(it.date, targetMonthKey);
+        var touched = applyMoveItemsToDate([p.id], targetDate);
+        if (touched && touched.length) renderApp();
+      }
     });
+  }
+
+  // 요구사항 1(4차 감사): 목록 안에서 "행 위/행 사이"에 놓였을 때 어느 행 앞에 끼워
+  // 넣을지 계산한다 -- 기존 Daily/Weekly drag의 마우스 Y좌표 vs 각 행 bounding rect
+  // 중간점 비교 기법(dragState의 insertBeforeEl 계산)을 그대로 옮겨 쓴다.
+  // 5차 감사(다중선택 재정렬 실제 검증 -- 재현으로 발견): 드래그 중인 행 자신(.is-dragging)
+  // 만 후보에서 빼면, 같이 옮겨지는 "나머지 선택된 행들"이 여전히 후보로 남아 그 중
+  // 하나가 목표 행으로 계산될 수 있다 -- reorderFutureLogRows는 moving을 staying에서
+  // 제외하므로 그 목표 행을 staying에서 못 찾아 조용히 "끝"으로 밀려나는 실제 버그가
+  // 있었다(재현: 3종 혼합 다중 선택을 맨 위로 끌었는데 실제로는 맨 아래로 감).
+  // movingIds(이 드래그로 함께 옮겨질 모든 행의 식별자)를 전부 후보에서 빼 항상
+  // staying 안의 행만 목표가 되게 한다. +N 오버플로우 버튼/빈 목록 안내문은
+  // data-item-id가 없어 자연히 제외된다.
+  function computeFutureLogRowInsertTarget(rowsEl, clientY, movingIds) {
+    var excludeSet = {};
+    (movingIds || []).forEach(function (id) { excludeSet[id] = true; });
+    var candidates = Array.prototype.filter.call(rowsEl.querySelectorAll('.future-log-row'), function (el) {
+      return el.dataset.itemId && !excludeSet[el.dataset.itemId];
+    });
+    for (var i = 0; i < candidates.length; i++) {
+      var r = candidates[i].getBoundingClientRect();
+      if (clientY < r.top + r.height / 2) {
+        return { overRowKey: candidates[i].dataset.rowKey, dropPosition: 'before', el: candidates[i] };
+      }
+    }
+    return { overRowKey: null, dropPosition: 'end', el: null };
+  }
+
+  // 재정렬 drag 중 "여기 앞에 끼워진다"를 보여주는 인디케이터 -- 기존 is-drop-target/
+  // future-log-drop-target-date와 같은 관례(드래그 중에만 클래스 토글, dragend/drop에서
+  // 정리)를 그대로 따른다.
+  function setFutureLogReorderIndicator(rowsEl, targetEl) {
+    Array.prototype.forEach.call(rowsEl.querySelectorAll('.future-log-row-drop-before'), function (el) {
+      el.classList.remove('future-log-row-drop-before');
+    });
+    if (targetEl) targetEl.classList.add('future-log-row-drop-before');
   }
 
   // 요구사항 4: 월 카드 제목 옆의 작은 달력 이동 버튼. 이 카드에 현재 선택된 날짜가
@@ -21863,19 +22169,23 @@ projectId: master.projectId || null,
     return btn;
   }
 
-  // 요구사항 3: 넓은 카드는 월 제목과 quick-add를 같은 상단 행에, 좁은 카드는 제목
-  // 아래에 quick-add를 둔다. 제목(.future-log-card-header)과 quick-add(.future-log-quick)를
-  // 같은 flex 행(.future-log-card-header-row)의 형제로 두고 flex-wrap만 맡긴다 -- 실제
-  // 줄바꿈 기준은 이 카드 컨테이너 자신의 폭(@container future-log-card, 미니 캘린더
-  // 좌우/상하 전환과 같은 640px 기준)이라 별도 매직 넘버를 새로 만들지 않는다.
+  // 요구사항 1(3차 감사): 넓은 카드는 왼쪽(제목+Calendar 이동 버튼+미니 달력)/오른쪽
+  // (quick-add+목록)으로 나누고, quick-add는 오른쪽 영역 "상단"에 둔다 -- 카드 전체
+  // 헤더나 제목 바로 옆이 아니다(첨부 이미지에서 X 표시된 배치). 좁은 카드에서는
+  // 왼쪽 블록(제목+달력) 전체가 위, 오른쪽 블록(quick-add+목록) 전체가 아래로 쌓인다
+  // (기존 640px 컨테이너 쿼리 그대로 재사용, 임의 숫자 새로 만들지 않음).
   function buildFutureLogCardShellEl(monthKey) {
     var card = document.createElement('div');
     card.className = 'future-log-card';
     card.dataset.monthKey = monthKey;
 
-    var headerRow = document.createElement('div');
-    headerRow.className = 'future-log-card-header-row';
-    card.appendChild(headerRow);
+    var main = document.createElement('div');
+    main.className = 'future-log-block-main';
+    card.appendChild(main);
+
+    var left = document.createElement('div');
+    left.className = 'future-log-block-left';
+    main.appendChild(left);
 
     var header = document.createElement('div');
     header.className = 'future-log-card-header';
@@ -21883,26 +22193,20 @@ projectId: master.projectId || null,
     titleText.className = 'future-log-card-header-title';
     header.appendChild(titleText);
     header.appendChild(buildFutureLogCalendarJumpBtn(monthKey));
-    headerRow.appendChild(header);
+    left.appendChild(header);
 
-    headerRow.appendChild(buildFutureLogQuickAddEl(monthKey));
+    left.appendChild(buildFutureLogMiniCalEl(monthKey));
 
-    card.appendChild(buildFutureLogQuickDateIndicatorEl());
+    var right = document.createElement('div');
+    right.className = 'future-log-block-right';
+    main.appendChild(right);
 
-    // 3단계: 헤더 아래를 미니 캘린더(왼쪽) + 항목 목록(오른쪽)으로 나눈다.
-    var main = document.createElement('div');
-    main.className = 'future-log-block-main';
-    card.appendChild(main);
-
-    main.appendChild(buildFutureLogMiniCalEl(monthKey));
-
-    var list = document.createElement('div');
-    list.className = 'future-log-block-list';
-    main.appendChild(list);
+    right.appendChild(buildFutureLogQuickAddEl(monthKey));
+    right.appendChild(buildFutureLogQuickDateIndicatorEl());
 
     var rows = document.createElement('div');
     rows.className = 'future-log-card-rows';
-    list.appendChild(rows);
+    right.appendChild(rows);
     // 요구사항 3(2차 감사): 빈 목록 영역 drag-select(기존 marquee 재사용)와, marquee가
     // 아닌 순수 클릭이 빈 영역에 떨어졌을 때의 선택 해제를 이 컨테이너 하나에 배선한다.
     // 실제 Playwright 검증에서 발견된 버그: marquee 드래그가 끝나면 pointerup 뒤에
@@ -21920,6 +22224,42 @@ projectId: master.projectId || null,
       }
       if (e.target.closest('.future-log-row')) return;
       clearItemSelection();
+    });
+
+    // 요구사항 1(4차 감사): 같은 핸들이라도 drop 위치에 따라 동작이 갈린다 -- payload가
+    // "지금 속한 월"(getFutureLogDragPayloadMonthKey)이 이 카드의 monthKey와 같을 때만
+    // 이 목록 컨테이너가 이벤트를 가로채(stopPropagation) 순서 재정렬로 처리한다. 다른
+    // 월이면 아무 것도 하지 않고 그대로 이벤트를 위로 흘려보내 wireFutureLogCardDragTarget
+    // (카드 레벨, 월 이동 전용)이 대신 처리하게 둔다 -- 같은 핸들을 "행 위/행 사이 drop
+    // (순서 재정렬)"과 "다른 월 카드 빈 영역 drop(월 이동)"으로 구분하는 지점.
+    rows.addEventListener('dragenter', function (e) {
+      var p = futureLogDragPayload;
+      if (!p || getFutureLogDragPayloadMonthKey(p) !== monthKey) return;
+      e.stopPropagation();
+    });
+    rows.addEventListener('dragover', function (e) {
+      var p = futureLogDragPayload;
+      if (!p || getFutureLogDragPayloadMonthKey(p) !== monthKey) return;
+      e.preventDefault();
+      e.stopPropagation();
+      if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+      var target = computeFutureLogRowInsertTarget(rows, e.clientY, resolveFutureLogReorderIds(p));
+      setFutureLogReorderIndicator(rows, target.el);
+    });
+    rows.addEventListener('dragleave', function (e) {
+      if (e.relatedTarget && rows.contains(e.relatedTarget)) return;
+      setFutureLogReorderIndicator(rows, null);
+    });
+    rows.addEventListener('drop', function (e) {
+      var p = futureLogDragPayload;
+      if (!p || getFutureLogDragPayloadMonthKey(p) !== monthKey) return;
+      e.preventDefault();
+      e.stopPropagation();
+      setFutureLogReorderIndicator(rows, null);
+      futureLogDragPayload = null;
+      var ids = resolveFutureLogReorderIds(p);
+      var target = computeFutureLogRowInsertTarget(rows, e.clientY, ids);
+      applyFutureLogRowReorder(ids, monthKey, target.overRowKey, target.dropPosition);
     });
 
     wireFutureLogCardDragTarget(card);
