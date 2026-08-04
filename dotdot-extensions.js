@@ -383,7 +383,41 @@
   }
   function fullBackupPayload(){var storage={};for(var i=0;i<localStorage.length;i++){var key=localStorage.key(i);if(key&&key.indexOf(P)===0)storage[key]=localStorage.getItem(key);}return{format:'dotdotplanner-full-backup-v1',exportedAt:new Date().toISOString(),storage:storage};}
   function downloadJson(payload,name){var blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(url);},1000);}
-  function renderSettings(){var theme=localStorage.getItem(P+'theme')||'light',days=localStorage.getItem(P+'weeklyVisibleDays')||'7',week=localStorage.getItem(P+'calendarWeekStartsOn')||'0',def=localStorage.getItem(P+'defaultInputMode')||'task',auto=localStorage.getItem(P+'autoRolloverEnabled')!=='false';return head('설정','실제 앱에 연결되는 로컬 설정과 데이터 관리','가져오기는 현재 데이터를 타임스탬프 백업 키에 먼저 보존한 뒤 교체합니다.')+'<div class="dotdot-ext-card"><h3>표시·입력</h3><div class="dotdot-ext-field"><span>테마</span><select class="dotdot-ext-select" id="ext-theme"><option value="light" '+(theme==='light'?'selected':'')+'>라이트</option><option value="dark" '+(theme==='dark'?'selected':'')+'>다크</option></select></div><div class="dotdot-ext-field"><span>Weekly 표시 일수</span><select class="dotdot-ext-select" id="ext-week-days">'+Array.from({length:14},function(_,i){var n=i+1;return '<option value="'+n+'" '+(String(n)===days?'selected':'')+'>'+n+'일</option>';}).join('')+'</select></div><div class="dotdot-ext-field"><span>주 시작 요일</span><select class="dotdot-ext-select" id="ext-week-start"><option value="0" '+(week==='0'?'selected':'')+'>일요일</option><option value="1" '+(week==='1'?'selected':'')+'>월요일</option></select></div><div class="dotdot-ext-field"><span>기본 빠른 입력 유형</span><select class="dotdot-ext-select" id="ext-default-type"><option value="task" '+(def==='task'?'selected':'')+'>할 일</option><option value="schedule" '+(def==='schedule'?'selected':'')+'>일정</option><option value="memo" '+(def==='memo'?'selected':'')+'>메모</option></select></div><div class="dotdot-ext-field"><span>과거 미완료 자동 이월</span><label><input type="checkbox" id="ext-auto-rollover" '+(auto?'checked':'')+'> 사용</label></div></div><div class="dotdot-ext-card"><h3>데이터</h3><div class="dotdot-ext-row"><button class="dotdot-ext-btn" data-ext="export-app">앱 JSON 내보내기</button><button class="dotdot-ext-btn" data-ext="export-full">첨부 외 전체 설정 백업</button><button class="dotdot-ext-btn" data-ext="import-full">백업 가져오기·교체</button><button class="dotdot-ext-btn danger" data-ext="reset-all">모든 로컬 데이터 초기화</button></div><p class="dotdot-ext-muted">IndexedDB 첨부 바이너리는 아직 이 JSON에 포함되지 않습니다.</p></div>';}
+  // 7차 감사(데이터 관리 UX 정리): 기존에는 "앱 JSON 내보내기"(exportAllDataAsJson --
+  // items/monthlyItems/groups/projects만, 설정 없음, data.storage 형식이 아니라
+  // "백업 가져오기·교체"로 되돌릴 수도 없는 별도 형식)와 "첨부 외 전체 설정 백업"
+  // (fullBackupPayload -- 이 접두사의 모든 localStorage 키를 그대로 담아 실제로
+  // "가져오기"와 짝이 맞는 유일한 복원 가능 형식)이 따로 있었다. 실제로 복원 가능한
+  // 쪽은 fullBackupPayload 하나뿐이라 그것만 "백업 파일 만들기"로 남기고, 복원되지도
+  // 않으면서 데이터 일부만 담는 앱 JSON 내보내기는 중복 버튼으로 판단해 제거한다
+  // (요구사항: 실제 차이 없는데 중복 유지 금지 -- 여기서는 "복원 가능한 형식이
+  // 하나뿐"이라는 실제 차이가 있으므로, 더 완전하고 실제로 쓰이는 쪽만 남긴다).
+  // 최종 감사: 단일 "기본 빠른 입력 유형"을 오늘/달력/퓨처로그 3개로 분리한다(요구사항).
+  // 현재값은 localStorage가 아니라 B.state(app.js와 실시간 공유되는 참조)에서 읽어
+  // 항상 실제 적용 중인 값을 보여준다. 변경은 B.setScreenDefaultInputMode로 위임 --
+  // 그쪽이 상태 갱신+저장+새로고침 없는 즉시 반영을 전부 처리하므로 여기서는
+  // location.reload()를 부르지 않는다(요구사항).
+  function inputModeSelectOptions(current){
+    return ['task','schedule','memo'].map(function(v){
+      var label=v==='task'?'할 일':(v==='schedule'?'일정':'메모');
+      return '<option value="'+v+'" '+(current===v?'selected':'')+'>'+label+'</option>';
+    }).join('');
+  }
+  function inputModeField(id,label,current){
+    return '<div class="dotdot-ext-field"><span>'+esc(label)+'</span><select class="dotdot-ext-select" id="'+id+'">'+inputModeSelectOptions(current)+'</select></div>';
+  }
+  function renderSettings(){
+    var todayMode=S.todayDefaultInputMode||'task',
+        calendarMode=S.calendarDefaultInputMode||'task',
+        futureLogMode=S.futureLogDefaultInputMode||'schedule',
+        auto=localStorage.getItem(P+'autoRolloverEnabled')!=='false';
+    return head('설정','실제 앱에 연결되는 로컬 설정과 데이터 관리','복원 전 현재 정보는 타임스탬프 백업 키로 한 번 더 보존합니다.')
+      +'<div class="dotdot-ext-card"><h3>표시·입력</h3>'
+      +inputModeField('ext-default-type-today','오늘 기본 빠른 입력 유형',todayMode)
+      +inputModeField('ext-default-type-calendar','달력 기본 빠른 입력 유형',calendarMode)
+      +inputModeField('ext-default-type-futurelog','퓨처로그 기본 빠른 입력 유형',futureLogMode)
+      +'<div class="dotdot-ext-field"><span>과거 미완료 자동 이월</span><label><input type="checkbox" id="ext-auto-rollover" '+(auto?'checked':'')+'> 사용</label></div></div><div class="dotdot-ext-card"><h3>데이터 관리</h3><div class="dotdot-ext-row"><button class="dotdot-ext-btn" data-ext="export-full">백업 파일 만들기</button><button class="dotdot-ext-btn" data-ext="import-full">백업에서 복원</button><button class="dotdot-ext-btn danger" data-ext="reset-all">모든 정보 초기화</button></div><p class="dotdot-ext-muted"><b>백업 파일 만들기</b> — 할 일, 일정, 메모, 완료 기록, 휴지통과 화면·입력 설정을 파일로 저장합니다. 첨부 파일은 포함되지 않습니다.</p><p class="dotdot-ext-muted"><b>백업에서 복원</b> — 현재 항목과 설정을 백업 파일의 내용으로 교체합니다. 첨부 파일은 변경되지 않습니다.</p><p class="dotdot-ext-muted"><b>모든 정보 초기화</b> — 할 일·일정·메모, 완료 기록, 휴지통, 첨부 파일, 화면·입력 설정을 전부 삭제합니다. 되돌릴 수 없습니다.</p></div>';
+  }
   function getProfile(){var p=readJSON(P+'localProfile',null);return p&&p.name?p:null;}
   function initials(name){var n=String(name||'').trim();return !n?'＋':(/[가-힣]/.test(n)?n.slice(-2):n.slice(0,2).toUpperCase());}
   // 요구사항: 브라우저 기본 title 툴팁 대신 앱 공용 커스텀 툴팁(app.js의
@@ -395,6 +429,22 @@
   var sideRenderers={routine:renderRoutine,search:renderSearch,stats:renderStats,settings:renderSettings,account:renderAccount};
   function renderSideView(){if(activeSideView&&sideRenderers[activeSideView])sideOverlay.innerHTML=sideRenderers[activeSideView]();}
   function focusBack(id,value){var el=document.getElementById(id);if(!el)return;el.value=value;el.focus();try{el.setSelectionRange(value.length,value.length);}catch(e){}}
+  function deleteAttachmentDatabase() {
+    if (!window.indexedDB || !B.constants.ATTACHMENT_DB_NAME) return Promise.resolve();
+    var closePromise = B.closeAttachmentDb ? B.closeAttachmentDb() : Promise.resolve();
+    return Promise.resolve(closePromise).then(function () {
+      return new Promise(function (resolve, reject) {
+        var settled = false;
+        var request;
+        try { request = indexedDB.deleteDatabase(B.constants.ATTACHMENT_DB_NAME); }
+        catch (err) { reject(err); return; }
+        request.onsuccess = function () { if (!settled) { settled = true; resolve(); } };
+        request.onerror = function () { if (!settled) { settled = true; reject(request.error || new Error('첨부 파일 저장소 삭제 실패')); } };
+        request.onblocked = function () { if (!settled) { settled = true; reject(new Error('첨부 파일 저장소가 다른 창에서 사용 중입니다. 다른 DotDotPlanner 창을 닫고 다시 시도하세요.')); } };
+      });
+    });
+  }
+
   function wireSideEvents(){
     sideOverlay.addEventListener('click',function(e){var el=e.target.closest('[data-ext]');if(!el)return;var action=el.dataset.ext;
       if(action==='routine-add'){
@@ -413,10 +463,21 @@
       if(action==='routine-toggle'||action==='routine-delete'){var rs=getRoutines(),id=el.dataset.id;if(action==='routine-delete')rs=rs.filter(function(r){return r.id!==id;});else rs.forEach(function(r){if(r.id===id)r.active=!r.active;});saveRoutines(rs);renderSideView();return;}
       if(action==='routine-materialize'){materializeDueRoutines(B.formatLocalDate(new Date()),true,false);return;}
       if(action==='search-open'){openInToday(el.dataset.itemId, el.dataset.date);return;}
-      if(action==='export-app'){B.exportAllDataAsJson();return;}
       if(action==='export-full'){downloadJson(fullBackupPayload(),'dotdotplanner-full-backup-'+B.formatLocalDate(new Date())+'.json');return;}
       if(action==='import-full'){var input=document.createElement('input');input.type='file';input.accept='application/json';input.onchange=function(){var file=input.files&&input.files[0];if(!file)return;var reader=new FileReader();reader.onload=function(){try{var data=JSON.parse(reader.result);if(!data||data.format!=='dotdotplanner-full-backup-v1'||!data.storage)throw new Error('지원하지 않는 형식');if(!confirm('현재 로컬 데이터를 백업한 뒤 가져온 데이터로 교체할까요?'))return;var backup=fullBackupPayload();localStorage.setItem(P+'import_backup_'+Date.now(),JSON.stringify(backup));storageKeys().filter(function(k){return k.indexOf(P)===0&&!k.startsWith(P+'import_backup_');}).forEach(function(k){localStorage.removeItem(k);});Object.keys(data.storage).forEach(function(k){if(k.indexOf(P)===0)localStorage.setItem(k,data.storage[k]);});location.reload();}catch(err){alert('가져오기에 실패했습니다: '+err.message);}};reader.readAsText(file);};input.click();return;}
-      if(action==='reset-all'){if(!confirm('모든 DotDotPlanner 로컬 데이터를 삭제할까요?'))return;if(!confirm('복구하려면 먼저 백업해야 합니다. 정말 삭제할까요?'))return;storageKeys().filter(function(k){return k.indexOf(P)===0;}).forEach(function(k){localStorage.removeItem(k);});location.reload();return;}
+      if(action==='reset-all'){
+        if(el.disabled)return;
+        if(!confirm('모든 정보를 초기화할까요?\n\n할 일·일정·메모, 완료 기록, 휴지통, 첨부 파일, 화면·입력 설정을 전부 삭제합니다.\n이 작업은 되돌릴 수 없습니다.'))return;
+        el.disabled=true;
+        deleteAttachmentDatabase().then(function(){
+          storageKeys().filter(function(k){return k.indexOf(P)===0;}).forEach(function(k){localStorage.removeItem(k);});
+          location.reload();
+        }).catch(function(err){
+          el.disabled=false;
+          alert('모든 정보 초기화에 실패했습니다: '+(err&&err.message?err.message:String(err)));
+        });
+        return;
+      }
       if(action==='profile-save'){var name=(document.getElementById('ext-profile-name').value||'').trim();if(!name)return;writeJSON(P+'localProfile',{name:name,updatedAt:new Date().toISOString()},'preferences');paintProfile();renderSideView();return;}
       if(action==='profile-clear'){localStorage.removeItem(P+'localProfile');paintProfile();renderSideView();return;}
     });
@@ -436,12 +497,17 @@
       if(id==='ext-theme'){if(safeSetRaw(P+'theme',e.target.value,'preferences'))document.documentElement.dataset.theme=e.target.value;}
       if(id==='ext-week-days'){if(safeSetRaw(P+'weeklyVisibleDays',e.target.value,'preferences'))location.reload();}
       if(id==='ext-week-start'){if(safeSetRaw(P+'calendarWeekStartsOn',e.target.value,'preferences'))location.reload();}
-      if(id==='ext-default-type'){if(safeSetRaw(P+'defaultInputMode',e.target.value,'preferences'))location.reload();}
+      // 최종 감사: 화면별 기본 빠른 입력 유형 -- B.setScreenDefaultInputMode가 상태
+      // 갱신·저장·(그 화면이 열려 있으면) 즉시 반영을 전부 처리하므로 여기서는
+      // location.reload()를 부르지 않는다(요구사항: reload 없이 즉시 반영).
+      if(id==='ext-default-type-today'&&B.setScreenDefaultInputMode){B.setScreenDefaultInputMode('today',e.target.value);}
+      if(id==='ext-default-type-calendar'&&B.setScreenDefaultInputMode){B.setScreenDefaultInputMode('calendar',e.target.value);}
+      if(id==='ext-default-type-futurelog'&&B.setScreenDefaultInputMode){B.setScreenDefaultInputMode('futureLog',e.target.value);}
       if(id==='ext-auto-rollover'){if(safeSetRaw(P+'autoRolloverEnabled',String(e.target.checked),'preferences'))location.reload();}
       if(e.target.dataset.ext==='routine-auto'){var routines=getRoutines(),rid=e.target.dataset.id;routines.forEach(function(r){if(r.id===rid)r.autoCreate=e.target.checked;});saveRoutines(routines);}
     });
   }
-  function bootSideViews(){sideOverlay=document.createElement('div');sideOverlay.className='dotdot-ext-overlay';sideOverlay.id='dotdot-ext-overlay';document.body.appendChild(sideOverlay);wireSideEvents();['routine','search','stats','settings'].forEach(function(view){var el=document.querySelector('.side-item.'+view);if(!el)return;el.setAttribute('role','button');el.tabIndex=0;el.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();openSideView(view);},true);el.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '){e.preventDefault();openSideView(view);}});});['today','calendar','trash'].forEach(function(view){var el=document.querySelector('.side-item.'+view);if(el)el.addEventListener('click',closeSideView,true);});var profile=document.querySelector('.profile');paintProfile();if(profile){profile.setAttribute('role','button');profile.tabIndex=0;profile.addEventListener('click',function(){openSideView('account');});profile.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '){e.preventDefault();openSideView('account');}});}window.addEventListener('resize',function(){if(activeSideView)placeSideOverlay();});
+  function bootSideViews(){sideOverlay=document.createElement('div');sideOverlay.className='dotdot-ext-overlay';sideOverlay.id='dotdot-ext-overlay';document.body.appendChild(sideOverlay);wireSideEvents();['routine','search','stats','settings'].forEach(function(view){var el=document.querySelector('.side-item.'+view);if(!el)return;el.setAttribute('role','button');el.tabIndex=0;el.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();openSideView(view);},true);el.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '){e.preventDefault();openSideView(view);}});});['today','calendar','future-log','trash'].forEach(function(view){var el=document.querySelector('.side-item.'+view);if(!el)return;el.addEventListener('click',closeSideView,true);el.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '){closeSideView();}});});var profile=document.querySelector('.profile');paintProfile();if(profile){profile.setAttribute('role','button');profile.tabIndex=0;profile.addEventListener('click',function(){openSideView('account');});profile.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '){e.preventDefault();openSideView('account');}});}window.addEventListener('resize',function(){if(activeSideView)placeSideOverlay();});
     // 단축키는 sideOverlay 시스템 밖에서 독립적으로 뜨는 왼쪽 패널이라 여기서 따로 만든다.
     buildShortcutPanel();
     var shortcutBtn=document.querySelector('.side-item.shortcut');

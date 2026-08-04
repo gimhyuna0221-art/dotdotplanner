@@ -209,6 +209,8 @@
   .side-item{position:relative;width:76px;height:68px;border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-size:14px;font-weight:700;color:var(--icon-strong);flex:none;cursor:pointer}
   .side-item svg{width:25px;height:25px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
   .side-item.active{background:var(--lav-soft);color:var(--lav);font-weight:700}
+  .side-item:focus{outline:none}
+  .side-item:focus-visible{outline:2px solid var(--lav);outline-offset:2px}
   /* 8: 휴지통에 항목이 있을 때만 보이는 작은 개수 표시 — 아이콘 위 모서리에 겹쳐 배치해
      사이드바 폭(76px)에는 전혀 영향을 주지 않는다. */
   .trash-badge{position:absolute;top:6px;right:10px;min-width:15px;height:15px;padding:0 3px;border-radius:999px;background:var(--sun);color:#fff;font-size:9px;font-weight:800;line-height:15px;text-align:center;box-sizing:border-box}
@@ -1582,11 +1584,23 @@ body.desc-block-dnd-active .desc-block-add{
 /* Future Log 3단계: 화면 골격과 헤더. 레이아웃(왼쪽 사이드바 112px를 제외한 나머지
    전체를 채우는 절대배치, 헤더 padding·구분선)은 .monthly-log-view/.monthly-log-header와
    같은 값을 그대로 재사용해 화면 전환 시 크기·위치가 흔들리지 않게 한다. */
-.future-log-view{position:absolute;left:112px;top:0;right:0;bottom:0;background:var(--bg-card);z-index:1;display:flex;flex-direction:column;overflow:hidden}
+/* 미니 달력 크기 조절(Ctrl+휠, 80~140%, 5% 단위) -- 모든 월 카드가 이 값 하나를
+   공유한다(JS가 카드마다 따로 설정하지 않고 여기 한 번만 설정 -- 카드별 목록 시작
+   위치가 항상 같은 이유). transform:scale이 아니라 이 변수를 실제 셀 폭/폰트/도트
+   크기 계산에 섞어 레이아웃 자체가 커지게 한다(아래 .future-log-mini-cal-* 규칙). */
+.future-log-view{--fl-scale:1;position:absolute;left:112px;top:0;right:0;bottom:0;background:var(--bg-card);z-index:1;display:flex;flex-direction:column;overflow:hidden}
 .future-log-view[hidden]{display:none}
 .future-log-header{flex:0 0 auto;padding:20px 32px 20px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:20px;flex-wrap:wrap}
 .future-log-title{font-size:16px;font-weight:800;color:var(--ink);margin:0}
-.future-log-period-nav{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;color:var(--muted)}
+/* 최종 감사(320px 내부 overflow 실제 원인): .future-log-header는 flex-wrap:wrap이라
+   title/period-nav/period-mode 세 자식은 서로 다른 줄로 떨어질 수 있지만, 그 중
+   하나인 .future-log-period-nav 자신은 wrap이 없어 prev버튼+기간 라벨+next버튼+
+   "이번 달" 버튼 4개가 한 줄을 강제로 요구했다(실측 최소 폭 ~173px). 320px
+   화면에서는 헤더 콘텐츠 폭이 패딩(32px×2)을 뺀 약 118px뿐이라 이 한 줄이
+   #future-log-view 전체를 오른쪽으로 밀어 가로 overflow를 냈다(#future-log-view
+   scrollWidth 205 vs clientWidth 182, 실측 23px -- 콘텐츠를 자르거나 body/document에
+   overflow:hidden을 씌우는 대신, 이 줄 자신도 필요하면 두 줄로 접히게 한다). */
+.future-log-period-nav{display:flex;align-items:center;flex-wrap:wrap;row-gap:4px;gap:8px;font-size:13px;font-weight:700;color:var(--muted)}
 .future-log-period-label{font-size:14px;font-weight:800;color:var(--ink);min-width:0}
 .future-log-nav-btn{border:0;background:none;padding:0;cursor:pointer;color:var(--icon-muted);width:26px;height:26px;border-radius:6px;display:grid;place-items:center;font-size:18px;line-height:1}
 .future-log-nav-btn:hover{background:var(--bg-hover)}
@@ -1685,10 +1699,13 @@ body.desc-block-dnd-active .desc-block-add{
 .monthly-quick-mode:disabled{opacity:.35;cursor:default;pointer-events:none}
 /* 요구사항 1(3차 감사): 월 블록을 왼쪽(제목+Calendar 이동 버튼+미니 달력)/오른쪽
    (quick-add+목록)으로 나눈다. 오른쪽 영역의 왼쪽 테두리가 첨부 이미지의 검은 세로선
-   역할을 한다(기존 --line 색 재사용, 새 색 도입 없음). 왼쪽은 달력이 자연스러운
-   고정 폭(154px, 기존 미니 캘린더 폭 그대로)만 차지하고 나머지는 전부 오른쪽이 가져간다. */
+   역할을 한다(기존 --line 색 재사용, 새 색 도입 없음). 왼쪽은 달력 폭(기본 154px)만
+   차지하고 나머지는 전부 오른쪽이 가져간다 -- --fl-scale로 커지되(달력·목록 실제
+   레이아웃 폭이 함께 바뀌어야 한다는 요구사항), 카드 자신의 실제 폭(container query,
+   .future-log-card가 container-type:inline-size)의 46%를 넘지 않게 자동 상한을 둬
+   좁은 카드에서 오른쪽 목록이 짜부라지지 않게 한다. */
 .future-log-block-main{display:flex;align-items:stretch}
-.future-log-block-left{flex:0 0 154px;width:154px;box-sizing:border-box;padding:0 0 10px}
+.future-log-block-left{flex:0 0 clamp(120px,calc(154px * var(--fl-scale)),46cqw);width:clamp(120px,calc(154px * var(--fl-scale)),46cqw);box-sizing:border-box;padding:0 0 10px}
 .future-log-block-right{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;border-left:1px solid var(--line)}
 /* 미니 캘린더 -- Today의 .dates/.date 관례(요일 순서, 오늘/선택/도트 표현)만 참고하고
    전용 클래스로 새로 만든다(전역 .dates/.date와 절대 섞이지 않게). */
@@ -1699,7 +1716,7 @@ body.desc-block-dnd-active .desc-block-add{
    충분히 넓어서) 320px에서는 실제로 넘쳐서 .future-log-card의 overflow:hidden에
    토요일 열이 조용히 잘리는 것을 실측으로 확인했다. minmax(0,1fr)로 트랙의 최소
    폭을 0으로 낮춰 카드 폭에 맞게 균등하게 계속 줄어들게 한다(고정/최소 폭 강제 없음). */
-.future-log-mini-cal-weekdays{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:1px;font-size:9.5px;font-weight:700;text-align:center;color:var(--muted);margin-bottom:2px}
+.future-log-mini-cal-weekdays{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:1px;font-size:clamp(8px,min(calc(9.5px * var(--fl-scale)),3.6cqw),13px);font-weight:700;text-align:center;color:var(--muted);margin-bottom:2px}
 /* 4단계 감사: 각 요일 라벨을 자기 grid 칸 안에 가둔다 -- 트랙 자체는 minmax(0,1fr)로
    더 이상 넘치지 않지만(위), "Wed"/"Thu"처럼 3글자 라벨은 극단적으로 좁은 칸(320px에서
    실측 14px)보다 넓어서 이웃 칸으로 텍스트가 시각적으로 번져 겹쳐 보이는 문제가 실제로
@@ -1710,8 +1727,8 @@ body.desc-block-dnd-active .desc-block-add{
 .future-log-mini-cal-weekdays span{overflow:hidden;white-space:nowrap}
 .future-log-mini-cal-weekdays .sun{color:var(--sun)}
 .future-log-mini-cal-weekdays .sat{color:var(--sat)}
-.future-log-mini-cal-dates{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));grid-auto-rows:20px}
-.future-log-mini-cal-date{position:relative;border:0;background:none;padding:0;margin:0;font:inherit;font-size:10.5px;font-weight:600;color:var(--ink);display:flex;align-items:center;justify-content:center;cursor:pointer;border-radius:6px}
+.future-log-mini-cal-dates{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));grid-auto-rows:clamp(16px,calc(20px * var(--fl-scale)),30px)}
+.future-log-mini-cal-date{position:relative;border:0;background:none;padding:0;margin:0;font:inherit;font-size:clamp(9px,min(calc(10.5px * var(--fl-scale)),4.2cqw),15px);font-weight:600;color:var(--ink);display:flex;align-items:center;justify-content:center;cursor:pointer;border-radius:6px}
 @media (hover: hover) and (pointer: fine) {
   .future-log-mini-cal-date:hover:not(:disabled){background:rgba(var(--lav-rgb),.08)}
 }
@@ -1721,7 +1738,14 @@ body.desc-block-dnd-active .desc-block-add{
 .future-log-mini-cal-date.other-month{color:var(--faint)}
 .future-log-mini-cal-date.today{background:var(--today-ring)}
 .future-log-mini-cal-date.selected{box-shadow:inset 0 0 0 2px var(--lav);color:var(--lav);font-weight:800}
-.future-log-mini-cal-date.has-dot:after{content:"";position:absolute;right:2px;top:2px;width:4px;height:4px;border-radius:50%;background:var(--lav)}
+.future-log-mini-cal-date.has-dot:after{content:"";position:absolute;right:clamp(1px,calc(2px * var(--fl-scale)),3px);top:clamp(1px,calc(2px * var(--fl-scale)),3px);width:clamp(3px,calc(4px * var(--fl-scale)),6px);height:clamp(3px,calc(4px * var(--fl-scale)),6px);border-radius:50%;background:var(--lav)}
+/* 5차 감사(Future Log 설정 -- 음력 표시): 칸은 항상 만들어 두고 renderFutureLogMiniCal이
+   텍스트/표시 여부만 매 렌더 갱신한다(위 buildFutureLogMiniCalDateCell 주석). 음력이
+   꺼져 있으면(기본) 아무 것도 렌더링/공간 차지에 영향 없다 -- has-lunar가 붙었을 때만
+   세로 배치+행 높이를 늘린다. */
+.future-log-mini-cal-date-lunar{font-size:clamp(5px,calc(6px * var(--fl-scale)),9px);line-height:1;font-weight:600;color:var(--muted)}
+.future-log-mini-cal.has-lunar .future-log-mini-cal-date{flex-direction:column;gap:1px}
+.future-log-mini-cal.has-lunar .future-log-mini-cal-dates{grid-auto-rows:clamp(24px,calc(28px * var(--fl-scale)),40px)}
 /* 요구사항 4(2차 감사): 항목을 이 날짜 칸 위로 끌고 있을 때의 드롭 대상 강조 --
    Monthly Log 메인 캘린더의 calendar-drop-target과 같은 강조 문법(outline)을
    날짜 칸 크기에 맞춰 재사용한다. */
@@ -1741,10 +1765,14 @@ body.desc-block-dnd-active .desc-block-add{
   .future-log-block-left{width:100%;flex-basis:auto;padding-bottom:0}
   .future-log-block-right{border-left:0;border-top:1px solid var(--line)}
   .future-log-mini-cal{width:100%}
-  .future-log-mini-cal-weekdays{font-size:11px}
-  .future-log-mini-cal-dates{grid-auto-rows:34px}
-  .future-log-mini-cal-date{font-size:13px}
-  .future-log-mini-cal-date.has-dot:after{width:5px;height:5px;right:4px;top:4px}
+  /* 스택 모드에서도 사용자가 고른 배율(--fl-scale)을 반영하되, min()의 cqw 항이
+     카드 자신의 실제 폭 기준 상한이라 320px처럼 극단적으로 좁은 카드에서는 배율을
+     140%로 올려도 자동으로 눌려 가로 overflow·요일 겹침·토요일 잘림이 생기지 않는다
+     (요구사항: 좁은 카드는 자동 상한). */
+  .future-log-mini-cal-weekdays{font-size:clamp(9px,min(calc(11px * var(--fl-scale)),3.4cqw),14px)}
+  .future-log-mini-cal-dates{grid-auto-rows:clamp(24px,calc(34px * var(--fl-scale)),46px)}
+  .future-log-mini-cal-date{font-size:clamp(10px,min(calc(13px * var(--fl-scale)),4cqw),17px)}
+  .future-log-mini-cal-date.has-dot:after{width:clamp(4px,calc(5px * var(--fl-scale)),7px);height:clamp(4px,calc(5px * var(--fl-scale)),7px);right:4px;top:4px}
 }
 /* 요구사항 3(4차 감사): 320px 실측(카드 실폭 ~124px, 행 폭 ~102px) -- 이전 시도(핸들
    display:none + 날짜 칸만 24px로 축소)는 제목이 35px로 여전히 실사용 불가능하다는
@@ -3026,9 +3054,10 @@ body.dnd-active .monthly-log-week-segment{pointer-events:none}
         <button type="button" class="future-log-today-btn" id="future-log-today-btn">이번 달</button>
       </div>
       <div class="future-log-period-mode" role="group" aria-label="표시 개월 수">
+        <button type="button" class="monthly-log-menu-btn future-log-menu-btn" id="future-log-menu-btn" aria-haspopup="menu" aria-expanded="false" aria-controls="future-log-menu" aria-label="퓨처로그 설정" data-tooltip-label="퓨처로그 설정">⋯</button>
         <button type="button" class="future-log-month-step-btn" id="future-log-month-decr-btn" aria-label="표시 개월 수 줄이기">−</button>
         <button type="button" class="future-log-month-count-btn" id="future-log-month-count-btn" aria-haspopup="menu" aria-expanded="false">
-          <span id="future-log-month-count-label">3개월</span>
+          <span id="future-log-month-count-label">6개월</span>
           <span class="future-log-month-count-caret" aria-hidden="true">▾</span>
         </button>
         <button type="button" class="future-log-month-step-btn" id="future-log-month-incr-btn" aria-label="표시 개월 수 늘리기">+</button>
