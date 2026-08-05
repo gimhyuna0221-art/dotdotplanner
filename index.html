@@ -82,6 +82,16 @@
     --desc-color-purple:#9065b0;
     --desc-color-pink:#c14c8a;
     --desc-color-red:#d44c47;
+
+    /* projectId가 없는 일정의 기본 색 -- 팔레트 자동 배정 대신 테마별 단일 neutral
+       색 하나만 쓴다(요구사항). projectId가 있으면 applyMonthlyLogScheduleColors가
+       이 값을 프로젝트 색으로 덮어쓴다. 처음 값(#eef0f3 등)이 --bg-card(#fff)와 거의
+       구분되지 않아 "비활성"처럼 보인다는 지적이 있어, 칸 배경과 뚜렷이 갈리도록
+       더 진한 회색조로 보정했다(색상 자체는 여전히 무채색 -- 프로젝트 팔레트를 새로
+       쓰지 않는다는 요구사항은 그대로 지킨다). */
+    --schedule-neutral-bg:#e3e5ea;
+    --schedule-neutral-border:#aeb3bd;
+    --schedule-neutral-text:#3d414a;
   }
   :root[data-theme="dark"]{
     color-scheme: dark;
@@ -133,6 +143,11 @@
     --desc-color-purple:#c9a4e8;
     --desc-color-pink:#ef9fc5;
     --desc-color-red:#ff8783;
+
+    /* 다크 --bg-card(#242429)와 뚜렷이 갈리도록 밝게, 테두리·글자도 더 선명하게. */
+    --schedule-neutral-bg:#363a43;
+    --schedule-neutral-border:#5b6070;
+    --schedule-neutral-text:#e4e6ea;
   }
   *{box-sizing:border-box}
   /* 1/2: 지난 턴에 Weekly를 화면 바닥까지 늘리려고 artboard를 overflow-y:visible로 풀었더니,
@@ -194,6 +209,8 @@
   .side-item{position:relative;width:76px;height:68px;border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-size:14px;font-weight:700;color:var(--icon-strong);flex:none;cursor:pointer}
   .side-item svg{width:25px;height:25px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
   .side-item.active{background:var(--lav-soft);color:var(--lav);font-weight:700}
+  .side-item:focus{outline:none}
+  .side-item:focus-visible{outline:2px solid var(--lav);outline-offset:2px}
   /* 8: 휴지통에 항목이 있을 때만 보이는 작은 개수 표시 — 아이콘 위 모서리에 겹쳐 배치해
      사이드바 폭(76px)에는 전혀 영향을 주지 않는다. */
   .trash-badge{position:absolute;top:6px;right:10px;min-width:15px;height:15px;padding:0 3px;border-radius:999px;background:var(--sun);color:#fff;font-size:9px;font-weight:800;line-height:15px;text-align:center;box-sizing:border-box}
@@ -246,14 +263,57 @@
   .cal-nav .ic-ring{width:11px;height:11px;border-width:1.6px;transform:translateY(1.5px)}
   /* 반응형: width:360px 고정 대신 left+right로 앵커링해, calendar-card 자체 폭이
      minmax(300px,405px) 범위 안에서 줄어들어도 그 폭에 맞춰 같이 줄어든다(내부는 여전히
-     7열 1fr 그리드라 셀이 찌그러지거나 겹치지 않는다). */
-  .weekdays{position:absolute;left:20px;right:20px;top:68px;display:grid;grid-template-columns:repeat(7,1fr);font-size:12px;font-weight:700;text-align:center}
+     7열 1fr 그리드라 셀이 찌그러지거나 겹치지 않는다).
+     버그 수정(QA): 이 "300px 밑으로는 안 내려간다"는 전제가 1199px 이하 구간에서 깨진다
+     -- .calendar-card{width:100%}(아래, max-width:1199px 규칙)로 바뀌면서 minmax(300px,..)
+     그리드 열 보장이 사라져, 380px 뷰포트에서 실제로 calendar-card가 220px까지 줄어드는
+     것을 확인했다(Playwright 실측). repeat(7,1fr)의 각 트랙은 .date{width:36px} 때문에
+     기본 min-width:auto가 36px로 해석돼 7×36=252px 밑으로 못 줄어들어, 실제 폭(220px 안쪽,
+     좌우 20px씩 제외하면 180px)보다 넓어져 토요일 칸이 문서 밖으로 넘쳤다(실측: Sat 칸
+     우측 끝이 뷰포트를 29px 초과, 문서 전체 가로 스크롤 발생). minmax(0,1fr)로 트랙 최소
+     폭을 0으로 낮추면 300px 이상에서는 지금과 동일하게 렌더되고(공간이 충분해 어차피
+     36px 이상으로 풀리므로), 300px 밑에서만 실제로 줄어들어 넘치지 않는다. */
+  .weekdays{position:absolute;left:20px;right:20px;top:68px;display:grid;grid-template-columns:repeat(7,minmax(0,1fr));font-size:12px;font-weight:700;text-align:center}
   .weekdays .sun{color:var(--sun)} .weekdays .sat{color:var(--sat)}
+  /* 최종 감사(반응형 정돈, 실제 확인된 붕괴): 위 QA는 "문서 밖으로 넘치는지"만 봤고
+     380px 안쪽에서 calendar-card가 실제로 ~220px까지 줄어들 때 요일 3글자가 서로
+     겹쳐 보이는 문제는 다루지 않았다(overflow는 없지만 각 칸 안에서 텍스트가 칸보다
+     넓어 옆 칸으로 번짐) -- Future Log 미니 달력에서 같은 증상을 고친 것과 동일하게
+     각 요일 span을 자기 칸 폭에 가둔다. */
+  .weekdays span{overflow:hidden;white-space:nowrap}
+  /* 최종 감사(반응형 정돈): calendar-card가 380px 안쪽까지 좁아지면(실측 ~220px 이하)
+     .cal-title(left:24px)와 .cal-nav(right:18px, 아이콘 4개+gap)가 각자 고정 좌표에서
+     자라나 서로 겹친다(요구사항: 고정 left/top 보정 대신 원인 해결 -- 다만 이 위젯
+     전체를 flex/grid로 새로 짜는 것은 이번 정돈 범위를 넘는 대규모 리팩터링이라, 좁은
+     폭에서만 두 요소 자체를 좁혀 애초에 겹칠 공간을 만들지 않는 최소 대응으로 막는다). */
+  @media (max-width:380px){
+    .cal-title{left:14px;top:14px;font-size:13px}
+    .cal-nav{right:8px;top:13px;gap:2px;font-size:16px}
+    .cal-nav .ic-ring{width:9px;height:9px}
+    .weekdays{top:46px;gap:2px}
+    /* 3글자 요일 약자는 이 폭의 열(~15px)에 애초에 안 들어간다(글자 크기를 더 줄여도
+       overflow:hidden이 매번 다른 지점에서 잘라 "Mon"이 "Mor"처럼 보이는 등 매번
+       읽기 어려운 결과가 난다) -- 실제 텍스트는 그대로 두고(스크린리더용) 화면에는
+       한 글자 약자(data-short, 위 HTML에 이미 있음)만 보여준다. */
+    .weekdays span{font-size:0}
+    .weekdays span::after{content:attr(data-short);font-size:11px}
+  }
   /* 1: grid-auto-rows 대신 grid-template-rows로 항상 6행을 고정 확보한다 — 5주만 필요한
      달도 42칸(6행)을 그려 달마다 달력 높이가 달라지지 않는다(overflow는 기본값 visible
      그대로라 남는 6번째 줄을 잘라 숨기지 않는다). */
-  .dates{position:absolute;left:20px;right:20px;top:91px;display:grid;grid-template-columns:repeat(7,1fr);grid-template-rows:repeat(6,58px);align-items:center;justify-items:center;font-size:14px;font-weight:600}
+  .dates{position:absolute;left:20px;right:20px;top:91px;display:grid;grid-template-columns:repeat(7,minmax(0,1fr));grid-template-rows:repeat(6,58px);align-items:center;justify-items:center;font-size:14px;font-weight:600}
   .date{position:relative;width:36px;height:36px;display:grid;place-items:center;border-radius:12px;user-select:none;cursor:pointer}
+  /* 날짜 숫자 칸(.date)이 고정 36px라 트랙이 minmax(0,1fr)로 줄어도 칸 자체는 줄지
+     않아 이웃 날짜와 겹쳤다(위 .cal-title/.cal-nav 겹침과 같은 원인 계열) -- 실측
+     확인: 320px 뷰포트에서 실제 그리드 트랙 폭은 ~17px인데 .date는 여전히 36px라
+     11px씩 서로 파고들었다(고정 픽셀 하나를 다른 고정 픽셀로 바꿔도 또 안 맞을 수
+     있으므로, 트랙 폭에 그대로 맞춰지는 상대 크기로 바꾼다 -- width:100%+aspect-ratio는
+     그리드가 실제로 계산한 트랙 폭과 항상 정확히 같아 다시 어긋날 일이 없다).
+     .dates/.date 기본 선언 뒤에 둬야 소스 순서상 같은 특이도에서 이 규칙이 이긴다. */
+  @media (max-width:380px){
+    .dates{top:66px}
+    .date{width:100%;height:auto;aspect-ratio:1;font-size:11px}
+  }
 /* 양력 숫자는 항상 기존 중앙 좌표에 고정한다. 음력 텍스트는 별도 absolute 레이어로
    아래에 놓여, 음력 표시를 켜도 양력 숫자가 위로 밀리지 않는다. */
 .date-solar{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);line-height:1;white-space:nowrap}
@@ -444,15 +504,31 @@
      min-width:0이 없으면 flex/grid 자식은 내용(긴 텍스트 등) 때문에 최소 크기가
      auto로 잡혀 좁은 화면에서 오히려 부모를 밀어낼 수 있어 명시적으로 0을 둔다. */
   .daily{position:relative;min-width:0;min-height:500px}
-  .daily-title{font-size:19px;font-weight:800;letter-spacing:-.3px;margin:0 0 20px 0}
+  .daily-title{font-size:19px;font-weight:800;letter-spacing:-.3px;margin:0;min-width:0}
   .quick{height:57px;border:1px solid var(--line2);border-radius:11px;background:var(--bg-card);display:flex;align-items:center;padding:0 16px;gap:16px;color:var(--text-placeholder);font-size:15px}
   .quick-icons{display:flex;align-items:center;gap:14px;color:var(--icon-muted)}
   .q-slot{width:20px;height:20px;display:grid;place-items:center;border:0;background:none;padding:0;cursor:pointer}
   .q-slot[aria-pressed="true"]{color:var(--lav)}
   .quick .placeholder{font-weight:600}
-  #quick-input{border:0;background:transparent;outline:none;font:inherit;color:var(--ink);flex:1;padding:0}
+  /* 버그 수정(QA): <input>은 flex item의 기본 min-width:auto가 내용 기반 intrinsic 폭(이
+     입력창은 실측 약 203px)으로 해석돼, flex:1과 부모의 min-width:0을 둬도 그 아래로는
+     줄어들지 않았다 -- 좁은 화면(380px 이하)에서 이 입력창이 .quick 밖으로 넘쳐 문서
+     전체에 가로 스크롤을 만드는 실제 버그였다(Playwright로 확인: #quick-input 우측 끝이
+     뷰포트를 80px 초과). input 자신에게 min-width:0을 줘야 flex-shrink가 실제로 먹는다
+     (표준적인 flex+input 오버플로 수정 패턴). */
+  #quick-input{border:0;background:transparent;outline:none;font:inherit;color:var(--ink);flex:1;min-width:0;padding:0}
   #quick-input::placeholder{color:var(--text-placeholder);font-weight:600}
-  .rollover{height:49px;display:flex;align-items:center;padding:0 9px;border-bottom:1px solid var(--line);font-size:13px;color:var(--faint);gap:15px}
+  /* 최종 감사(Today 이월 액션 묶음 처리): height:49px 고정 + flex-wrap 없음이라, 좁은
+     화면에서 "이월(0)/오늘/삭제" 세 버튼이 한 줄에 다 안 들어가면 처음엔 각 버튼 "안의"
+     글자가 줄바꿈됐고, 그 다음 시도(flex-wrap만 켬)는 버튼 하나씩 따로따로 줄바꿈됐다
+     (요구사항: 묶음 전체가 하나로 움직여야 함). 세 버튼을 .rollover-actions 하나의
+     inline-flex 묶음으로 감싸 .rollover 입장에서는 자식이 이 묶음 하나뿐이 되게 한다 --
+     .rollover 쪽 flex-wrap이 "그 묶음 자체"를 다음 줄로 넘기는 단위가 되고,
+     .rollover-actions 안쪽은 flex-wrap:nowrap+white-space:nowrap이라 내부에서는
+     절대 쪼개지지 않는다(고정 left/top 좌표 없이 flex만으로 해결). */
+  .rollover{min-height:49px;height:auto;display:flex;align-items:center;flex-wrap:wrap;row-gap:4px;padding:6px 9px;border-bottom:1px solid var(--line);font-size:13px;color:var(--faint)}
+  .rollover-actions{display:inline-flex;align-items:center;flex-wrap:nowrap;white-space:nowrap;gap:15px;min-width:0}
+  .rollover-toggle,.rollover-count,.rollover-today-btn,.delete-btn{white-space:nowrap}
   .rollover-toggle{border:0;background:none;padding:0;cursor:pointer;font:inherit;display:flex;align-items:center;gap:6px;color:var(--muted)}
   /* 이월 헤더의 일괄 '오늘'/'삭제' -- 이월 항목이 0개면 비활성화한다(요구사항). */
   .rollover-today-btn{border:0;background:none;padding:0;cursor:pointer;font:inherit;color:var(--lav);font-weight:700}
@@ -580,8 +656,13 @@
   .trash-group-header{margin:16px 0 8px;font-size:12px;font-weight:800;color:var(--muted)}
   .trash-group-header:first-child{margin-top:0}
 
-  /* 5/10: 휴지통 상단 필터 + 비우기 버튼. */
-  .trash-toolbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+  /* 5/10: 휴지통 상단 필터 + 비우기 버튼.
+     버그 수정(QA): flex-wrap:nowrap이라 320px처럼 아주 좁은 화면에서 필터 4개 + "휴지통
+     비우기" 버튼이 한 줄에 다 안 들어가면, 줄바꿈 대신 "휴지통 비우기"의 텍스트가 버튼
+     안에서 세로로 줄바꿈되며 찌그러지고 그래도 폭이 모자라 문서 전체가 23px 가로로
+     넘쳤다(Playwright 실측). 다른 헤더들(.detail-footer, .future-log-header 등)과 같은
+     flex-wrap:wrap 패턴으로 통일해, 공간이 부족하면 버튼이 다음 줄로 내려가게 한다. */
+  .trash-toolbar{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;row-gap:8px;margin-bottom:14px}
   .trash-filter{display:flex;align-items:center;gap:6px}
   .trash-filter-btn{border:1px solid var(--line2);background:var(--bg-card);border-radius:999px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;color:var(--muted);font-family:inherit;display:flex;align-items:center;justify-content:center}
   .trash-filter-btn[aria-pressed="true"]{color:var(--lav);border-color:var(--lav);background:var(--lav-soft)}
@@ -589,7 +670,13 @@
   .empty-trash-btn:disabled{color:var(--faint);border-color:var(--line2);cursor:default}
   .empty-trash-btn:not(:disabled):hover{background:var(--bg-danger-soft)}
 
-  /* 9: 휴지통 다중선택 일괄 작업 바 — 행별 복원/영구 삭제 버튼과는 완전히 별개 UI. */
+  /* 9: 휴지통 다중선택 일괄 작업 바 — 행별 복원/영구 삭제 버튼과는 완전히 별개 UI.
+     최종 감사(디자인 정돈, 실제 확인된 버그): display:flex를 무조건 걸어 두면 같은
+     특이도(0,1,0)의 브라우저 기본 [hidden]{display:none} 규칙을 author 스타일시트가
+     후순위로 이겨버려, JS가 이미 올바르게 껐다 켰다 하는 hidden 속성(bar.hidden =
+     count===0)과 무관하게 선택 0개일 때도 막대가 항상 보였다. [hidden]에서만 flex를
+     걸어 속성이 실제로 화면에 반영되게 한다(로직은 전혀 건드리지 않음). */
+  .trash-bulk-bar[hidden]{display:none}
   .trash-bulk-bar{display:flex;align-items:center;gap:10px;padding:8px 12px;margin-bottom:10px;border:1px solid var(--lav);border-radius:8px;background:var(--lav-soft);font-size:13px;font-weight:700;color:var(--ink)}
   .trash-bulk-count{color:var(--lav);margin-right:auto}
   .trash-bulk-btn{border:0;background:var(--bg-card);border-radius:6px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;color:var(--lav);font-family:inherit}
@@ -1427,6 +1514,18 @@ body.desc-block-dnd-active .desc-block-add{
      순서·footer 높이·모달 크기는 그대로 두고 margin-left:auto만으로 해결한다(줄바꿈 시
      자기 줄에서는 자연히 왼쪽부터 배치돼 안전하다). */
   .detail-trash-btn{color:var(--sun);margin-left:auto}
+  /* 마스터 Drawer 하단 날짜 버튼(moveDateBtn)이 배치 0/1/N개를 모두 처리한다(별도 상시
+     "날짜 배치" 섹션 없음). 배치가 0개 또는 2개 이상일 때만 이 목록/추가 UI가 뜨는
+     팝오버(.move-menu) 안에 쓰인다 -- 버튼은 .detail-action-btn을 그대로 재사용한다. */
+  .detail-master-placements-list{display:flex;flex-direction:column;gap:6px;min-width:220px}
+  .detail-master-placement-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .detail-master-placement-date{font-size:13px;font-weight:700;color:var(--ink);flex:1 1 auto;min-width:0}
+  .detail-master-placement-change,.detail-master-placement-remove{padding:5px 10px;font-size:12px}
+  .detail-master-placement-add{align-self:flex-start}
+  /* + 날짜 배치 확정 전 picker -- 필드는 기존 .move-menu-range-field/.move-menu-date를
+     그대로 재사용(새 입력 스타일 없음), 여기서는 배치일 뿐이다. */
+  .detail-master-placement-picker{display:flex;flex-direction:column;gap:8px}
+  .detail-master-placement-picker-actions{display:flex;gap:8px}
 
   .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 #daily-list .task,#rollover-list .task {gap: 18px !important;}
@@ -1480,7 +1579,7 @@ body.desc-block-dnd-active .desc-block-add{
 .monthly-log-main{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;overflow:hidden}
 .monthly-log-header{flex:0 0 auto;padding:20px 32px 20px;border-bottom:1px solid var(--line)}
 .monthly-log-nav{display:flex;align-items:center;gap:10px;font-size:13px;font-weight:700;color:var(--muted)}
-.monthly-log-month-label{font-size:14px;font-weight:800;color:var(--ink);margin-right:4px}
+.monthly-log-month-label{font-size:14px;font-weight:800;color:var(--ink);margin-right:4px;white-space:nowrap}
 .monthly-log-nav-btn{border:0;background:none;padding:0;cursor:pointer;color:var(--icon-muted);width:26px;height:26px;border-radius:6px;display:grid;place-items:center;font-size:18px;line-height:1}
 .monthly-log-nav-btn:hover{background:var(--bg-hover)}
 /* Monthly Log 기본 기능 복구: 우측 상단 "..." 메뉴 -- Weekly의 week-range-menu-btn과 같은
@@ -1519,6 +1618,9 @@ body.desc-block-dnd-active .desc-block-add{
   transform:rotate(-45deg);
 }
 .monthly-log-menu-item.is-disabled{opacity:.4;cursor:default;pointer-events:none}
+/* 최종 감사: 메뉴를 Today/Calendar와 같은 평평한 항목 목록으로 되돌리면서(그룹 라벨/
+   값 표시 행/radio submenu 폐지) "완료항목 정리" 앞의 구분선 하나만 남긴다. */
+.future-log-menu-divider{border-top:1px solid var(--line2);margin:6px 4px 2px}
 .menu-item-has-help{position:relative}
 .menu-item-has-help:hover::after{content:attr(data-help);position:absolute;right:calc(100% + 8px);top:0;width:240px;padding:8px 10px;border:1px solid var(--line2);border-radius:8px;background:var(--bg-card);box-shadow:0 4px 14px var(--overlay-shadow);font-size:11.5px;font-weight:600;line-height:1.45;color:var(--text-tertiary);white-space:normal;z-index:2}
 .monthly-log-nav-btn .ic-ring{width:11px;height:11px;border-width:1.6px}
@@ -1531,6 +1633,243 @@ body.desc-block-dnd-active .desc-block-add{
 .monthly-log-body::-webkit-scrollbar-track{background:var(--scrollbar-track,transparent)}
 .monthly-log-body::-webkit-scrollbar-thumb{background:var(--scrollbar-thumb);border-radius:99px}
 .monthly-log-rows{--monthly-slot-count:3;--monthly-slot-h:18px;--monthly-slot-gap:2px;display:flex;flex-direction:column;position:relative;padding:0 24px 20px;min-height:100%;box-sizing:border-box}
+
+/* Future Log 3단계: 화면 골격과 헤더. 레이아웃(왼쪽 사이드바 112px를 제외한 나머지
+   전체를 채우는 절대배치, 헤더 padding·구분선)은 .monthly-log-view/.monthly-log-header와
+   같은 값을 그대로 재사용해 화면 전환 시 크기·위치가 흔들리지 않게 한다. */
+/* 미니 달력 크기 조절(Ctrl+휠, 80~140%, 5% 단위) -- 모든 월 카드가 이 값 하나를
+   공유한다(JS가 카드마다 따로 설정하지 않고 여기 한 번만 설정 -- 카드별 목록 시작
+   위치가 항상 같은 이유). transform:scale이 아니라 이 변수를 실제 셀 폭/폰트/도트
+   크기 계산에 섞어 레이아웃 자체가 커지게 한다(아래 .future-log-mini-cal-* 규칙). */
+.future-log-view{--fl-scale:1;position:absolute;left:112px;top:0;right:0;bottom:0;background:var(--bg-card);z-index:1;display:flex;flex-direction:column;overflow:hidden}
+.future-log-view[hidden]{display:none}
+.future-log-header{flex:0 0 auto;padding:20px 32px 20px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:20px;flex-wrap:wrap}
+.future-log-title{font-size:16px;font-weight:800;color:var(--ink);margin:0}
+/* 최종 감사(320px 내부 overflow 실제 원인): .future-log-header는 flex-wrap:wrap이라
+   title/period-nav/period-mode 세 자식은 서로 다른 줄로 떨어질 수 있지만, 그 중
+   하나인 .future-log-period-nav 자신은 wrap이 없어 prev버튼+기간 라벨+next버튼+
+   "이번 달" 버튼 4개가 한 줄을 강제로 요구했다(실측 최소 폭 ~173px). 320px
+   화면에서는 헤더 콘텐츠 폭이 패딩(32px×2)을 뺀 약 118px뿐이라 이 한 줄이
+   #future-log-view 전체를 오른쪽으로 밀어 가로 overflow를 냈다(#future-log-view
+   scrollWidth 205 vs clientWidth 182, 실측 23px -- 콘텐츠를 자르거나 body/document에
+   overflow:hidden을 씌우는 대신, 이 줄 자신도 필요하면 두 줄로 접히게 한다). */
+.future-log-period-nav{display:flex;align-items:center;flex-wrap:wrap;row-gap:4px;gap:8px;font-size:13px;font-weight:700;color:var(--muted)}
+.future-log-period-label{font-size:14px;font-weight:800;color:var(--ink);min-width:0}
+.future-log-nav-btn{border:0;background:none;padding:0;cursor:pointer;color:var(--icon-muted);width:26px;height:26px;border-radius:6px;display:grid;place-items:center;font-size:18px;line-height:1}
+.future-log-nav-btn:hover{background:var(--bg-hover)}
+.future-log-nav-btn:disabled{opacity:.35;cursor:default;pointer-events:none}
+/* "이번 달" -- 정렬 계산 없이 시작월을 오늘이 속한 월로 되돌린다(요구사항). */
+.future-log-today-btn{border:1px solid var(--line2);background:none;color:var(--muted);padding:4px 10px;border-radius:999px;font-size:12px;font-weight:700;cursor:pointer}
+.future-log-today-btn:hover{background:var(--bg-hover);color:var(--ink)}
+/* 요구사항 5: 3/6/12 고정 버튼을 "− [N개월 ▾] +" 컴팩트 스테퍼로 교체한다(2~12 임의값).
+   rolling 시작월은 그대로 두고 표시 개월 수만 바꾼다. 바깥 pill(배경/패딩)은 기존
+   3/6/12 세그먼트 톤을 그대로 유지한다(첨부 E와 같은 시각 언어). */
+.future-log-period-mode{display:flex;align-items:center;gap:2px;margin-left:auto;padding:3px;border-radius:999px;background:var(--bg-input)}
+.future-log-month-step-btn{border:0;background:none;width:22px;height:22px;border-radius:999px;font-size:14px;font-weight:700;color:var(--muted);cursor:pointer;display:grid;place-items:center;line-height:1}
+.future-log-month-step-btn:hover{background:var(--bg-hover);color:var(--ink)}
+.future-log-month-step-btn:disabled{opacity:.35;cursor:default;pointer-events:none}
+.future-log-month-count-btn{border:0;background:var(--bg-card);color:var(--lav);box-shadow:0 1px 3px var(--shadow-toggle);padding:5px 10px;border-radius:999px;font-size:12.5px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:4px;white-space:nowrap}
+.future-log-month-count-btn:hover{background:var(--bg-hover)}
+.future-log-month-count-caret{font-size:9px;color:var(--muted)}
+/* 개월 수 직접 선택 팝업은 기존 Monthly Log "..." 메뉴(.monthly-log-menu/-item) 셸을
+   그대로 재사용한다(새 팝업 프레임워크를 만들지 않음) -- 현재 선택값만 강조 표시한다. */
+.future-log-month-count-menu-item[aria-checked="true"]{color:var(--lav);font-weight:800;background:var(--lav-soft)}
+.future-log-body{flex:1 1 auto;min-height:0;overflow-y:auto;overflow-x:auto;overscroll-behavior-y:contain;scrollbar-gutter:stable;scrollbar-width:thin;container-type:inline-size;container-name:future-log-body}
+/* Future Log 5단계: rolling 3개월 열 컨테이너. 열(.future-log-column)은 3개월 블록을
+   위→아래로 묶는 얇은 래퍼일 뿐이라 테두리·배경을 따로 주지 않고 헤더+간격으로만
+   구분한다. 열 배치는 뷰포트가 아니라 .future-log-body의 실제 폭(container query)을
+   기준으로 한다 -- 1200px 이상이면 한 행에 열 2개, 1199px 이하면 1개(요구사항). */
+.future-log-months{min-height:100%;box-sizing:border-box;padding:0 24px 20px;display:grid;grid-template-columns:repeat(1,minmax(0,1fr));gap:28px;align-items:start}
+@container future-log-body (min-width:1200px){.future-log-months{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.future-log-column{display:flex;flex-direction:column;gap:16px;min-width:0}
+.future-log-column-header{flex:0 0 auto;padding:0 2px;font-size:13px;font-weight:800;color:var(--ink)}
+/* 4단계: 월 블록 내부(미니 캘린더 좌우/상하 전환)는 열/뷰포트 폭이 아니라 이 카드
+   자신의 실제 렌더 폭을 기준으로 판단해야 한다(요구사항) -- 카드가 rolling 열 1개/2개
+   중 어디에 있든, 실제로 받은 폭이 640px을 넘으면 좌우, 아니면 상하로 스스로 결정한다. */
+.future-log-card{display:flex;flex-direction:column;border:1px solid var(--line2);border-radius:14px;background:var(--bg-card);overflow:hidden;container-type:inline-size;container-name:future-log-card}
+/* 드롭 가능한 카드에만 주는 최소 강조 -- Monthly Log의 .is-selected와 같은 outline 문법. */
+.future-log-card.is-drop-target{outline:2px solid var(--lav);outline-offset:-2px}
+.future-log-card-header{flex:0 0 auto;display:flex;align-items:center;gap:4px;padding:10px 12px 0;font-size:13px;font-weight:800;color:var(--ink)}
+.future-log-card-calendar-btn{flex:none;border:0;background:none;padding:0;width:20px;height:20px;display:grid;place-items:center;color:var(--icon-muted);cursor:pointer;border-radius:6px}
+.future-log-card-calendar-btn:hover{background:var(--bg-hover);color:var(--ink)}
+/* 실제 항목 영역 -- 높이가 뷰포트에 반응(clamp)하므로 JS가 매번 실측해 slotCount를
+   구한다(고정 숫자를 하드코딩하지 않음, 요구사항). overflow:hidden은 카드 내부 스크롤을
+   만들지 않기 위함(요구사항) -- +N 계산이 맞으면 실제로 넘치지 않는다. */
+.future-log-card-rows{flex:0 0 auto;height:clamp(180px,26vh,260px);overflow:hidden;padding:8px 10px;display:flex;flex-direction:column;gap:4px;box-sizing:border-box}
+.future-log-card-empty{margin:0;padding:4px 2px;font-size:12px;color:var(--muted)}
+/* 요구사항 4(4차 감사): 배치가 4개 이상이면 고정 68px 날짜 칸 안에서 배지가 줄바꿈
+   되므로(아래 .future-log-row-datecol) 행 자체도 그만큼 늘어나야 잘리지 않는다 --
+   고정 height/overflow:hidden을 min-height + 내용에 따른 자동 높이로 바꾼다(증상을
+   부모 overflow:hidden으로 덮지 않음, 요구사항). */
+.future-log-row{display:flex!important;align-items:center;gap:6px;min-height:22px;flex:0 0 auto;padding:2px 6px;border-radius:6px;font-size:12.5px;font-weight:650;color:var(--ink);cursor:pointer;box-sizing:border-box}
+.future-log-row:hover,.future-log-row:focus-visible{background:var(--bg-hover);outline:none}
+.future-log-row.is-done{opacity:.82}
+.future-log-row.is-done .future-log-row-title{text-decoration:line-through}
+.future-log-row.has-group{border-left-width:2px;border-left-style:solid;border-left-color:var(--group-accent,var(--lav))}
+.future-log-row.is-dragging{opacity:.4}
+/* 요구사항 1(4차 감사): 순서 재정렬 drag 중 "이 행 앞에 끼워진다"는 인디케이터 --
+   기존 is-drop-target(outline)과 같은 lav 강조 언어를 위쪽 테두리 하나로만 재사용한다. */
+.future-log-row.future-log-row-drop-before{box-shadow:inset 0 2px 0 var(--lav)}
+/* 요구사항 4(2차 감사): 배치가 있는 항목은 날짜 배지 자체가 drag 소스다(핸들 없음). */
+.future-log-row-date.is-dragging{opacity:.4}
+/* 요구사항 3(2차 감사): Future Log 행 선택 -- 기존 .monthly-item-row.is-selected와
+   같은 시각 언어(안쪽 lav 테두리 + hover 배경)를 그대로 재사용한다. */
+.future-log-row.is-selected{box-shadow:inset 0 0 0 2px var(--lav);background:var(--bg-hover)}
+.future-log-row-drag{width:9px;flex:none;display:flex;align-items:center;justify-content:center;color:var(--icon-drag);cursor:grab;opacity:0;transition:opacity .15s}
+.future-log-row:hover .future-log-row-drag,.future-log-row:focus-within .future-log-row-drag{opacity:1}
+.future-log-row-icon{flex:none;display:inline-flex;align-items:center;justify-content:center;width:14px;color:var(--icon-muted)}
+.future-log-row-icon .ic-ring{width:11px;height:11px;border-width:1.6px}
+.future-log-row-title-cell{display:flex;align-items:center;min-width:0;flex:1 1 auto;gap:4px}
+.future-log-row-title{min-width:0;flex:1 1 auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* 요구사항 2(3차 감사): 날짜 칸은 폭을 고정해 모든 행(날짜 있음/없음)에서 뒤따르는
+   유형 기호·제목이 같은 x좌표에서 시작하게 한다 -- 내용이 없어도 칸 자체는 항상
+   만든다(buildFutureLogRowDateColEl). 배치가 여러 개인 행은 배지 여러 개가 이 고정
+   폭 안에 나란히 들어가야 하므로 gap을 좁게, 배지 자체도 소형으로 둔다. */
+/* 요구사항 4(4차 감사): 고정 68px 폭은 유지하되, 배지가 4개 이상이면(각 배지 폭
+   ~20px 안팎) 한 줄에 다 안 들어가므로 칸 안에서 줄바꿈한다(overflow:hidden으로
+   가리지 않고 실제로 다 보이게). 세로로 몇 줄이 되든 이 칸의 실제 필요 높이가
+   부모 .future-log-row의 min-height를 넘으면 위 min-height 규칙 덕분에 행 자체가
+   그만큼 커진다. */
+.future-log-row-datecol{flex:0 0 68px;width:68px;display:flex;flex-wrap:wrap;align-items:center;align-content:center;gap:3px;overflow:visible}
+/* 요구사항 4: 날짜 배지를 그 항목의 실제 시작 날짜로 Calendar 이동하는 버튼으로 쓴다
+   -- <button> 기본 테두리/배경/폰트를 지워 기존 <span> 배지와 같은 모양을 유지한다. */
+.future-log-row-date{flex:none;border:0;background:none;padding:0;font:inherit;font-size:10.5px;font-weight:700;color:var(--muted);white-space:nowrap;cursor:pointer}
+/* placement가 여러 개라 배지가 한 칸에 여럿 들어갈 때만 살짝 축소한다(고정 폭 안에
+   맞추기 위함, 단일 배지는 그대로 10.5px 유지) -- buildFutureLogRowDateColEl이
+   2개 이상일 때만 이 클래스를 붙인다. */
+.future-log-row-date.is-compact{font-size:9px}
+.future-log-row-date:hover,.future-log-row-date:focus-visible{color:var(--lav);text-decoration:underline;outline:none}
+.future-log-overflow-btn{background:none;border:1px dashed var(--line2);color:var(--lav);justify-content:center;font-weight:750;cursor:pointer}
+.future-log-overflow-btn:hover,.future-log-overflow-btn:focus-visible{background:var(--lav-soft);outline:none}
+/* 요구사항 1(3차 감사): quick-add는 기존 .monthly-quick(이달의 할 일 입력창) 그대로
+   재사용하되, 이제 오른쪽 목록 영역(.future-log-block-right) 맨 위 자신의 행 하나를
+   차지한다(카드 헤더나 제목 옆이 아님, 첨부 이미지 기준). */
+.future-log-quick.monthly-quick{flex:0 0 auto;min-width:0;margin:0;border:0;border-bottom:1px solid var(--line);padding:10px 12px}
+/* 2차 감사: Today 빠른 입력(.q-slot)과 완전히 같은 아이콘 전용 모양으로 되돌린다 --
+   상시 텍스트 라벨은 제거하고 기존 .monthly-quick-mode 기본 크기(18x18)를 그대로
+   쓴다(이 컨텍스트 전용 pill/라벨 오버라이드를 두지 않음). 이름은 hover/focus 시
+   기존 공통 인라인 툴팁(data-tooltip-label)으로만 보여준다. */
+.monthly-quick-mode:disabled{opacity:.35;cursor:default;pointer-events:none}
+/* 요구사항 1(3차 감사): 월 블록을 왼쪽(제목+Calendar 이동 버튼+미니 달력)/오른쪽
+   (quick-add+목록)으로 나눈다. 오른쪽 영역의 왼쪽 테두리가 첨부 이미지의 검은 세로선
+   역할을 한다(기존 --line 색 재사용, 새 색 도입 없음). 왼쪽은 달력 폭(기본 154px)만
+   차지하고 나머지는 전부 오른쪽이 가져간다 -- --fl-scale로 커지되(달력·목록 실제
+   레이아웃 폭이 함께 바뀌어야 한다는 요구사항), 카드 자신의 실제 폭(container query,
+   .future-log-card가 container-type:inline-size)의 46%를 넘지 않게 자동 상한을 둬
+   좁은 카드에서 오른쪽 목록이 짜부라지지 않게 한다. */
+.future-log-block-main{display:flex;align-items:stretch}
+.future-log-block-left{flex:0 0 clamp(120px,calc(154px * var(--fl-scale)),46cqw);width:clamp(120px,calc(154px * var(--fl-scale)),46cqw);box-sizing:border-box;padding:0 0 10px}
+.future-log-block-right{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;border-left:1px solid var(--line)}
+/* 미니 캘린더 -- Today의 .dates/.date 관례(요일 순서, 오늘/선택/도트 표현)만 참고하고
+   전용 클래스로 새로 만든다(전역 .dates/.date와 절대 섞이지 않게). */
+.future-log-mini-cal{padding:8px 12px 0}
+/* 4단계 감사: repeat(7,1fr)의 각 트랙은 기본적으로 minmax(auto,1fr)로 취급돼(암묵적
+   min-width:auto) 요일 텍스트/숫자의 콘텐츠 최소 폭보다 카드가 좁아지면 트랙이 그
+   아래로 줄지 못하고 grid 전체가 넘친다 -- 380px에서는 안 보였지만(카드가 아직
+   충분히 넓어서) 320px에서는 실제로 넘쳐서 .future-log-card의 overflow:hidden에
+   토요일 열이 조용히 잘리는 것을 실측으로 확인했다. minmax(0,1fr)로 트랙의 최소
+   폭을 0으로 낮춰 카드 폭에 맞게 균등하게 계속 줄어들게 한다(고정/최소 폭 강제 없음). */
+.future-log-mini-cal-weekdays{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:1px;font-size:clamp(8px,min(calc(9.5px * var(--fl-scale)),3.6cqw),13px);font-weight:700;text-align:center;color:var(--muted);margin-bottom:2px}
+/* 4단계 감사: 각 요일 라벨을 자기 grid 칸 안에 가둔다 -- 트랙 자체는 minmax(0,1fr)로
+   더 이상 넘치지 않지만(위), "Wed"/"Thu"처럼 3글자 라벨은 극단적으로 좁은 칸(320px에서
+   실측 14px)보다 넓어서 이웃 칸으로 텍스트가 시각적으로 번져 겹쳐 보이는 문제가 실제로
+   있었다(레이아웃 overflow가 아니라 인라인 텍스트가 칸 경계를 무시하고 그려지는 것).
+   overflow:hidden으로 각 라벨을 자기 칸 폭만큼만 그리게 한다 -- 문서/카드 수준
+   overflow:hidden(구조적 클리핑을 숨기는 것)과는 다른, 텍스트 하나를 자기 칸에 가두는
+   정상적인 방법이다. */
+.future-log-mini-cal-weekdays span{overflow:hidden;white-space:nowrap}
+.future-log-mini-cal-weekdays .sun{color:var(--sun)}
+.future-log-mini-cal-weekdays .sat{color:var(--sat)}
+.future-log-mini-cal-dates{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));grid-auto-rows:clamp(16px,calc(20px * var(--fl-scale)),30px)}
+.future-log-mini-cal-date{position:relative;border:0;background:none;padding:0;margin:0;font:inherit;font-size:clamp(9px,min(calc(10.5px * var(--fl-scale)),4.2cqw),15px);font-weight:600;color:var(--ink);cursor:pointer;border-radius:6px}
+/* 최종 감사(음력 표시 시 정렬 흔들림 수정): Today/Calendar의 .date-solar/.date-lunar와
+   같은 원칙 -- 날짜 숫자는 항상 칸 정중앙에 절대 위치로 고정하고, 음력 텍스트는 그와
+   무관한 별도의 절대 위치 레이어로 둔다. 이전에는 flex-direction:column으로 숫자+
+   음력을 같은 흐름에 쌓아서, 같은 행(grid-auto-rows:auto) 안에서도 음력 텍스트가
+   보이는 칸만 내용이 늘어나 숫자가 위로 밀리고, 음력이 없는 이웃 칸은 늘어난 행
+   높이 안에서 그대로 중앙 정렬돼 기준선이 서로 달라지는 문제가 있었다(요구사항 4). */
+.future-log-mini-cal-date-num{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);line-height:1;white-space:nowrap}
+@media (hover: hover) and (pointer: fine) {
+  .future-log-mini-cal-date:hover:not(:disabled){background:rgba(var(--lav-rgb),.08)}
+}
+.future-log-mini-cal-date:disabled{cursor:default;color:var(--faint)}
+.future-log-mini-cal-date.sun{color:var(--sun)}
+.future-log-mini-cal-date.sat{color:var(--sat)}
+.future-log-mini-cal-date.other-month{color:var(--faint)}
+.future-log-mini-cal-date.today{background:var(--today-ring)}
+.future-log-mini-cal-date.selected{box-shadow:inset 0 0 0 2px var(--lav);color:var(--lav);font-weight:800}
+.future-log-mini-cal-date.has-dot:after{content:"";position:absolute;right:clamp(1px,calc(2px * var(--fl-scale)),3px);top:clamp(1px,calc(2px * var(--fl-scale)),3px);width:clamp(3px,calc(4px * var(--fl-scale)),6px);height:clamp(3px,calc(4px * var(--fl-scale)),6px);border-radius:50%;background:var(--lav)}
+/* 5차 감사(Future Log 설정 -- 음력 표시): 칸은 항상 만들어 두고 renderFutureLogMiniCal이
+   텍스트/표시 여부만 매 렌더 갱신한다(위 buildFutureLogMiniCalDateCell 주석). 음력이
+   꺼져 있으면(기본) 아무 것도 렌더링/공간 차지에 영향 없다.
+   최종 감사(요구사항 4 -- 정렬 흔들림 수정): 이전에는 grid-auto-rows:auto로 "그 주에
+   실제로 필요한 칸" 기준으로만 행을 키워 빈 주는 짧게 유지했지만, 그 결과 같은 행 안에
+   음력이 보이는 칸과 안 보이는 칸의 실제 내용 높이가 달라져(위 -num 주석 참고) 숫자
+   기준선이 어긋났다. Today/Calendar처럼 숫자를 행 높이와 무관한 절대 위치로 뒀으니,
+   이제 모든 주가 항상 같은 고정 행 높이를 쓰게 해 행 사이 흔들림 자체를 없앤다(빈
+   주도 같은 높이 -- 공간 절약보다 정렬 안정성을 우선한다는 요구사항 4에 따름). */
+.future-log-mini-cal-date-lunar{position:absolute;left:50%;bottom:clamp(2px,calc(3px * var(--fl-scale)),5px);transform:translateX(-50%);font-size:clamp(5px,calc(6px * var(--fl-scale)),9px);line-height:1;font-weight:600;color:var(--muted);white-space:nowrap}
+.future-log-mini-cal.has-lunar .future-log-mini-cal-dates{grid-auto-rows:clamp(24px,calc(28px * var(--fl-scale)),40px)}
+/* 요구사항 4(2차 감사): 항목을 이 날짜 칸 위로 끌고 있을 때의 드롭 대상 강조 --
+   Monthly Log 메인 캘린더의 calendar-drop-target과 같은 강조 문법(outline)을
+   날짜 칸 크기에 맞춰 재사용한다. */
+.future-log-mini-cal-date.future-log-drop-target-date{outline:2px solid var(--lav);outline-offset:-2px;background:var(--lav-soft)}
+/* 4단계: 이 카드 자신의 실제 폭이 640px 이하면(rolling 열이 1개든 2개든 무관, 이
+   카드가 실제로 받은 공간 기준) 미니 캘린더를 위로, 목록/quick-add를 아래로 쌓는다.
+   미니 캘린더는 이때 카드 전체 폭을 쓰므로 셀이 자연히 커지지만(터치 영역 확보,
+   요구사항), 요일 헤더·셀 폰트도 함께 키워서 숫자·도트·선택 표시가 큰 셀 안에서
+   서로 겹치지 않고 균형 있게 보이도록 한다. 이 블록은 위 기본 규칙들보다 뒤에 있어야
+   한다(같은 우선순위에서 소스 순서가 이긴다 -- 앞에 두면 뒤의 기본 .has-dot:after
+   규칙이 다시 덮어써 좁은 폭에서도 도트 크기가 커지지 않는 실제 버그가 있었다). */
+@container future-log-card (max-width:640px){
+  /* 요구사항 1(3차 감사): 좁은 카드는 왼쪽 블록(제목+달력) 전체가 위, 오른쪽 블록
+     (quick-add+목록) 전체가 아래로 쌓인다 -- 세로 구분선(border-left)도 가로
+     구분선으로 바뀐다. */
+  .future-log-block-main{flex-direction:column}
+  .future-log-block-left{width:100%;flex-basis:auto;padding-bottom:0}
+  .future-log-block-right{border-left:0;border-top:1px solid var(--line)}
+  .future-log-mini-cal{width:100%}
+  /* 스택 모드에서도 사용자가 고른 배율(--fl-scale)을 반영하되, min()의 cqw 항이
+     카드 자신의 실제 폭 기준 상한이라 320px처럼 극단적으로 좁은 카드에서는 배율을
+     140%로 올려도 자동으로 눌려 가로 overflow·요일 겹침·토요일 잘림이 생기지 않는다
+     (요구사항: 좁은 카드는 자동 상한). */
+  .future-log-mini-cal-weekdays{font-size:clamp(9px,min(calc(11px * var(--fl-scale)),3.4cqw),14px)}
+  .future-log-mini-cal-dates{grid-auto-rows:clamp(24px,calc(34px * var(--fl-scale)),46px)}
+  .future-log-mini-cal-date{font-size:clamp(10px,min(calc(13px * var(--fl-scale)),4cqw),17px)}
+  .future-log-mini-cal-date.has-dot:after{width:clamp(4px,calc(5px * var(--fl-scale)),7px);height:clamp(4px,calc(5px * var(--fl-scale)),7px);right:4px;top:4px}
+  /* 최종 감사(요구사항 4): 좁은 카드에서도 위 기본 규칙과 같은 이유로 모든 주가 항상
+     같은 고정 행 높이를 쓴다(auto 대신 고정값 -- 정렬 흔들림 방지가 빈 공간 절약보다
+     우선). */
+  .future-log-mini-cal.has-lunar .future-log-mini-cal-dates{grid-auto-rows:clamp(24px,calc(34px * var(--fl-scale)),46px)}
+}
+/* 요구사항 3(4차 감사): 320px 실측(카드 실폭 ~124px, 행 폭 ~102px) -- 이전 시도(핸들
+   display:none + 날짜 칸만 24px로 축소)는 제목이 35px로 여전히 실사용 불가능하다는
+   피드백에 따라 폐기한다. 대신 진짜 2줄 레이아웃으로 바꾼다: 날짜 칸(.future-log-row-datecol,
+   DOM 위치는 그대로, [핸들][체크박스][날짜칸][유형][제목] 순서 자체는 안 바꾼다)만
+   order로 시각적으로 맨 뒤로 보내고 flex-basis:100%로 강제 줄바꿈시켜 둘째 줄로
+   내려보낸다 -- 첫째 줄에는 자연히 [핸들][체크박스][유형][제목]만 남는다(요구사항
+   그대로, DOM 재배치가 아니라 순수 CSS만으로). 핸들은 숨기지 않고 폭만 유지한다
+   (요구사항: 터치/마우스로 계속 접근 가능). 날짜가 없는 행은 날짜 칸에 자식이 없어
+   :empty로 자연히 접혀 둘째 줄 자체가 생기지 않는다(새 JS 분기 없이 순수 CSS).
+   margin-left(57px)는 첫째 줄의 실제 폭 구성(핸들9+gap6+체크박스16+gap6+유형14+gap6)을
+   그대로 더한 값이다 -- 임의 숫자가 아니라 이미 이 파일에 있는 실제 폭들의 합. */
+@container future-log-card (max-width:360px){
+  .future-log-row{flex-wrap:wrap;gap:3px;padding:2px 4px}
+  .future-log-row-datecol{order:5;flex:0 0 100%;width:auto;box-sizing:border-box;margin-left:57px;overflow:visible}
+  .future-log-row-datecol:empty{display:none;margin:0}
+}
+/* 날짜 선택 표시줄 -- 선택된 날짜가 있을 때만 quick-add 위에 보인다(요구사항). 요구사항
+   4: "달력에서 보기" 버튼이 추가돼 텍스트/보기/취소 세 요소가 되므로 justify-content
+   대신 gap으로만 간격을 준다(가운데 요소가 늘어나 배지 위치가 흔들리지 않게). */
+.future-log-quick-date-indicator{flex:0 0 auto;display:flex;align-items:center;gap:10px;padding:4px 12px;font-size:11.5px;font-weight:700;color:var(--lav);background:var(--lav-soft)}
+.future-log-quick-date-indicator[hidden]{display:none}
+.future-log-quick-date-indicator-text{flex:1 1 auto;min-width:0}
+.future-log-quick-date-indicator-view{flex:none;border:0;background:none;padding:0;font:inherit;font-size:11.5px;font-weight:700;color:inherit;text-decoration:underline;cursor:pointer;white-space:nowrap}
+.future-log-quick-date-indicator-view:hover{color:var(--ink)}
+.future-log-quick-date-indicator-clear{flex:none;border:0;background:none;padding:0;width:16px;height:16px;display:grid;place-items:center;color:inherit;cursor:pointer;border-radius:4px;font-size:13px;line-height:1}
+.future-log-quick-date-indicator-clear:hover{background:rgba(var(--lav-rgb),.15)}
+/* Future Log 오버플로우 팝오버는 Monthly Log의 팝오버 셸(.monthly-log-overflow-popover/
+   -title/-list/-empty)을 그대로 쓴다 -- 새 클래스를 추가하지 않는다. */
 /* 날짜 행: 왼쪽 날짜·요일(고정 폭) + 오른쪽 압축 항목 목록. 종이 Monthly Log의 가로줄을
    기존 --line 선 굵기로 재현한다. min-height로 "읽을 수 있는 최소 높이"를 보장한다. */
 .monthly-log-row{display:flex;flex-direction:column;gap:2px;min-width:0;min-height:0;padding:3px 4px 2px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);position:relative;overflow:hidden}
@@ -1547,7 +1886,11 @@ body.desc-block-dnd-active .desc-block-add{
 .monthly-log-row.range-preview .monthly-log-row-label,.monthly-log-row.range-selected-start .monthly-log-row-label,.monthly-log-row.range-selected-middle .monthly-log-row-label,.monthly-log-row.range-selected-end .monthly-log-row-label,.monthly-log-row.range-selected-single .monthly-log-row-label{color:var(--lav);background:var(--lav-soft);border-radius:7px}
 .monthly-log-row.range-selected-start .monthly-log-row-label,.monthly-log-row.range-selected-end .monthly-log-row-label,.monthly-log-row.range-selected-single .monthly-log-row-label{font-weight:800;box-shadow:inset 0 0 0 2px var(--lav)}
 .monthly-log-row-label{flex:0 0 auto;min-width:0;position:relative;display:flex;align-items:center;gap:4px;height:18px;font-size:12px;font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums;cursor:pointer;user-select:none;z-index:45;overflow:hidden}
-.monthly-log-row-weekday{font-size:12px;font-weight:700;color:var(--muted)}
+/* CSS-first 재설계(QA): 공휴일 이름은 day-num/음력 사이에서 유일하게 줄어드는
+   요소다 -- min-width:0으로 flex 기본 min-width:auto(콘텐츠 폭 하한)를 없애야
+   실제로 0까지 줄어들 수 있고, overflow:hidden+text-overflow:ellipsis로 줄어드는
+   중간에는 "..."로 보인다(완전히 안 보이는 것과 다름). */
+.monthly-log-row-weekday{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;font-weight:700;color:var(--muted)}
 .monthly-log-row.is-sun .monthly-log-row-label{color:var(--sun)}
 .monthly-log-row.is-sun .monthly-log-row-weekday{color:var(--sun)}
 .monthly-log-row.is-sat .monthly-log-row-label{color:var(--sat)}
@@ -1715,14 +2058,21 @@ body.monthly-split-dragging,body.monthly-split-dragging *{cursor:col-resize!impo
 
 /* 음력 보조 텍스트(미니 달력 날짜 칸 / Monthly Log 날짜 행) -- 실제 날짜보다 작고 옅게. */
 .date-lunar{position:absolute;left:50%;top:25px;transform:translateX(-50%);display:block;font-size:9px;font-weight:600;color:var(--text-tertiary);line-height:1;margin:0;white-space:nowrap;pointer-events:none}
-/* 버그 수정: 예전엔 flex 흐름 안에 있어(flex-shrink:0인 부모의 min-width:auto 기본값
-   때문에) 음력 텍스트 길이가 .monthly-log-row-label 자체의 렌더 폭을 48px보다 넓게
-   밀어내, 그 오른쪽의 일정 격자 시작 x좌표가 음력 유무에 따라 행마다 달라지는 실제
-   버그였다(재현 확인: 음력이 있는 행과 없는 행의 같은 컬럼 셀 x좌표가 어긋남 -> 단일
-   칸 선택도 함께 어긋남). .date-lunar(미니 달력)와 같은 절대 위치 기법으로 완전히
-   흐름 밖으로 빼, 있든 없든 label의 렌더 폭(따라서 격자 좌표)에 전혀 영향을 주지 않게
-   한다. pointer-events:none으로 겹치는 영역의 클릭도 항상 아래(격자 셀)로 통과시킨다. */
-.monthly-log-row-lunar{position:absolute;left:0;bottom:3px;max-width:46px;font-size:9px;font-weight:600;color:var(--text-tertiary);line-height:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none}
+/* 버그 수정(CSS-first 재설계, QA): 이전에는 음력 캡션을 position:absolute로 흐름 밖에
+   빼고 고정 left 값(day-num 폭 기준)으로 옮겼다 -- 그런데 공휴일 이름
+   (.monthly-log-row-weekday)이 day-num 뒤에 하나 더 끼어드는 날은 그 폭이 "추석"(2글자)
+   부터 "부처님오신날"(6글자, 항상 음력과 함께 나옴)까지 날마다 달라 고정 left로는
+   안전하게 커버할 수 없었다(실측 확인: 2027-09-15 "추석"+"음 8.15" 겹침 210px²).
+   대신 day-num/공휴일 이름/음력 세 개를 label의 같은 flex 행에 정상적으로 배치하고,
+   공휴일 이름 하나만 줄어들게 한다(아래 규칙들) -- day-num과 음력은 flex:0 0 auto라
+   무슨 상황에도 줄어들지 않고 항상 완전히 보이고, 공휴일 이름만 min-width:0 +
+   text-overflow:ellipsis로 공간이 부족할 때 먼저 말줄임된다. label 자체는 여전히
+   flex-direction:column인 부모의 cross-axis stretch로 행 전체 폭(약 147px)까지
+   늘어나 있고(변경 없음), day-num+음력의 합쳐진 최소 폭은 그보다 한참 작아
+   (약 50~60px) 공휴일 이름이 0까지 줄어들어도 절대 넘치지 않는다. 실제 렌더 폭을
+   JS로 측정해 위치를 재계산하는 방식은 쓰지 않는다(요구사항) -- resize/zoom 때마다
+   다시 계산할 필요 자체가 없다. */
+.monthly-log-row-lunar{flex:0 0 auto;font-size:9px;font-weight:600;color:var(--text-tertiary);line-height:1;white-space:nowrap;pointer-events:none}
 
 /* 공휴일 -- 일요일과 같은 빨강 처리(토요일이어도 우선), 이름은 JS가 요일 자리에 넣는다. */
 .monthly-log-row.is-holiday .monthly-log-row-label,.monthly-log-row.is-holiday .monthly-log-row-weekday{color:var(--sun)}
@@ -1847,16 +2197,78 @@ body.dnd-active .group-drag{cursor:grabbing}
 .group-member-row{margin-left:20px;border-color:color-mix(in srgb,var(--group-accent,var(--lav)) 48%,var(--line2)) !important;border-left-width:3px !important;border-left-color:var(--group-accent,var(--lav)) !important;background-color:color-mix(in srgb,var(--group-accent,var(--lav)) 3%,var(--bg-card))}
 .group-member-row:hover{background-color:color-mix(in srgb,var(--group-accent,var(--lav)) 8%,var(--bg-hover))}
 
-/* 프로젝트(전역 소속) -- 카드 표시는 그룹 멤버 행과 같은 왼쪽 테두리 기법을 재사용하되
-   전용 변수(--project-accent)를 써서 그룹 강조와 섞이지 않게 한다(요구사항: 얇은 왼쪽
-   테두리, 이름은 상시 노출하지 않고 title 속성의 네이티브 tooltip로만 확인). 그룹이
-   이미 왼쪽 테두리를 쓰는 행(.group-member-row)에서는 그룹 표시가 우선한다. */
-.task[data-has-project="true"]:not(.group-member-row),
-.week-card li[data-has-project="true"]:not(.group-member-row),
-.monthly-item-row[data-has-project="true"]:not(.group-member-row){
-  border-left-width:3px;
-  border-left-color:var(--project-accent,var(--lav));
+/* 프로젝트(전역 소속) -- 그룹 표시(왼쪽 선)와 완전히 다른 채널을 쓴다: 제목 앞의 작은
+   원 하나뿐이다(요구사항: 그룹색은 왼쪽 선 전용, 프로젝트색은 원 전용이라 같은 색이어도
+   서로 덮거나 자동으로 바뀌지 않는다). 프로젝트가 없는 항목은 buildProjectDot()이
+   null을 돌려줘 이 엘리먼트 자체가 DOM에 없다 -- 점 자리도, 간격도 생기지 않는다.
+   실제 DOM 엘리먼트라 aria-label(접근성 이름)·tabindex(키보드 포커스)를 가질 수 있다
+   (::before로는 불가능). 호버 툴팁은 브라우저 기본 title이 아니라 아래
+   .project-dot-tooltip 커스텀 엘리먼트가 담당한다(wireInlineTooltips, [data-tooltip-text]가
+   붙은 어떤 엘리먼트에도 재사용된다 -- Search의 유형 기호·그룹선도 같은 문법). 배지·추가
+   배경·테두리 색은 만들지 않는다 -- 테두리는 배경 대비용 1px 고정 색(var(--line2))뿐이고
+   채움색만 프로젝트색이다. */
+.project-dot{
+  flex:none;
+  display:inline-block;
+  border-radius:50%;
+  background:var(--project-accent,var(--lav));
+  border:1px solid var(--line2);
+  vertical-align:middle;
+  cursor:default;
 }
+.project-dot:focus-visible{outline:2px solid var(--lav);outline-offset:2px}
+/* Daily·Weekly는 6px, Monthly는 4px(요구사항) -- 점-제목 간격은 margin-right 한 값으로만
+   통일해서, li/grid의 다른 gap과 겹쳐 항목마다 어긋나는 일이 없게 한다. */
+.project-dot.is-lg{width:6px;height:6px;margin-right:5px}
+.project-dot.is-sm{width:4px;height:4px;margin-right:4px}
+/* 프로젝트 점 커스텀 툴팁 -- 지연 애니메이션 없이 즉시 나타난다(transition 없음).
+   위치는 app.js의 showProjectDotTooltip이 매번 계산해 top/left로 직접 지정한다. */
+.project-dot-tooltip{
+  position:fixed;
+  z-index:200;
+  max-width:220px;
+  padding:4px 8px;
+  border-radius:6px;
+  background:var(--ink);
+  color:var(--bg-card);
+  font-size:11.5px;
+  font-weight:650;
+  line-height:1.35;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  box-shadow:0 4px 14px var(--shadow-drag);
+  pointer-events:none;
+}
+.project-dot-tooltip[hidden]{display:none}
+/* 아이콘 전용 버튼용 2단(설명+단축키) 카드형 -- 앱 전체 icon-only 버튼 툴팁이 이
+   모양으로 통일된다(요구사항). 같은 공유 엘리먼트(#inline-tooltip)에 이 클래스가
+   붙었을 때만 꼬리표/2단 레이아웃을 쓰고, 평소 한 줄 설명 모드의 overflow:hidden/
+   ellipsis는 꼬리(::after 아님, 실제 자식 span)가 잘리지 않도록 여기서 되돌린다. */
+.project-dot-tooltip.is-kbd-tooltip{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  max-width:none;
+  white-space:nowrap;
+  overflow:visible;
+  text-overflow:clip;
+  background:var(--ink);
+  color:var(--paper);
+  font-size:12px;
+  font-weight:650;
+  padding:6px 10px;
+  border-radius:8px;
+}
+.inline-tooltip-kbd{opacity:.75;font-size:11px}
+.inline-tooltip-tail{position:absolute;left:50%;bottom:-4px;width:8px;height:8px;background:inherit;transform:translateX(-50%) rotate(45deg)}
+.project-dot-tooltip.is-below .inline-tooltip-tail{bottom:auto;top:-4px}
+/* 점을 제목 텍스트(.row-title-text/.week-item-title/.monthly-item-title) 밖의 래퍼에
+   두는 이유는 app.js 쪽 주석 참고 -- 실시간 편집 미리보기가 텍스트 엘리먼트의
+   textContent를 통째로 덮어써서, 점이 그 안에 있으면 타이핑 중 사라지기 때문이다.
+   래퍼는 각 화면에서 제목이 원래 차지하던 폭 트랙을 그대로 이어받는다. */
+.week-title-cell{display:flex;align-items:center;min-width:0;flex:1 1 auto}
+.monthly-item-title-cell{display:flex;align-items:center;min-width:0}
 /* 상세 패널의 프로젝트 선택기 -- openGroupMenu의 .type-menu/.group-color-swatch류를
    그대로 재사용한다. */
 .project-menu{min-width:180px}
@@ -1878,15 +2290,22 @@ body.dnd-active .group-drag{cursor:grabbing}
    시각 위계(같은 크기/스타일)를 쓰되, 보라색 월간 패널 토글(34x34, top:0;right:0)과
    겹치지 않도록 그 왼쪽에 8px 간격을 두고 세로 중앙(top:4px, 34px 버튼 대비 (34-26)/2)
    정렬한다. */
-.today-menu-btn{position:absolute;top:4px;right:42px;border:0;background:none;padding:0;cursor:pointer;color:var(--icon-muted);width:26px;height:26px;border-radius:6px;display:grid;place-items:center;font-size:18px;font-weight:700;line-height:1}
+/* 최종 감사(Today 보조 헤더 겹침 수정): 이 두 버튼은 원래 .daily에 대해
+   position:absolute(top/right 고정 좌표)로 .daily-title 위에 얹혀 있었다 -- 제목이
+   충분히 짧을 때는 문제가 없었지만, 좁은 화면에서 "2026년 08월 04일"처럼 제목이
+   실제로 넓어지면(고정 좌표는 제목 길이를 모르므로) 버튼이 제목 글자 위에 그대로
+   겹쳤다(요구사항: 실제 원인 해결, 좌표 재보정 금지). 이제 .daily-header(flex)의
+   평범한 자식이라 제목과 서로의 실제 폭을 두고 경쟁하고, 함께 자리가 없으면
+   .daily-header-actions 묶음째로 다음 줄로 내려간다. */
+.today-menu-btn{position:static;border:0;background:none;padding:0;cursor:pointer;color:var(--icon-muted);width:26px;height:26px;border-radius:6px;display:grid;place-items:center;font-size:18px;font-weight:700;line-height:1}
 .today-menu-btn:hover,.today-menu-btn[aria-expanded="true"]{background:var(--bg-hover);color:var(--ink)}
-/* Today 우측 월간 할일 토글(보라색) + 커스텀 툴팁(title 속성이 아니다) */
-.monthly-panel-toggle{position:absolute;top:0;right:0;width:34px;height:34px;border-radius:10px;border:0;background:var(--lav);color:#fff;display:grid;place-items:center;cursor:pointer;font-size:16px;box-shadow:0 2px 6px var(--shadow-soft)}
+/* Today 우측 월간 할일 토글(보라색) -- 툴팁은 이제 공용 #inline-tooltip
+   (.is-kbd-tooltip, 위 .project-dot-tooltip 근처)로 통일됐다(요구사항: 앱 전체
+   icon-only 버튼과 같은 툴팁 시스템 재사용, 이 버튼 전용 커스텀 툴팁 제거). */
+.monthly-panel-toggle{position:static;flex:none;width:34px;height:34px;border-radius:10px;border:0;background:var(--lav);color:#fff;display:grid;place-items:center;cursor:pointer;font-size:16px;box-shadow:0 2px 6px var(--shadow-soft)}
 .monthly-panel-toggle[aria-pressed="true"]{filter:brightness(.92)}
-.monthly-toggle-tooltip{position:fixed;z-index:60;background:var(--ink);color:var(--paper);font-size:12px;font-weight:650;padding:6px 10px;border-radius:8px;display:flex;align-items:center;gap:8px;pointer-events:none;box-shadow:0 4px 12px var(--overlay-shadow)}
-.monthly-toggle-tooltip-kbd{opacity:.75;font-size:11px}
-.monthly-toggle-tooltip-tail{position:absolute;left:50%;bottom:-4px;width:8px;height:8px;background:inherit;transform:translateX(-50%) rotate(45deg)}
-.monthly-toggle-tooltip.is-below .monthly-toggle-tooltip-tail{bottom:auto;top:-4px}
+.daily-header{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px 12px;margin:0 0 20px}
+.daily-header-actions{display:flex;align-items:center;gap:8px;flex:none}
 
 /* Today 우측 월간 패널 -- position:fixed라 문서 흐름과 무관하게 뜬다. .artboard는
    body{justify-content:center}로 가운데 정렬되고 항상 max-width:1625px로 고정되므로,
@@ -1984,9 +2403,7 @@ body.dnd-active .group-drag{cursor:grabbing}
      기존 문서 흐름 그대로 유지). */
   .weekly-body.week-row-split{max-height:60vh;min-height:min(40vh,400px)}
   /* Monthly Log: .top/.weekly와 같은 grid 칸(사이드바 오른쪽, 두 행 전부)을 세로로
-     이어 쓴다 -- Monthly Log가 먼저(위), 월간함은 그 아래로 쌓는다(요구사항: "우선 전체
-     너비로 보여주고 오른쪽 월간함은 아래쪽으로 쌓는다"). 화면 밖으로 잘리는 고정 폭
-     패널을 만들지 않기 위해 flex-basis를 auto로 되돌린다. */
+     이어 쓴다. */
   .monthly-log-view{
     position:static !important;
     grid-column:2;
@@ -2002,8 +2419,97 @@ body.dnd-active .group-drag{cursor:grabbing}
     border-radius:14px;
   }
   .monthly-log-body{max-height:60vh}
-  .monthly-inbox-panel{flex:0 0 auto;border-left:none;border-top:1px solid var(--line2)}
-  .monthly-inbox-list{max-height:40vh}
+  /* Future Log: Monthly Log와 같은 grid 칸을 같은 방식으로 이어 쓴다. */
+  .future-log-view{
+    position:static !important;
+    grid-column:2;
+    grid-row:1/3;
+    left:auto !important;
+    right:auto !important;
+    top:auto !important;
+    bottom:auto !important;
+    height:auto !important;
+    margin:24px 24px 24px 0;
+    border:1px solid var(--line2);
+    border-radius:14px;
+  }
+  .future-log-body{max-height:60vh}
+  /* 요구사항: 좁은 화면에서 "이달의 할 일"을 본문 아래로 쌓지 않고(예전 방식은 패널
+     콘텐츠의 nowrap 폭이 grid 칸보다 커지면 뷰포트 밖으로 잘렸다) 우측에서 슬라이드로
+     들어오는 오버레이로 전환한다. 폭이 min(340px,86vw)로 항상 뷰포트 안에 들어오므로
+     가로 스크롤이 필요 없다. 열기 버튼(.monthly-inbox-toggle-btn)은 달력 헤더에,
+     닫기 버튼(.monthly-inbox-close-btn)은 패널 자체 헤더에 항상 화면 안에 남아있다.
+     Today/Monthly의 날짜·선택·스크롤 상태는 건드리지 않는다(class/transform만 토글). */
+  .monthly-split-divider{display:none}
+  .monthly-inbox-panel{
+    position:fixed;
+    left:auto;
+    right:0;
+    top:0;
+    bottom:0;
+    width:min(340px,86vw);
+    height:auto;
+    flex:none;
+    border-left:1px solid var(--line2);
+    border-top:none;
+    box-shadow:-6px 0 20px var(--shadow-panel);
+    z-index:82;
+    transform:translateX(100%);
+    transition:transform .18s ease;
+  }
+  .monthly-inbox-panel.is-open{transform:translateX(0)}
+  .monthly-inbox-list{max-height:none}
+  .monthly-inbox-toggle-btn,.monthly-inbox-close-btn{display:grid}
+}
+.monthly-inbox-toggle-btn{display:none;border:0;background:none;padding:0;cursor:pointer;color:var(--icon-muted);width:26px;height:26px;border-radius:6px;place-items:center;font-size:15px;line-height:1;margin-left:4px}
+.monthly-inbox-toggle-btn:hover{background:var(--bg-hover);color:var(--ink)}
+.monthly-inbox-close-btn{display:none;border:0;background:none;padding:0;cursor:pointer;color:var(--icon-muted);width:26px;height:26px;border-radius:6px;place-items:center;font-size:16px;line-height:1}
+.monthly-inbox-close-btn:hover{background:var(--bg-hover);color:var(--ink)}
+/* 최종 감사(Monthly Log 320px 붕괴 수정): 실제 원인은 세 가지가 겹친 것이었다 --
+   (1) .monthly-log-header{padding:20px 32px}의 좌우 64px가 이 폭 콘텐츠 영역(118px)의
+   절반 이상을 먹어 제목이 여러 줄로 쪼개짐, (2) .monthly-log-rows{padding:0 24px 20px}의
+   좌우 48px가 7열 달력 실제 폭을 124px까지 눌러 칸 하나가 ~17px로 숫자만 겨우 보임,
+   (3) 위 1199px 블록의 "이달의 할 일"을 우측 슬라이드 오버레이로 바꾸는 패턴 자체는
+   틀리지 않았지만, 이번 요구사항은 이보다 좁은 화면에서는 오버레이/토글이 아니라
+   달력 위 + 이달의 할 일 아래로 항상 둘 다 보이는 스택 구조를 요구한다.
+   1199px 블록보다 뒤에 둬 같은 선택자에서 이 규칙이 이긴다(소스 순서). */
+@media(max-width:640px){
+  .monthly-log-view{flex-direction:column}
+  .monthly-log-main{flex:0 0 auto;min-height:0}
+  .monthly-split-divider{display:none}
+  .monthly-inbox-panel{
+    position:static;
+    left:auto;right:auto;top:auto;bottom:auto;
+    width:100%;
+    height:auto;
+    max-height:50vh;
+    flex:0 0 auto;
+    border-left:0;
+    border-top:1px solid var(--line2);
+    box-shadow:none;
+    transform:none;
+    transition:none;
+  }
+  /* 오버레이/토글이 없어졌으니(항상 보임) 열기·닫기 버튼도 의미가 없다 -- 달력
+     기능·이달의 할 일 기능 둘 다 숨기지 않고, 그걸 여닫던 컨트롤만 없앤다. */
+  .monthly-inbox-toggle-btn,.monthly-inbox-close-btn{display:none}
+  .monthly-log-header{padding:14px 14px 10px}
+  .monthly-log-nav{flex-wrap:wrap;row-gap:6px}
+  /* 최종 감사(Monthly Log 모바일 날짜 가독성): 전체 폭 스택 구조로 바뀌어 더는
+     "이달의 할 일" 패널과 폭을 나눠 쓰지 않으므로, 이전에 10px까지 줄였던 근거(칸
+     폭 절대 부족)가 약해졌다 -- rows 좌우 padding을 4px→2px로 한 번 더 줄여 칸 폭
+     여유를 늘리고, 그 여유를 폰트 축소가 아니라 칸 padding에서 먼저 가져간다
+     (요구사항: 폰트보다 padding·gap 우선). */
+  .monthly-log-rows{padding:0 2px 14px}
+  /* 실제 확인된 회귀: rows padding만 줄여도 .monthly-log-row/.monthly-log-day-num
+     자신의 좌우 padding이 남아 있으면 "10"처럼 두 자리 날짜가 칸 폭보다 넓어져
+     overflow:hidden에 뒷자리가 잘려 "1"처럼 보인다 -- 이 폭에서는 둘 다 최소로
+     줄인다. min-width는 14px로 유지해 한 자리 숫자의 탭 영역이 너무 좁아지지 않게
+     한다. 폰트는 10px→11px로 다시 올린다(요구사항: 최소 11px, 가능하면 12px에
+     가깝게) -- 실측 결과 320px에서 12px는 두 자리 날짜가 칸 폭을 넘어 다시 잘리므로
+     (여유 0px 이하), 잘리지 않는 것이 확인된 11px을 최종값으로 쓴다. */
+  .monthly-log-row{padding:2px 0 1px}
+  .monthly-log-day-num{padding:0 1px;min-width:14px;font-size:11px}
 }
 /* Daily는 실제 제목 글자 위에서만 편집 커서를 표시 */
 /* 카드 영역은 정상 클릭되며, 실제 제목 글자에만 편집 커서를 표시 */
@@ -2315,20 +2821,79 @@ body.dnd-active .group-drag{cursor:grabbing}
 .monthly-log-row.is-outside-month .monthly-log-row-label{color:var(--text-disabled)}
 .monthly-log-row.is-outside-month .monthly-log-day-item{opacity:.62}
 .monthly-log-row.is-today .monthly-log-day-num{background:var(--lav);color:#fff;border-radius:99px}
-.monthly-log-day-num{display:inline-grid;place-items:center;min-width:18px;height:18px;padding:0 4px;line-height:1}
+/* CSS-first 재설계(QA): 날짜 숫자는 day-num/공휴일 이름/음력 세 flex 자식 중
+   flex-shrink:0으로 절대 줄어들지 않는 두 요소 중 하나다(항상 완전히 표시). */
+.monthly-log-day-num{flex:0 0 auto;display:inline-grid;place-items:center;min-width:18px;height:18px;padding:0 4px;line-height:1}
 .monthly-log-row-lunar{font-size:9.5px;font-weight:650;color:var(--muted)}
 .monthly-log-day-slots{flex:0 0 auto;height:calc(var(--monthly-slot-count,3)*var(--monthly-slot-h,18px) + (var(--monthly-slot-count,3) - 1)*var(--monthly-slot-gap,2px));overflow:hidden}
 .monthly-log-day-item{display:flex!important;align-items:center;gap:3px;width:100%;max-width:none!important;height:18px;margin:0!important;padding:0 4px!important;border:1px solid var(--schedule-border);border-radius:4px;background:var(--schedule-bg);color:var(--schedule-text);font-size:11px;font-weight:700;line-height:1;overflow:hidden;box-sizing:border-box}
 .monthly-log-day-item .monthly-log-item-title{min-width:0;flex:1 1 auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .monthly-log-day-item.is-multi-day.continues-before{border-left-style:dashed;border-top-left-radius:0;border-bottom-left-radius:0}
 .monthly-log-day-item.is-multi-day.continues-after{border-right-style:dashed;border-top-right-radius:0;border-bottom-right-radius:0}
-.monthly-log-day-item.is-done{opacity:.55}
+/* 요구사항: 완료를 opacity로 과도하게 죽이지 않는다 -- 취소선이 주된 신호이고,
+   톤다운은 계속 읽을 수 있는 수준(.82)으로만 제한한다. */
+.monthly-log-day-item.is-done{opacity:.82}
 .monthly-log-day-item.is-done .monthly-log-item-title{text-decoration:line-through}
 .monthly-log-day-item.is-selected{outline:2px solid var(--lav);outline-offset:-1px}
 .monthly-log-day-item .monthly-log-drag{width:9px;flex:none}
+/* 요구사항: 할 일/메모가 일정과 같은 칸에 섞일 수 있어 Today와 같은 유형 기호로
+   구분한다. 칩 높이(18px)에 맞춰 작게 쓰고 색은 칩 자체 텍스트 색(currentColor)을
+   그대로 따른다 -- 새 색을 만들지 않는다. */
+.monthly-log-item-type-icon{flex:none;display:inline-flex;align-items:center;justify-content:center;width:10px;color:currentColor}
+.monthly-log-item-type-icon .ic-ring{width:9px;height:9px;border-width:1.4px}
+.monthly-log-item-type-icon .ic-dot{width:6px;height:6px}
+.monthly-log-item-type-icon .ic-dash{width:8px}
+/* 요구사항: Monthly는 별도 그룹 헤더/슬롯 없이, 그룹에 속한 칩 자체의 왼쪽에 2px
+   그룹색 선만 표시한다(Daily/Weekly .group-member-row와 같은 채널, 값만 2px로 더 얇다).
+   프로젝트 점(제목 앞 4px)과는 서로 다른 채널이라 함께 유지된다. */
+.monthly-log-day-item.has-group{border-left-width:2px;border-left-color:var(--group-accent,var(--lav))}
+.monthly-log-title-cell{display:flex;align-items:center;min-width:0;flex:1 1 auto}
 .monthly-log-day-overflow{flex:0 0 auto;height:14px;padding:0 4px;font-size:10px;font-weight:750;color:transparent;line-height:14px;overflow:hidden;user-select:none}
-.monthly-log-day-overflow.has-overflow{color:var(--lav);cursor:default}
-.monthly-log-body{overflow-x:hidden}
+.monthly-log-day-overflow.has-overflow{color:var(--lav);cursor:pointer}
+.monthly-log-day-overflow.has-overflow:hover,.monthly-log-day-overflow.has-overflow:focus-visible{text-decoration:underline;outline:none}
+.monthly-log-day-overflow.has-overflow:focus-visible{outline:2px solid var(--lav);outline-offset:1px;border-radius:3px}
+/* 요구사항: +N이 없어도(행을 늘려 다 보이는 날에도) 같은 전체 목록 팝오버를 열 수
+   있는 버튼 -- 날짜 칸 우측 상단, 날짜 숫자/셀 클릭 작성/드래그 영역을 가리지 않도록
+   position:absolute로 셀 위에 얹는다. 데스크톱(hover:hover and pointer:fine)에서는
+   기본 숨김 -> 그 칸 hover/포커스에서만 나타나고, 터치·좁은 화면(그 미디어 쿼리 밖)에서는
+   기본값 그대로 항상 보인다. */
+.monthly-log-day-list-btn{position:absolute;top:2px;right:2px;z-index:46;width:16px;height:16px;display:flex;align-items:center;justify-content:center;border:none;border-radius:4px;background:var(--bg-hover);color:var(--muted);cursor:pointer;padding:0}
+.monthly-log-day-list-btn:hover{background:var(--lav-soft);color:var(--lav)}
+.monthly-log-day-list-btn:focus-visible{outline:2px solid var(--lav);outline-offset:1px}
+@media (hover: hover) and (pointer: fine) {
+  .monthly-log-day-list-btn{opacity:0}
+  .monthly-log-row:hover .monthly-log-day-list-btn,
+  .monthly-log-row:focus-within .monthly-log-day-list-btn,
+  .monthly-log-day-list-btn:focus-visible{opacity:1}
+}
+.ic-list{width:11px;height:1.6px;background:currentColor;border-radius:1px;position:relative}
+.ic-list::before,.ic-list::after{content:"";position:absolute;left:0;width:100%;height:1.6px;background:currentColor;border-radius:1px}
+.ic-list::before{top:-4px}
+.ic-list::after{top:4px}
+/* +N 읽기 전용 팝오버 -- 새 작성/드래그 없음, 항목 클릭은 기존 상세 Drawer를 연다. */
+.monthly-log-overflow-popover{position:fixed;z-index:60;background:var(--bg-card);border:1px solid var(--line2);border-radius:10px;box-shadow:0 4px 16px var(--overlay-shadow);padding:8px;min-width:220px;max-width:300px}
+.monthly-log-overflow-popover-title{padding:4px 8px 8px;font-size:12px;font-weight:750;color:var(--muted);border-bottom:1px solid var(--line);margin-bottom:4px}
+.monthly-log-overflow-popover-list{max-height:280px;overflow-y:auto}
+.monthly-log-overflow-row{display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:6px;cursor:pointer;font-size:13px;color:var(--ink)}
+.monthly-log-overflow-row:hover,.monthly-log-overflow-row:focus-visible{background:var(--bg-hover);outline:none}
+.monthly-log-overflow-row.is-done{opacity:.82}
+.monthly-log-overflow-row.is-done .monthly-log-overflow-title{text-decoration:line-through}
+.monthly-log-overflow-row.has-group{border-left:2px solid var(--group-accent,var(--lav))}
+.monthly-log-overflow-icon{flex:none;display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;color:var(--icon-muted)}
+.monthly-log-overflow-title-cell{display:flex;align-items:center;min-width:0;flex:1 1 auto}
+.monthly-log-overflow-title{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.monthly-log-overflow-empty{padding:8px;font-size:12px;color:var(--muted)}
+/* 기본(auto-fit) 상태에서는 열이 항상 minmax(0,1fr)라 가로로 넘치지 않으므로 스크롤바가
+   보이지 않는다. Shift+휠로 어느 한 열의 너비를 본체보다 크게 늘렸을 때만 그 열만큼
+   실제로 넘쳐서 가로 스크롤이 나타난다(요구사항 -- Monthly 본체 내부에서만 스크롤). */
+.monthly-log-body{overflow-x:auto}
+/* Monthly 달력 행·열 개별 크기 조절(요구사항) -- 새 7열 그리드 전용 구현, 옛 18레인 좌표
+   시스템과는 무관하다. 행 높이(flex/min-height)와 열 너비(grid-template-columns)는 행/열
+   마다 값이 달라 CSS 변수 하나로 표현할 수 없으므로, 값은 여기가 아니라 JS가 각 주
+   행/헤더/다일 오버레이 엘리먼트에 직접 인라인 스타일로 적용한다
+   (applyMonthlyLogRowHeightDom/applyMonthlyLogColumnTemplateDom). 기본 상태(인라인 스타일
+   없음)는 이 파일의 .monthly-log-week-row/.monthly-log-weekday-head 규칙(auto-fit)을
+   그대로 따른다. */
 .monthly-log-schedule-grid-host{display:flex!important;flex-direction:column;overflow:hidden!important}
 .monthly-log-day-slots.monthly-log-schedule-drop-lane{position:static!important;inset:auto!important;opacity:1!important;pointer-events:auto!important}
 .monthly-log-day-item.monthly-log-item:hover,.monthly-log-day-item.monthly-log-item:focus-visible{background:var(--schedule-bg);filter:brightness(.97);outline:none}
@@ -2339,9 +2904,10 @@ body.dnd-active .group-drag{cursor:grabbing}
 .monthly-log-week-segment{display:flex!important;align-items:center;gap:3px;min-width:0;max-width:none!important;height:18px;margin:0 4px!important;padding:0 4px!important;border:1px solid var(--schedule-border);border-radius:4px;background:var(--schedule-bg);color:var(--schedule-text);font-size:11px;font-weight:700;line-height:1;overflow:hidden;box-sizing:border-box;pointer-events:auto;cursor:pointer}
 .monthly-log-week-segment .monthly-log-item-title{min-width:0;flex:1 1 auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .monthly-log-week-segment .monthly-log-drag{width:9px;flex:none}
+.monthly-log-week-segment.has-group{border-left-width:2px;border-left-color:var(--group-accent,var(--lav))}
 .monthly-log-week-segment.continues-before{margin-left:0!important;border-left-style:dashed;border-top-left-radius:0;border-bottom-left-radius:0}
 .monthly-log-week-segment.continues-after{margin-right:0!important;border-right-style:dashed;border-top-right-radius:0;border-bottom-right-radius:0}
-.monthly-log-week-segment.is-done{opacity:.55}
+.monthly-log-week-segment.is-done{opacity:.82}
 .monthly-log-week-segment.is-done .monthly-log-item-title{text-decoration:line-through}
 .monthly-log-item.monthly-log-week-segment:hover{background:var(--schedule-bg);filter:brightness(.97);outline:none}
 .monthly-log-item.monthly-log-week-segment.is-selected{background:var(--schedule-bg);box-shadow:none;outline:2px solid var(--lav);outline-offset:-1px}
@@ -2356,8 +2922,9 @@ body.dnd-active .monthly-log-week-segment{pointer-events:none}
   <aside class="sidebar">
     <div class="profile">현아</div>
     <div class="side-nav-top">
-      <div class="side-item active today" role="button" tabindex="0" aria-label="오늘"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4M16 3v4M4 9h16"/></svg><span>오늘</span></div>
-      <div class="side-item calendar" role="button" tabindex="0" aria-label="달력"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4M16 3v4M4 9h16"/><path d="M9 12.2l2.3 2.3-2.3 2.3M12.7 12.2l2.3 2.3-2.3 2.3"/></svg><span>달력</span></div>
+      <div class="side-item active today" role="button" tabindex="0" aria-label="오늘"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4M16 3v4M4 9h16"/><path d="M9 11h6M12 11v7"/></svg><span>오늘</span></div>
+      <div class="side-item calendar" role="button" tabindex="0" aria-label="달력"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4M16 3v4M4 9h16"/><path d="M9 18v-7l3 4 3-4v7"/></svg><span>달력</span></div>
+      <div class="side-item future-log" role="button" tabindex="0" aria-label="퓨처로그"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4M16 3v4M4 9h16"/><path d="M9 12.2l2.3 2.3-2.3 2.3M12.7 12.2l2.3 2.3-2.3 2.3"/></svg><span>퓨처로그</span></div>
       <div class="side-item routine"><svg viewBox="0 0 24 24"><path d="M4 12a8 8 0 0 1 13.66-5.66M20 4v5h-5"/><path d="M20 12a8 8 0 0 1-13.66 5.66M4 20v-5h5"/></svg><span>루틴</span></div>
       <div class="side-item shortcut"><svg viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="11" rx="2"/><path d="M6 11h.01M10 11h.01M14 11h.01M18 11h.01M7 14.5h10"/></svg><span>단축키</span></div>
       <div class="side-item search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="M16 16l5 5"/></svg><span>검색</span></div>
@@ -2376,8 +2943,8 @@ body.dnd-active .monthly-log-week-segment{pointer-events:none}
   <section class="top">
     <div class="calendar-card">
       <div class="cal-title">2026년 7월</div>
-      <div class="cal-nav"><button type="button" class="cal-nav-prev" aria-label="이전 달">‹</button><button type="button" class="cal-nav-today" aria-label="오늘로 이동"><span class="ic-ring"></span></button><button type="button" class="cal-nav-next" aria-label="다음 달">›</button><button type="button" class="cal-settings-btn" aria-label="달력 표시 설정" aria-haspopup="menu" aria-expanded="false" aria-controls="cal-settings-menu">⋯</button></div>
-      <div class="weekdays"><span class="sun">Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span class="sat">Sat</span></div>
+      <div class="cal-nav"><button type="button" class="cal-nav-prev" aria-label="이전 달">‹</button><button type="button" class="cal-nav-today" aria-label="오늘로 이동" data-tooltip-label="오늘로 이동"><span class="ic-ring"></span></button><button type="button" class="cal-nav-next" aria-label="다음 달">›</button><button type="button" class="cal-settings-btn" aria-label="달력 표시 설정" aria-haspopup="menu" aria-expanded="false" aria-controls="cal-settings-menu" data-tooltip-label="달력 표시 설정">⋯</button></div>
+      <div class="weekdays"></div>
       <div class="dates">
         <span></span><span></span><span></span><span class="date">1</span><span class="date">2</span><span class="date">3</span><span class="date sat">4</span><span class="date sun">5</span>
         <span class="date">6</span><span class="date">7</span><span class="date">8</span><span class="date">9</span><span class="date">10</span><span class="date sat">11</span><span class="date sun">12</span>
@@ -2470,14 +3037,18 @@ body.dnd-active .monthly-log-week-segment{pointer-events:none}
     </div>
 
     <div class="daily">
-      <h2 class="daily-title">2026년 07월 30일</h2>
-      <button type="button" class="today-menu-btn" id="today-menu-btn" aria-haspopup="menu" aria-expanded="false" aria-controls="today-menu" aria-label="Today 설정">⋯</button>
-      <button type="button" class="monthly-panel-toggle" id="monthly-panel-toggle" aria-label="이번달 할 일 열기" aria-pressed="false" aria-haspopup="dialog" aria-controls="today-monthly-panel" aria-describedby="monthly-panel-tooltip">
-        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4M16 3v4M4 9h16"/></svg>
-      </button>
+      <div class="daily-header">
+        <h2 class="daily-title">2026년 07월 30일</h2>
+        <div class="daily-header-actions">
+          <button type="button" class="today-menu-btn" id="today-menu-btn" aria-haspopup="menu" aria-expanded="false" aria-controls="today-menu" aria-label="Today 설정" data-tooltip-label="Today 설정">⋯</button>
+          <button type="button" class="monthly-panel-toggle" id="monthly-panel-toggle" aria-label="이번달 할 일 열기" aria-pressed="false" aria-haspopup="dialog" aria-controls="today-monthly-panel">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4M16 3v4M4 9h16"/></svg>
+          </button>
+        </div>
+      </div>
       <div class="daily-normal-view">
-        <div class="quick"><span class="quick-icons" role="group" aria-label="입력 종류"><button type="button" class="q-slot" data-mode="task" aria-pressed="true" aria-label="할 일"><span class="ic-dot"></span></button><button type="button" class="q-slot" data-mode="schedule" aria-pressed="false" aria-label="일정"><span class="ic-ring"></span></button><button type="button" class="q-slot" data-mode="memo" aria-pressed="false" aria-label="메모"><span class="ic-dash"></span></button></span><input type="text" id="quick-input" class="placeholder" placeholder="할 일을 입력하고 엔터를 누르세요." autocomplete="off" aria-label="할 일 빠른 입력" /></div>
-        <div class="rollover"><button type="button" class="rollover-toggle" aria-expanded="false"><span class="tri"></span><span class="rollover-count">이월(0)</span></button><button type="button" class="rollover-today-btn" aria-label="이월 항목 전체 오늘로 이동">[오늘]</button><button type="button" class="delete-btn" aria-label="이월 항목 전체 삭제">[삭제]</button></div>
+        <div class="quick"><span class="quick-icons" role="group" aria-label="입력 종류"><button type="button" class="q-slot" data-mode="task" aria-pressed="true" aria-label="할 일" data-tooltip-label="할 일"><span class="ic-dot"></span></button><button type="button" class="q-slot" data-mode="schedule" aria-pressed="false" aria-label="일정" data-tooltip-label="일정"><span class="ic-ring"></span></button><button type="button" class="q-slot" data-mode="memo" aria-pressed="false" aria-label="메모" data-tooltip-label="메모"><span class="ic-dash"></span></button></span><input type="text" id="quick-input" class="placeholder" placeholder="할 일을 입력하고 엔터를 누르세요." autocomplete="off" aria-label="할 일 빠른 입력" /></div>
+        <div class="rollover"><div class="rollover-actions"><button type="button" class="rollover-toggle" aria-expanded="false"><span class="tri"></span><span class="rollover-count">이월(0)</span></button><button type="button" class="rollover-today-btn" aria-label="이월 항목 전체 오늘로 이동">[오늘]</button><button type="button" class="delete-btn" aria-label="이월 항목 전체 삭제">[삭제]</button></div></div>
         <div class="task-list" id="rollover-list" hidden></div>
         <div class="rollover-divider" id="rollover-divider" hidden></div>
         <div class="task-list" id="daily-list"></div>
@@ -2486,9 +3057,9 @@ body.dnd-active .monthly-log-week-segment{pointer-events:none}
         <div class="trash-toolbar">
           <div class="trash-filter" role="group" aria-label="휴지통 필터">
             <button type="button" class="trash-filter-btn" data-filter="all" aria-pressed="true">전체</button>
-            <button type="button" class="trash-filter-btn" data-filter="task" aria-pressed="false" aria-label="할 일"><span class="ic-dot"></span></button>
-            <button type="button" class="trash-filter-btn" data-filter="schedule" aria-pressed="false" aria-label="일정"><span class="ic-ring"></span></button>
-            <button type="button" class="trash-filter-btn" data-filter="memo" aria-pressed="false" aria-label="메모"><span class="ic-dash"></span></button>
+            <button type="button" class="trash-filter-btn" data-filter="task" aria-pressed="false" aria-label="할 일" data-tooltip-label="할 일"><span class="ic-dot"></span></button>
+            <button type="button" class="trash-filter-btn" data-filter="schedule" aria-pressed="false" aria-label="일정" data-tooltip-label="일정"><span class="ic-ring"></span></button>
+            <button type="button" class="trash-filter-btn" data-filter="memo" aria-pressed="false" aria-label="메모" data-tooltip-label="메모"><span class="ic-dash"></span></button>
           </div>
           <button type="button" class="empty-trash-btn" id="empty-trash-btn">휴지통 비우기</button>
         </div>
@@ -2514,11 +3085,11 @@ body.dnd-active .monthly-log-week-segment{pointer-events:none}
       <div class="week-nav">
         <button type="button" class="week-nav-btn" data-nav="-range" aria-label="7일 전">‹‹</button>
         <button type="button" class="week-nav-btn" data-nav="-1" aria-label="하루 전">‹</button>
-        <button type="button" class="week-nav-btn" data-nav="today" aria-label="이번 주"><span class="ic-ring"></span></button>
+        <button type="button" class="week-nav-btn" data-nav="today" aria-label="이번 주" data-tooltip-label="이번 주"><span class="ic-ring"></span></button>
         <button type="button" class="week-nav-btn" data-nav="1" aria-label="하루 후">›</button>
         <button type="button" class="week-nav-btn" data-nav="range" aria-label="7일 후">››</button>
       </div>
-      <button type="button" class="week-range-menu-btn" aria-haspopup="menu" aria-expanded="false" aria-controls="week-range-menu" aria-label="Weekly 보기 기준 설정">⋯</button>
+      <button type="button" class="week-range-menu-btn" aria-haspopup="menu" aria-expanded="false" aria-controls="week-range-menu" aria-label="Weekly 보기 기준 설정" data-tooltip-label="Weekly 보기 기준 설정">⋯</button>
     </div>
     <div class="weekly-body">
       <div class="week-row-scroll week-row-scroll-top">
@@ -2545,9 +3116,10 @@ body.dnd-active .monthly-log-week-segment{pointer-events:none}
         <div class="monthly-log-nav">
           <span class="monthly-log-month-label" id="monthly-log-month-label">2026년 7월 달력</span>
           <button type="button" class="monthly-log-nav-btn" data-monthly-nav="-1" aria-label="이전 달">‹</button>
-          <button type="button" class="monthly-log-nav-btn" data-monthly-nav="today" aria-label="이번 달"><span class="ic-ring"></span></button>
+          <button type="button" class="monthly-log-nav-btn" data-monthly-nav="today" aria-label="이번 달" data-tooltip-label="이번 달"><span class="ic-ring"></span></button>
           <button type="button" class="monthly-log-nav-btn" data-monthly-nav="1" aria-label="다음 달">›</button>
-          <button type="button" class="monthly-log-menu-btn" aria-haspopup="menu" aria-expanded="false" aria-controls="monthly-log-menu" aria-label="Monthly Log 설정">⋯</button>
+          <button type="button" class="monthly-log-menu-btn" aria-haspopup="menu" aria-expanded="false" aria-controls="monthly-log-menu" aria-label="Monthly Log 설정" data-tooltip-label="Monthly Log 설정">⋯</button>
+          <button type="button" class="monthly-inbox-toggle-btn" id="monthly-inbox-toggle-btn" aria-haspopup="dialog" aria-expanded="false" aria-controls="monthly-inbox-panel" aria-label="이번 달 할 일 패널 열기" data-tooltip-label="이달의 할 일">☰</button>
         </div>
       </div>
       <div class="monthly-log-body" id="monthly-log-body">
@@ -2568,13 +3140,21 @@ body.dnd-active .monthly-log-week-segment{pointer-events:none}
     aria-haspopup="menu"
     aria-expanded="false"
     aria-label="이번 달 할 일 메뉴"
+    data-tooltip-label="이번 달 할 일 메뉴"
   >⋯</button>
+  <button
+    type="button"
+    class="monthly-inbox-close-btn"
+    id="monthly-inbox-close-btn"
+    aria-label="이번 달 할 일 패널 닫기"
+   
+  >×</button>
 </div>
       <div class="monthly-quick" id="monthly-inbox-quick">
         <span class="monthly-quick-modes" role="group" aria-label="입력 종류">
-          <button type="button" class="monthly-quick-mode" data-type="task" aria-pressed="true" aria-label="할 일"><span class="ic-dot"></span></button>
-          <button type="button" class="monthly-quick-mode" data-type="schedule" aria-pressed="false" aria-label="일정"><span class="ic-ring"></span></button>
-          <button type="button" class="monthly-quick-mode" data-type="memo" aria-pressed="false" aria-label="메모"><span class="ic-dash"></span></button>
+          <button type="button" class="monthly-quick-mode" data-type="task" aria-pressed="true" aria-label="할 일" data-tooltip-label="할 일"><span class="ic-dot"></span></button>
+          <button type="button" class="monthly-quick-mode" data-type="schedule" aria-pressed="false" aria-label="일정" data-tooltip-label="일정"><span class="ic-ring"></span></button>
+          <button type="button" class="monthly-quick-mode" data-type="memo" aria-pressed="false" aria-label="메모" data-tooltip-label="메모"><span class="ic-dash"></span></button>
         </span>
         <input type="text" class="monthly-quick-input" placeholder="할 일을 입력하고 엔터를 누르세요." autocomplete="off" aria-label="월간 할일 빠른 입력" />
       </div>
@@ -2589,6 +3169,30 @@ body.dnd-active .monthly-log-week-segment{pointer-events:none}
         <p class="monthly-inbox-empty">이번 달에 해둘 일을 적어보세요.</p>
       </div>
     </aside>
+  </section>
+
+  <section class="future-log-view" id="future-log-view" hidden>
+    <div class="future-log-header">
+      <h1 class="future-log-title">퓨처로그</h1>
+      <div class="future-log-period-nav">
+        <button type="button" class="future-log-nav-btn" id="future-log-prev-btn" aria-label="이전 기간으로 이동">‹</button>
+        <span class="future-log-period-label" id="future-log-period-label"></span>
+        <button type="button" class="future-log-nav-btn" id="future-log-next-btn" aria-label="다음 기간으로 이동">›</button>
+        <button type="button" class="future-log-today-btn" id="future-log-today-btn">이번 달</button>
+      </div>
+      <div class="future-log-period-mode" role="group" aria-label="표시 개월 수">
+        <button type="button" class="monthly-log-menu-btn future-log-menu-btn" id="future-log-menu-btn" aria-haspopup="menu" aria-expanded="false" aria-controls="future-log-menu" aria-label="퓨처로그 설정" data-tooltip-label="퓨처로그 설정">⋯</button>
+        <button type="button" class="future-log-month-step-btn" id="future-log-month-decr-btn" aria-label="표시 개월 수 줄이기">−</button>
+        <button type="button" class="future-log-month-count-btn" id="future-log-month-count-btn" aria-haspopup="menu" aria-expanded="false">
+          <span id="future-log-month-count-label">6개월</span>
+          <span class="future-log-month-count-caret" aria-hidden="true">▾</span>
+        </button>
+        <button type="button" class="future-log-month-step-btn" id="future-log-month-incr-btn" aria-label="표시 개월 수 늘리기">+</button>
+      </div>
+    </div>
+    <div class="future-log-body" id="future-log-body">
+      <div class="future-log-months" id="future-log-months"></div>
+    </div>
   </section>
   <aside class="today-monthly-panel" id="today-monthly-panel" hidden aria-hidden="true">
     <div class="today-monthly-panel-header">
@@ -2607,6 +3211,7 @@ body.dnd-active .monthly-log-week-segment{pointer-events:none}
       aria-haspopup="menu"
       aria-expanded="false"
       aria-label="이번 달 할 일 메뉴"
+      data-tooltip-label="이번 달 할 일 메뉴"
     >⋯</button>
 
     <button
@@ -2614,14 +3219,15 @@ body.dnd-active .monthly-log-week-segment{pointer-events:none}
       class="today-monthly-panel-close"
       id="today-monthly-panel-close"
       aria-label="이번달 할 일 닫기"
+     
     >×</button>
   </div>
 </div>
     <div class="monthly-quick" id="today-monthly-quick">
       <span class="monthly-quick-modes" role="group" aria-label="입력 종류">
-        <button type="button" class="monthly-quick-mode" data-type="task" aria-pressed="true" aria-label="할 일"><span class="ic-dot"></span></button>
-        <button type="button" class="monthly-quick-mode" data-type="schedule" aria-pressed="false" aria-label="일정"><span class="ic-ring"></span></button>
-        <button type="button" class="monthly-quick-mode" data-type="memo" aria-pressed="false" aria-label="메모"><span class="ic-dash"></span></button>
+        <button type="button" class="monthly-quick-mode" data-type="task" aria-pressed="true" aria-label="할 일" data-tooltip-label="할 일"><span class="ic-dot"></span></button>
+        <button type="button" class="monthly-quick-mode" data-type="schedule" aria-pressed="false" aria-label="일정" data-tooltip-label="일정"><span class="ic-ring"></span></button>
+        <button type="button" class="monthly-quick-mode" data-type="memo" aria-pressed="false" aria-label="메모" data-tooltip-label="메모"><span class="ic-dash"></span></button>
       </span>
       <input type="text" class="monthly-quick-input" placeholder="할 일을 입력하고 엔터를 누르세요." autocomplete="off" aria-label="이번 달 할일 빠른 입력" />
     </div>

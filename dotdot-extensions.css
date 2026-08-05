@@ -1,24 +1,51 @@
 /* DotDotPlanner Round D extensions: functional side views. */
 /* Functional side views adapted from the exploration prototype. */
-.dotdot-ext-overlay{position:fixed;background:var(--bg-page);z-index:80;overflow:auto;padding:28px 32px 60px;display:none;overscroll-behavior:contain}
+/* 최종 감사(디자인 정돈): 캔버스 배경이 --bg-page(연회색)라 오늘/달력/퓨처로그의
+   흰색 캔버스(.artboard{background:var(--paper)})와 확연히 달라 이 화면들만 다른
+   시기에 붙인 것처럼 보였다(실제 확인된 불일치, 파일 자체 주석에도 "exploration
+   prototype에서 가져옴"이라고 적혀 있던 부분). 카드는 이미 자체 테두리+그림자로
+   구분되므로(.dotdot-ext-card) 배경을 흰색으로 바꿔도 카드 경계는 그대로 보인다. */
+.dotdot-ext-overlay{position:fixed;background:var(--paper);z-index:80;overflow:auto;padding:28px 32px 60px;display:none;overscroll-behavior:contain}
 .dotdot-ext-overlay.open{display:block}
-.dotdot-ext-h1{font-size:19px;font-weight:750;color:var(--ink);margin:0 0 4px}
+/* 최종 감사(디자인 정돈): 화면 제목 역할(H1)은 앱 전체에서 16px/800로 통일돼 있다
+   (.future-log-title, .shortcut-panel-title) -- 이 파일만 19px/750을 따로 쓰고 있어
+   루틴/검색/통계/설정/휴지통이 다른 화면보다 제목이 유독 크고 가늘어 보였다(실제
+   확인된 불일치). 카드 안 소제목(h3)도 마찬가지로 다른 화면의 섹션 제목 굵기(800,
+   예: .future-log-column-header)에 맞춘다. 새 크기 체계를 만들지 않고 기존 값에
+   맞춘 것뿐이다. */
+.dotdot-ext-h1{font-size:16px;font-weight:800;color:var(--ink);margin:0 0 4px}
 .dotdot-ext-sub{font-size:12px;color:var(--muted);margin:0 0 18px}
 .dotdot-ext-card{background:var(--bg-card);border:1px solid var(--line);border-radius:14px;padding:16px 18px;margin-bottom:14px;box-shadow:0 1px 2px var(--shadow-soft)}
-.dotdot-ext-card h3{margin:0 0 10px;font-size:13px;font-weight:750;color:var(--ink)}
+.dotdot-ext-card h3{margin:0 0 10px;font-size:13px;font-weight:800;color:var(--ink)}
 .dotdot-ext-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px}
 .dotdot-ext-btn{border:1px solid var(--line2);background:var(--bg-card);color:var(--ink);border-radius:8px;padding:5px 10px;font-size:12px;cursor:pointer;font-family:inherit}
 .dotdot-ext-btn:hover{background:var(--bg-hover)}
+.dotdot-ext-btn:focus-visible{outline:2px solid var(--lav);outline-offset:1px}
 .dotdot-ext-btn.primary{background:var(--lav);border-color:var(--lav);color:#fff}
 .dotdot-ext-btn.danger{color:var(--sun)}
 .dotdot-ext-btn:disabled{opacity:.4;cursor:default}
 .dotdot-ext-input,.dotdot-ext-select{border:1px solid var(--line2);background:var(--bg-input);color:var(--ink);border-radius:8px;padding:6px 9px;font-size:12px;font-family:inherit}
+.dotdot-ext-input:focus-visible,.dotdot-ext-select:focus-visible{outline:2px solid var(--lav);outline-offset:1px}
 .dotdot-ext-input{min-width:190px}
 .dotdot-ext-list{list-style:none;margin:0;padding:0}
 .dotdot-ext-list li{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--line);font-size:12.5px;color:var(--ink)}
 .dotdot-ext-list li:last-child{border-bottom:0}
 .dotdot-ext-tag{font-size:10.5px;color:var(--muted);border:1px solid var(--line2);border-radius:999px;padding:1px 7px;white-space:nowrap}
 .dotdot-ext-muted{color:var(--muted);font-size:12px}
+
+/* 검색 결과 행 -- Today와 같은 유형 기호(.ic-dot/.ic-ring/.ic-dash/.ic-divider-trash)
+   ·프로젝트 점(.project-dot)을 그대로 재사용한다(요구사항: 영어 pill 제거, 동일 문법).
+   정보 위계: 그룹선 -> 날짜 -> 유형 기호 -> 프로젝트 점 -> 제목 -> 실행 버튼. */
+.search-row{padding:7px 8px 7px 6px;border-radius:8px}
+.search-row:hover{background:var(--bg-hover)}
+.search-group-bar{flex:none;align-self:stretch;width:2px;border-radius:1px;background:var(--group-accent,var(--lav));cursor:default}
+.search-group-bar[data-tooltip-text]{cursor:default}
+.search-date{flex:none;min-width:84px;color:var(--muted);font-size:12px}
+.search-type-icon{flex:none;display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;color:var(--icon-muted);cursor:default}
+.search-title{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink)}
+.search-title.is-done{text-decoration:line-through;opacity:.55}
+/* 프로젝트 점·유형 기호·그룹선 전부 같은 커스텀 툴팁 트리거를 쓰므로 포커스 표시도 공용이다. */
+[data-tooltip-text]:focus-visible{outline:2px solid var(--lav);outline-offset:2px}
 .dotdot-ext-note{font-size:11px;color:var(--muted);background:var(--bg-input);border:1px dashed var(--line2);border-radius:8px;padding:8px 10px;margin-bottom:14px;line-height:1.6}
 .dotdot-ext-kbd{font-family:ui-monospace,monospace;font-size:11px;border:1px solid var(--line2);border-bottom-width:2px;border-radius:6px;padding:1px 6px;background:var(--bg-input);color:var(--ink)}
 .dotdot-ext-stat{display:inline-block;min-width:118px;margin:0 14px 12px 0}
@@ -33,4 +60,83 @@
 .dotdot-ext-avatar{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;background:var(--profile-bg);color:#fff;font-size:14px;font-weight:750;flex:none}
 .dotdot-ext-routine-days{display:inline-flex;gap:3px;flex-wrap:wrap}
 .dotdot-ext-day-toggle{display:inline-flex;align-items:center;gap:2px;font-size:11px;color:var(--muted)}
+
+/* 단축키 패널 -- 독립 뷰포트 drawer가 아니라 .app-row(새로 추가한 래퍼)의 진짜 첫 열이다.
+   .app-row는 기존 .artboard를 감싸기만 할 뿐 .artboard 자신의 클래스·크기 규칙은 전혀
+   바꾸지 않는다(app.js의 우측 패널 도킹 계산이 .artboard를 그대로 측정해야 하기 때문).
+   데스크톱(≥1200px, artboard가 이미 사이드바+본문 레이아웃을 쓰는 폭)에서는 패널이 열리면
+   .app-row 전체 폭이 340px만큼 넓어져(1625→1965) 사이드바+본문이 옆으로 밀리고, 닫히면
+   .artboard 혼자 남아 원래 폭(최대 1625px)으로 그대로 복원된다 -- 폭 계산은 flex의 기본
+   shrink 동작에 맡기므로 뷰포트가 1965px보다 좁아도 클리핑 없이 자연스럽게 좁아진다.
+   좁은 화면(<1200px, artboard 자체가 이미 모바일 스택 레이아웃으로 바뀌는 폭, 기존
+   @media(max-width:1199px)과 같은 경계)에서는 프레임을 더 짓누르지 않고 패널이 왼쪽
+   가장자리 위에 뜨는 오버레이로 전환된다(요구사항: 좁은 화면 오버레이 유지). */
+@media(min-width:1200px){
+  .app-row{display:flex;align-items:stretch;width:min(100%,1625px)}
+  body.shortcut-panel-open .app-row{width:min(100%,1965px)}
+  #shortcut-panel{position:static;flex:0 0 340px;width:340px;height:auto;border-right:1px solid var(--line2);box-shadow:none}
+}
+@media(max-width:1199px){
+  .app-row{display:block;width:100%}
+  #shortcut-panel{position:fixed;left:0;top:0;bottom:0;width:min(340px,86vw);z-index:82;border-right:1px solid var(--line2);box-shadow:6px 0 20px var(--shadow-panel)}
+}
+#shortcut-panel{background:var(--bg-card);display:flex;flex-direction:column;overflow:hidden}
+#shortcut-panel[hidden]{display:none}
+.shortcut-panel-header{flex:0 0 auto;padding:22px 20px 14px;border-bottom:1px solid var(--line)}
+.shortcut-panel-title-row{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.shortcut-panel-title{margin:0;font-size:16px;font-weight:800;color:var(--ink)}
+.shortcut-panel-close{flex:none;border:0;background:none;color:var(--icon-muted,var(--muted));width:26px;height:26px;border-radius:6px;display:grid;place-items:center;font-size:16px;line-height:1;cursor:pointer}
+.shortcut-panel-close:hover{background:var(--bg-hover);color:var(--ink)}
+.shortcut-panel-close:focus-visible{outline:2px solid var(--lav);outline-offset:1px}
+.shortcut-panel-sub{margin:4px 0 0;font-size:12px;color:var(--muted)}
+.shortcut-panel-body{flex:1 1 auto;min-height:0;overflow-y:auto;padding:16px 20px 20px}
+.shortcut-panel-note{margin-bottom:0}
+
+/* 내부 컴포넌트(검색/그룹/키캡)는 이전 개선안을 그대로 재사용한다. 색은 새로 만들지
+   않고 앱이 이미 쓰는 --sat/--lav/--sun을 그대로 써서 라이트·다크 테마와 맞물리게 한다. */
+.shortcut-search{position:relative;margin-bottom:10px}
+.shortcut-search-icon{position:absolute;left:11px;top:50%;width:14px;height:14px;margin-top:-7px;pointer-events:none}
+.shortcut-search-icon::before{content:"";position:absolute;left:0;top:0;width:9px;height:9px;border:1.6px solid var(--muted);border-radius:50%;box-sizing:border-box}
+.shortcut-search-icon::after{content:"";position:absolute;left:7px;top:7px;width:6px;height:1.6px;background:var(--muted);border-radius:1px;transform:rotate(45deg);transform-origin:0 50%}
+.shortcut-search-input{width:100%;box-sizing:border-box;border:1px solid var(--line2);background:var(--bg-input);color:var(--ink);border-radius:9px;padding:8px 10px 8px 32px;font:inherit;font-size:12.5px}
+.shortcut-search-input:focus{border-color:var(--lav)}
+.shortcut-search-input:focus-visible{outline:2px solid var(--lav);outline-offset:1px}
+.shortcut-count{margin:0 2px 14px;font-size:11px;color:var(--muted)}
+.shortcut-group{margin-bottom:18px}
+.shortcut-group:last-child{margin-bottom:0}
+.shortcut-group[data-accent="sat"]{--shortcut-accent:var(--sat)}
+.shortcut-group[data-accent="lav"]{--shortcut-accent:var(--lav)}
+.shortcut-group[data-accent="sun"]{--shortcut-accent:var(--sun)}
+/* 전수 감사로 추가된 "입력·이동" 그룹 전용 4번째 accent. 전용 --mint 변수는 없어 이미
+   라이트·다크 둘 다 정의돼 있는 --desc-color-green을 재사용한다(새 색 추가 안 함). */
+.shortcut-group[data-accent="mint"]{--shortcut-accent:var(--desc-color-green)}
+.shortcut-group-label{display:flex;align-items:center;gap:8px;margin:0 0 6px;font-size:11.5px;font-weight:750;letter-spacing:.02em;color:var(--ink)}
+.shortcut-group-tab{width:3px;height:14px;border-radius:2px;background:var(--shortcut-accent,var(--lav));flex:none}
+.shortcut-group-count{margin-left:auto;font-size:10.5px;font-weight:700;color:var(--muted);background:var(--bg-hover);border-radius:999px;padding:1px 7px}
+.shortcut-rows{list-style:none;margin:0;padding:0}
+/* 340px 폭에서는 키·설명·실행 버튼을 한 줄에 욱여넣지 않고, 키+실행을 윗줄, 설명을
+   아랫줄(작은 보조 텍스트)로 나눈다 -- 폭이 좁아진 만큼의 자연스러운 조정이며, 키캡
+   자체의 생김새(embossed chip)는 그대로다. */
+.shortcut-row{padding:7px 8px;border-radius:8px;transition:background-color .12s ease}
+.shortcut-row:hover{background:color-mix(in srgb,var(--shortcut-accent,var(--lav)) 8%,transparent)}
+.shortcut-row-top{display:flex;align-items:center;gap:8px}
+.shortcut-keys{display:inline-flex;align-items:center;gap:4px;flex:1 1 auto;min-width:0;flex-wrap:wrap}
+.shortcut-kbd{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:11px;font-weight:700;line-height:1;color:var(--ink);background:var(--bg-input);border:1px solid var(--line2);border-bottom-width:2px;border-radius:6px;padding:3px 7px;white-space:nowrap}
+.shortcut-kbd-plus{font-size:10px;color:var(--muted)}
+.shortcut-desc{margin:3px 0 0;font-size:12px;color:var(--muted)}
+.shortcut-empty{margin:8px 2px 2px;font-size:12px;color:var(--muted)}
+
 @media(max-width:900px){.dotdot-ext-overlay{padding:22px 18px 50px}}
+
+/* 검색의 "Today에서 열기" 도착 강조. 항목이 사라지는 애니메이션이 아니라 외곽선·배경이
+   맥박치듯 두세 번 강조되는 방식(요구사항) -- .6s x 3회 = 1.8s 뒤 자바스크립트가 클래스를
+   지운다. prefers-reduced-motion에서는 애니메이션 없이 2초간 정적 외곽선만 쓴다. */
+@keyframes search-jump-pulse{
+  0%,100%{box-shadow:0 0 0 0 color-mix(in srgb,var(--sun) 55%,transparent);background-color:transparent}
+  50%{box-shadow:0 0 0 4px color-mix(in srgb,var(--sun) 32%,transparent);background-color:color-mix(in srgb,var(--sun) 14%,transparent)}
+}
+.search-jump-highlight{border-radius:8px;outline:2px solid var(--sun);outline-offset:1px;animation:search-jump-pulse .6s ease-in-out 3}
+.search-jump-highlight-static{border-radius:8px;outline:2px solid var(--sun);outline-offset:1px;background-color:color-mix(in srgb,var(--sun) 16%,transparent)}
+@media (prefers-reduced-motion: reduce){
+  .search-jump-highlight{animation:none;background-color:color-mix(in srgb,var(--sun) 16%,transparent)}
+}
