@@ -1619,7 +1619,7 @@ body.desc-block-dnd-active .desc-block-add{
 }
 .monthly-log-menu-item.is-disabled{opacity:.4;cursor:default;pointer-events:none}
 /* 최종 감사: 메뉴를 Today/Calendar와 같은 평평한 항목 목록으로 되돌리면서(그룹 라벨/
-   값 표시 행/radio submenu 폐지) "완료항목 정리" 앞의 구분선 하나만 남긴다. */
+   값 표시 행/radio submenu 폐지) "완료 항목 정리" 앞의 구분선 하나만 남긴다. */
 .future-log-menu-divider{border-top:1px solid var(--line2);margin:6px 4px 2px}
 .menu-item-has-help{position:relative}
 .menu-item-has-help:hover::after{content:attr(data-help);position:absolute;right:calc(100% + 8px);top:0;width:240px;padding:8px 10px;border:1px solid var(--line2);border-radius:8px;background:var(--bg-card);box-shadow:0 4px 14px var(--overlay-shadow);font-size:11.5px;font-weight:600;line-height:1.45;color:var(--text-tertiary);white-space:normal;z-index:2}
@@ -1730,7 +1730,7 @@ body.desc-block-dnd-active .desc-block-add{
    가리지 않고 실제로 다 보이게). 세로로 몇 줄이 되든 이 칸의 실제 필요 높이가
    부모 .future-log-row의 min-height를 넘으면 위 min-height 규칙 덕분에 행 자체가
    그만큼 커진다. */
-.future-log-row-datecol{flex:0 0 68px;width:68px;display:flex;flex-wrap:wrap;align-items:center;align-content:center;gap:3px;overflow:visible}
+.future-log-row-datecol{flex:0 0 42px;width:42px;display:flex;flex-wrap:wrap;align-items:center;align-content:center;gap:3px;overflow:visible}
 /* 요구사항 4: 날짜 배지를 그 항목의 실제 시작 날짜로 Calendar 이동하는 버튼으로 쓴다
    -- <button> 기본 테두리/배경/폰트를 지워 기존 <span> 배지와 같은 모양을 유지한다. */
 .future-log-row-date{flex:none;border:0;background:none;padding:0;font:inherit;font-size:10.5px;font-weight:700;color:var(--muted);white-space:nowrap;cursor:pointer}
@@ -1975,7 +1975,7 @@ body.desc-block-dnd-active .desc-block-add{
 .monthly-split-divider:focus-visible{outline:2px solid var(--lav);outline-offset:-2px}
 body.monthly-split-dragging,body.monthly-split-dragging *{cursor:col-resize!important;user-select:none!important}
 .monthly-inbox-panel{flex:0 0 clamp(300px,26vw,360px);min-width:0;border-left:1px solid var(--line2);display:flex;flex-direction:column;overflow:hidden}
-/* .artboard 바깥에 여유가 생기면(1625px보다 넓은 화면) 오른쪽 월간 할일 패널을 그 여유
+/* .artboard 바깥에 여유가 생기면(1625px보다 넓은 화면) 오른쪽 월간 할 일 패널을 그 여유
    공간으로 뽑아내 왼쪽으로 넓힌다(Today의 today-monthly-panel과 같은 원칙,
    applyMonthlyLogInboxDockDom 참고) -- position:fixed라 더 이상 .monthly-log-view의
    flex 자리(calendarMonthlySplitRatio 기반 분할)를 차지하지 않으므로 Monthly Log 메인
@@ -2078,7 +2078,7 @@ body.monthly-split-dragging,body.monthly-split-dragging *{cursor:col-resize!impo
 .monthly-log-row.is-holiday .monthly-log-row-label,.monthly-log-row.is-holiday .monthly-log-row-weekday{color:var(--sun)}
 
 
-/* 월간 할일 -- Calendar/Today 패널이 공유하는 빠른 입력 + 목록 행 스타일. */
+/* 월간 할 일 -- Calendar/Today 패널이 공유하는 빠른 입력 + 목록 행 스타일. */
 .monthly-quick{display:flex;align-items:center;gap:8px;padding:10px 12px;border:1px solid var(--line2);border-radius:10px;margin:0 24px 14px;flex-wrap:nowrap}
 /* 9/12: 세 기호가 반드시 가로 한 줄로 -- 이 규칙이 빠져 있으면 <span>(인라인) 안의
    block-level 버튼들이 각자 새 줄로 떨어져 좁은 패널에서 세로로 쌓이는 실제 버그가 있었다. */
@@ -2299,7 +2299,7 @@ body.dnd-active .group-drag{cursor:grabbing}
    .daily-header-actions 묶음째로 다음 줄로 내려간다. */
 .today-menu-btn{position:static;border:0;background:none;padding:0;cursor:pointer;color:var(--icon-muted);width:26px;height:26px;border-radius:6px;display:grid;place-items:center;font-size:18px;font-weight:700;line-height:1}
 .today-menu-btn:hover,.today-menu-btn[aria-expanded="true"]{background:var(--bg-hover);color:var(--ink)}
-/* Today 우측 월간 할일 토글(보라색) -- 툴팁은 이제 공용 #inline-tooltip
+/* Today 우측 월간 할 일 토글(보라색) -- 툴팁은 이제 공용 #inline-tooltip
    (.is-kbd-tooltip, 위 .project-dot-tooltip 근처)로 통일됐다(요구사항: 앱 전체
    icon-only 버튼과 같은 툴팁 시스템 재사용, 이 버튼 전용 커스텀 툴팁 제거). */
 .monthly-panel-toggle{position:static;flex:none;width:34px;height:34px;border-radius:10px;border:0;background:var(--lav);color:#fff;display:grid;place-items:center;cursor:pointer;font-size:16px;box-shadow:0 2px 6px var(--shadow-soft)}
@@ -3041,7 +3041,7 @@ body.dnd-active .monthly-log-week-segment{pointer-events:none}
         <h2 class="daily-title">2026년 07월 30일</h2>
         <div class="daily-header-actions">
           <button type="button" class="today-menu-btn" id="today-menu-btn" aria-haspopup="menu" aria-expanded="false" aria-controls="today-menu" aria-label="Today 설정" data-tooltip-label="Today 설정">⋯</button>
-          <button type="button" class="monthly-panel-toggle" id="monthly-panel-toggle" aria-label="이번달 할 일 열기" aria-pressed="false" aria-haspopup="dialog" aria-controls="today-monthly-panel">
+          <button type="button" class="monthly-panel-toggle" id="monthly-panel-toggle" aria-label="이번 달 할 일 열기" aria-pressed="false" aria-haspopup="dialog" aria-controls="today-monthly-panel">
             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4M16 3v4M4 9h16"/></svg>
           </button>
         </div>
@@ -3130,7 +3130,7 @@ body.dnd-active .monthly-log-week-segment{pointer-events:none}
     <aside class="monthly-inbox-panel" id="monthly-inbox-panel">
       <div class="monthly-inbox-header">
   <h2 class="monthly-inbox-title" id="monthly-inbox-title">
-    2026년 7월 할일
+    2026년 7월 할 일
   </h2>
 
   <button
@@ -3156,7 +3156,7 @@ body.dnd-active .monthly-log-week-segment{pointer-events:none}
           <button type="button" class="monthly-quick-mode" data-type="schedule" aria-pressed="false" aria-label="일정" data-tooltip-label="일정"><span class="ic-ring"></span></button>
           <button type="button" class="monthly-quick-mode" data-type="memo" aria-pressed="false" aria-label="메모" data-tooltip-label="메모"><span class="ic-dash"></span></button>
         </span>
-        <input type="text" class="monthly-quick-input" placeholder="할 일을 입력하고 엔터를 누르세요." autocomplete="off" aria-label="월간 할일 빠른 입력" />
+        <input type="text" class="monthly-quick-input" placeholder="할 일을 입력하고 엔터를 누르세요." autocomplete="off" aria-label="월간 할 일 빠른 입력" />
       </div>
       <div class="rollover monthly-overdue" id="monthly-inbox-overdue" hidden>
         <button type="button" class="rollover-toggle" aria-expanded="false" aria-controls="monthly-inbox-overdue-list">
@@ -3200,7 +3200,7 @@ body.dnd-active .monthly-log-week-segment{pointer-events:none}
     class="today-monthly-panel-title"
     id="today-monthly-panel-title"
   >
-    2026년 7월 할일
+    2026년 7월 할 일
   </h2>
 
   <div class="today-monthly-panel-actions">
@@ -3218,7 +3218,7 @@ body.dnd-active .monthly-log-week-segment{pointer-events:none}
       type="button"
       class="today-monthly-panel-close"
       id="today-monthly-panel-close"
-      aria-label="이번달 할 일 닫기"
+      aria-label="이번 달 할 일 닫기"
      
     >×</button>
   </div>
@@ -3229,7 +3229,7 @@ body.dnd-active .monthly-log-week-segment{pointer-events:none}
         <button type="button" class="monthly-quick-mode" data-type="schedule" aria-pressed="false" aria-label="일정" data-tooltip-label="일정"><span class="ic-ring"></span></button>
         <button type="button" class="monthly-quick-mode" data-type="memo" aria-pressed="false" aria-label="메모" data-tooltip-label="메모"><span class="ic-dash"></span></button>
       </span>
-      <input type="text" class="monthly-quick-input" placeholder="할 일을 입력하고 엔터를 누르세요." autocomplete="off" aria-label="이번 달 할일 빠른 입력" />
+      <input type="text" class="monthly-quick-input" placeholder="할 일을 입력하고 엔터를 누르세요." autocomplete="off" aria-label="이번 달 할 일 빠른 입력" />
     </div>
     <div class="rollover monthly-overdue" id="today-monthly-overdue" hidden>
       <button type="button" class="rollover-toggle" aria-expanded="false" aria-controls="today-monthly-overdue-list">

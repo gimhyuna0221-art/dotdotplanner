@@ -140,3 +140,47 @@
 @media (prefers-reduced-motion: reduce){
   .search-jump-highlight{animation:none;background-color:color-mix(in srgb,var(--sun) 16%,transparent)}
 }
+
+/* DDP_SHORTCUT_PANEL_NO_REFLOW_START
+   Keep the planner frame at its original position and size when the shortcut panel opens. */
+@media (min-width: 1200px) {
+  .app-row {
+    position: relative;
+    display: block;
+    width: min(100%, 1625px);
+  }
+
+  body.shortcut-panel-open .app-row {
+    width: min(100%, 1625px);
+  }
+
+  #shortcut-panel {
+    position: fixed;
+    left: 0;
+    right: auto;
+    top: 50%;
+    bottom: auto;
+    width: 340px;
+    height: min(1152px, 100dvh);
+    max-height: min(1152px, 100dvh);
+    transform: translateY(-50%);
+    z-index: 82;
+    border-right: 1px solid var(--line2);
+    box-shadow: 6px 0 20px var(--shadow-panel);
+  }
+}
+
+/* When there is enough space, attach the panel directly to the left of the planner. */
+@media (min-width: 2305px) {
+  #shortcut-panel {
+    position: absolute;
+    left: auto;
+    right: 100%;
+    top: 0;
+    bottom: 0;
+    height: auto;
+    max-height: none;
+    transform: none;
+  }
+}
+/* DDP_SHORTCUT_PANEL_NO_REFLOW_END */
