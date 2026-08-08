@@ -91,7 +91,7 @@
   // 개발용 시드로 조용히 덮어쓰지 않고 원본 문자열을 이 키로 옮겨 보존한다(복구 가능하게).
   var ITEMS_CORRUPTED_BACKUP_KEY = STORAGE_PREFIX + 'items_corrupted_backup';
 
-  // monthlyItems(월간 할일) -- 날짜 없이 "이 달 안에 할 일"만 담는 별도 컬렉션. state.items와
+  // monthlyItems(월간 할 일) -- 날짜 없이 "이 달 안에 할 일"만 담는 별도 컬렉션. state.items와
   // 완전히 분리된 저장소라 Daily/Weekly/미니 달력 점/자동 이월/completionByDate/기간 로직/
   // 일반 휴지통 어디에도 섞이지 않는다. items와 같은 손상 데이터 백업 패턴을 그대로 따른다.
   var MONTHLY_ITEMS_KEY = STORAGE_PREFIX + 'monthlyItems';
@@ -117,7 +117,7 @@
   // '이번 주 기준' 전부가 이 값 하나를 공유한다. Weekly 'rolling' 모드는 영향받지 않는다).
   var CALENDAR_WEEK_STARTS_ON_KEY = STORAGE_PREFIX + 'calendarWeekStartsOn';
   var CALENDAR_WEEK_STARTS_ON_DEFAULT = 0;
-  // Calendar 화면의 Monthly Log(왼쪽) / 월간 할일 패널(오른쪽) 폭 분할 비율 -- 오른쪽
+  // Calendar 화면의 Monthly Log(왼쪽) / 월간 할 일 패널(오른쪽) 폭 분할 비율 -- 오른쪽
   // 패널이 전체 폭에서 차지하는 비율(0~1)로 저장한다. 순수 화면 설정이라 items와 무관.
   var CALENDAR_MONTHLY_SPLIT_RATIO_KEY = STORAGE_PREFIX + 'calendarMonthlySplitRatio';
   // Monthly Log 본문 안의 세로 구분선(예: 왼쪽=직장, 오른쪽=일상). 달력과
@@ -154,20 +154,20 @@
   // 표시 개월 수 2~12 임의값 -- 달력 분기/반기/연간에 정렬하지 않는 rolling 구간이다.
   // 옛 3/6/12 고정 버튼(과 그 이전의 9개월 마이그레이션)은 폐지됐다 -- 저장된 값이
   // 이 범위 안이면 그대로 유효하고, 범위 밖/손상된 값만 기본값으로 보정한다.
-  var FUTURE_LOG_MONTH_COUNT_MIN = 3;
-  var FUTURE_LOG_MONTH_COUNT_MAX = 9;
-  var FUTURE_LOG_MONTH_COUNT_STEP = 3;
+  // 최종 감사: 3/6/9 -> 3/6/12로 교체(요구사항, 9개월 폐지). 3->6은 +3, 6->12는 +6로
+  // 균일 STEP이 아니라서 MIN/STEP/MAX 생성 대신 명시적 목록을 쓴다.
+  var FUTURE_LOG_MONTH_COUNT_OPTIONS = [3, 6, 12];
+  var FUTURE_LOG_MONTH_COUNT_MIN = FUTURE_LOG_MONTH_COUNT_OPTIONS[0];
+  var FUTURE_LOG_MONTH_COUNT_MAX = FUTURE_LOG_MONTH_COUNT_OPTIONS[FUTURE_LOG_MONTH_COUNT_OPTIONS.length - 1];
   var FUTURE_LOG_MONTH_COUNT_DEFAULT = 6;
   // 5차 감사(Future Log 설정 메뉴): Monthly Log의 동일 이름 설정과 별개인 Future Log
   // 전용 저장값(요구사항: "Future Log 전용 설정으로 저장") -- 음력 표시도 Today/
   // Monthly가 공유하는 전역 state.lunarEnabled를 재사용하지 않고 독립된 값을 둔다.
-  // 최종 감사(음력·완료 정리 3단계): 위 boolean 키들은 더 이상 쓰지 않지만, 마이그레이션
-  // 소스로 계속 읽는다(요구사항: 기존 boolean 저장값 호환). 새 값은 각각 3단계 모드
-  // 문자열('off'/'simple'/'full', 'show'/'collapse'/'hide')로 별도 키에 저장한다.
+  // 최종 감사: Today/Calendar 메뉴 패턴과 통일(요구사항) -- 3단계 모드 저장을 폐지하고
+  // 다시 boolean 하나로 되돌린다. "완료 항목 정리"는 값 상태가 아니라 Today의
+  // "완료 항목 정리하기"처럼 클릭 즉시 실행되는 1회성 동작이라 저장값 자체가 없다.
   var FUTURE_LOG_LUNAR_ENABLED_KEY = STORAGE_PREFIX + 'futureLogLunarEnabled';
-  var FUTURE_LOG_LUNAR_MODE_KEY = STORAGE_PREFIX + 'futureLogLunarMode';
   var FUTURE_LOG_HIDE_COMPLETED_KEY = STORAGE_PREFIX + 'futureLogHideCompleted';
-  var FUTURE_LOG_COMPLETED_MODE_KEY = STORAGE_PREFIX + 'futureLogCompletedMode';
   var FUTURE_LOG_SHOW_TASKS_KEY = STORAGE_PREFIX + 'futureLogShowTasks';
   var FUTURE_LOG_SHOW_MEMOS_KEY = STORAGE_PREFIX + 'futureLogShowMemos';
   // 미니 달력 크기 조절(Ctrl+휠) -- 항목 데이터와 무관한 화면 설정. 모든 월 카드가
@@ -177,7 +177,8 @@
   var FUTURE_LOG_MINI_CAL_SCALE_MIN = 0.8;
   var FUTURE_LOG_MINI_CAL_SCALE_MAX = 1.4;
   var FUTURE_LOG_MINI_CAL_SCALE_STEP = 0.05;
-  var FUTURE_LOG_MINI_CAL_SCALE_DEFAULT = 1;
+  var FUTURE_LOG_MINI_CAL_SCALE_LEGACY_DEFAULT = 1;
+  var FUTURE_LOG_MINI_CAL_SCALE_DEFAULT = FUTURE_LOG_MINI_CAL_SCALE_MAX;
   // 구버전에서 저장된 패널 경계선 표시값은 더 이상 사용하지 않는다. 패널 경계는 넓은
   // 화면에서 항상 보이며 마우스로 드래그해 폭을 조절한다.
   var MONTHLY_SPLIT_DIVIDER_VISIBLE_KEY = STORAGE_PREFIX + 'monthlySplitDividerVisible';
@@ -187,7 +188,7 @@
   var CALENDAR_MONTHLY_SPLIT_RATIO_DEFAULT = 0.22;
   var MONTHLY_SPLIT_MIN_LOG_WIDTH = 420; // Monthly Log가 최소한 읽을 수 있는 폭.
   var MONTHLY_SPLIT_MIN_INBOX_WIDTH = 260; // 입력창+종류 기호가 한 줄로 보일 최소 폭.
-  // 레이아웃 확장 1단계: 화면이 넓어져도 오른쪽 월간 할일 패널만 과도하게 커지지 않게
+  // 레이아웃 확장 1단계: 화면이 넓어져도 오른쪽 월간 할 일 패널만 과도하게 커지지 않게
   // 렌더링되는 실제 픽셀 폭에만 상한을 둔다(저장되는 비율 calendarMonthlySplitRatio 자체는
   // 건드리지 않으므로, 화면이 좁아지면 다시 그 비율대로 정상 계산된다). 남는 폭은 전부
   // Monthly Log 쪽으로 자연스럽게 넘어간다(요구사항 "본문이 넓고 시원하게").
@@ -273,7 +274,7 @@
     selectedDateRange: null,
     inputMode: 'task',
     items: [],
-    // 월간 할일(monthlyItems) -- 날짜가 없는 "이 달 안에 할 일" 전용 별도 컬렉션.
+    // 월간 할 일(monthlyItems) -- 날짜가 없는 "이 달 안에 할 일" 전용 별도 컬렉션.
     // { id, type, text, monthKey('YYYY-MM'), completed, order, createdAt, updatedAt, deletedAt }.
     monthlyItems: [],
     // Ctrl/Cmd+G 그룹핑 메타데이터 -- 각 항목은 groupId 필드(makeItem 기본값 null)로만
@@ -303,7 +304,7 @@
     // 빠른 입력 기본 유형과 자동 이월 사용 여부. 기존 사용자는 각각 task/true로 유지된다.
     defaultInputMode: 'task',
     todayDefaultInputMode: 'task',
-    calendarDefaultInputMode: 'task',
+    calendarDefaultInputMode: 'schedule',
     futureLogDefaultInputMode: 'schedule',
     autoRolloverEnabled: true,
     // Future Log 3단계: 표시 시작 월('YYYY-MM')과 표시 개월 수. 실제 값은 init()에서
@@ -312,10 +313,9 @@
     futureLogMonthCount: FUTURE_LOG_MONTH_COUNT_DEFAULT,
     // 5차 감사: Future Log 전용 설정 -- 일정은 항상 표시(끌 수 없음, 값 없음). 할 일/
     // 메모는 기본 ON(요구사항).
-    // 최종 감사: 음력 표시는 끄기/간단히/전체 3단계(신규 기본값 '간단히'), 완료 항목
-    // 정리는 그대로/아래로 모으기/숨기기 3단계(신규 기본값 '아래로 모으기').
-    futureLogLunarMode: 'simple',
-    futureLogCompletedMode: 'collapse',
+    // 최종 감사: Today/Calendar와 같은 boolean 토글 패턴으로 통일.
+    futureLogLunarEnabled: true,
+    futureLogHideCompleted: false,
     futureLogShowTasks: true,
     futureLogShowMemos: true,
     futureLogMiniCalScale: FUTURE_LOG_MINI_CAL_SCALE_DEFAULT,
@@ -1004,9 +1004,9 @@ endDateDraftActive: false,
       try {
         localStorage.setItem(MONTHLY_ITEMS_CORRUPTED_BACKUP_KEY, rawMonthlyItemsValue);
         localStorage.setItem(MONTHLY_ITEMS_KEY, '[]');
-        console.warn('[dotdotplanner] 저장된 월간 할일 데이터가 손상돼 있어 원본을 "' + MONTHLY_ITEMS_CORRUPTED_BACKUP_KEY + '" 키로 보존한 뒤 빈 목록으로 시작합니다.');
+        console.warn('[dotdotplanner] 저장된 월간 할 일 데이터가 손상돼 있어 원본을 "' + MONTHLY_ITEMS_CORRUPTED_BACKUP_KEY + '" 키로 보존한 뒤 빈 목록으로 시작합니다.');
       } catch (e) {
-        console.warn('[dotdotplanner] 손상된 월간 할일 데이터 백업 실패:', e);
+        console.warn('[dotdotplanner] 손상된 월간 할 일 데이터 백업 실패:', e);
       }
     }
     var monthlyItemsQuarantinedCount = 0;
@@ -1073,13 +1073,12 @@ endDateDraftActive: false,
     var defaultInputMode = (rawDefaultInputMode === 'schedule' || rawDefaultInputMode === 'memo')
       ? rawDefaultInputMode
       : 'task';
-    // 최종 감사: 화면별 기본 빠른 입력 유형 마이그레이션 -- 오늘/달력 전용 키가 아직
-    // 없으면(첫 실행이거나 이번 업데이트 이전 저장분) 기존 단일 defaultInputMode 값을
-    // 그대로 초기값으로 쓴다(요구사항). 퓨처로그는 별도 기본값이 없으면 '일정'.
+    // 화면별 기본 빠른 입력 유형. 화면별 저장값이 있으면 그대로 유지하고,
+    // 값이 없을 때의 기본값은 오늘=할 일, 달력=일정, 퓨처로그=일정으로 통일한다.
     var rawTodayDefaultInputMode = safeGet(TODAY_DEFAULT_INPUT_MODE_KEY);
-    var todayDefaultInputMode = isValidInputMode(rawTodayDefaultInputMode) ? rawTodayDefaultInputMode : defaultInputMode;
+    var todayDefaultInputMode = isValidInputMode(rawTodayDefaultInputMode) ? rawTodayDefaultInputMode : 'task';
     var rawCalendarDefaultInputMode = safeGet(CALENDAR_DEFAULT_INPUT_MODE_KEY);
-    var calendarDefaultInputMode = isValidInputMode(rawCalendarDefaultInputMode) ? rawCalendarDefaultInputMode : defaultInputMode;
+    var calendarDefaultInputMode = isValidInputMode(rawCalendarDefaultInputMode) ? rawCalendarDefaultInputMode : 'schedule';
     var rawFutureLogDefaultInputMode = safeGet(FUTURE_LOG_DEFAULT_INPUT_MODE_KEY);
     var futureLogDefaultInputMode = isValidInputMode(rawFutureLogDefaultInputMode) ? rawFutureLogDefaultInputMode : 'schedule';
     var rawAutoRolloverEnabled = safeGet(AUTO_ROLLOVER_ENABLED_KEY);
@@ -1092,44 +1091,38 @@ endDateDraftActive: false,
     var futureLogStartMonth = isValidMonthKey(rawFutureLogStartMonth)
       ? rawFutureLogStartMonth
       : state.todayDate.slice(0, 7);
-    // 3/6/9개월만 지원(요구사항) -- 기존 2~12 임의값 저장분은 가장 가까운 지원값으로
-    // 마이그레이션한다: 2~4→3, 5~7→6, 8~12→9, 무효/없음→6(새 기본값).
+    // 최종 감사: 3/6/12개월만 지원(요구사항, 9개월 폐지) -- 기존 저장값 마이그레이션:
+    // 2~4→3, 5~7→6, 8 이상(기존 명시적 9 포함)→12(요구사항: 9였던 값은 6으로 내리지
+    // 않고 12로 올린다 -- "가장 넓은 범위를 보고 싶다"는 기존 선택 의도를 보존).
+    // 무효/없음→6(기본값).
     var rawFutureLogMonthCount = parseInt(safeGet(FUTURE_LOG_MONTH_COUNT_KEY), 10);
     var futureLogMonthCount;
     if (rawFutureLogMonthCount >= 2 && rawFutureLogMonthCount <= 4) futureLogMonthCount = 3;
     else if (rawFutureLogMonthCount >= 5 && rawFutureLogMonthCount <= 7) futureLogMonthCount = 6;
-    else if (rawFutureLogMonthCount >= 8 && rawFutureLogMonthCount <= 12) futureLogMonthCount = 9;
+    else if (rawFutureLogMonthCount >= 8) futureLogMonthCount = 12;
     else futureLogMonthCount = FUTURE_LOG_MONTH_COUNT_DEFAULT;
 
     // 5차 감사: Future Log 전용 설정 -- 할 일/메모는 기본 ON이라 저장값이 없을 때
     // (null)만 true.
-    // 최종 감사: 음력 표시/완료 항목 정리 3단계 마이그레이션 -- 새 모드 키가 이미
-    // 유효값이면 그 값을 우선 사용한다(요구사항). 없으면 기존 boolean 키로 이관한다:
-    // 음력 true->간단히, false->끄기(신규 사용자=키 자체가 없음 포함 나머지는 간단히
-    // 기본값). 완료 true->숨기기, false/없음->아래로 모으기.
-    var rawFutureLogLunarMode = safeGet(FUTURE_LOG_LUNAR_MODE_KEY);
-    var futureLogLunarMode;
-    if (rawFutureLogLunarMode === 'off' || rawFutureLogLunarMode === 'simple' || rawFutureLogLunarMode === 'full') {
-      futureLogLunarMode = rawFutureLogLunarMode;
-    } else {
-      var rawLegacyLunar = safeGet(FUTURE_LOG_LUNAR_ENABLED_KEY);
-      futureLogLunarMode = rawLegacyLunar === 'false' ? 'off' : 'simple';
-    }
-    var rawFutureLogCompletedMode = safeGet(FUTURE_LOG_COMPLETED_MODE_KEY);
-    var futureLogCompletedMode;
-    if (rawFutureLogCompletedMode === 'show' || rawFutureLogCompletedMode === 'collapse' || rawFutureLogCompletedMode === 'hide') {
-      futureLogCompletedMode = rawFutureLogCompletedMode;
-    } else {
-      var rawLegacyHideCompleted = safeGet(FUTURE_LOG_HIDE_COMPLETED_KEY);
-      futureLogCompletedMode = rawLegacyHideCompleted === 'true' ? 'hide' : 'collapse';
-    }
+    // 최종 감사: 음력 표시/완료 항목 숨기기는 Today/Calendar와 같은 boolean 저장값으로
+    // 되돌린다(3단계 모드 폐지, 요구사항). 과거에 3단계 모드를 써봤던 사용자도 그 기간
+    // 내내 legacy boolean 키가 항상 함께 동기화 저장되어 있었으므로(이전 구현 참고)
+    // 이 boolean 키를 그대로 읽으면 손실 없이 자연 이관된다.
+    var rawFutureLogLunarEnabled = safeGet(FUTURE_LOG_LUNAR_ENABLED_KEY);
+    var futureLogLunarEnabled = rawFutureLogLunarEnabled === null ? true : rawFutureLogLunarEnabled !== 'false';
+    var rawFutureLogHideCompleted = safeGet(FUTURE_LOG_HIDE_COMPLETED_KEY);
+    var futureLogHideCompleted = rawFutureLogHideCompleted === 'true';
     var rawFutureLogShowTasks = safeGet(FUTURE_LOG_SHOW_TASKS_KEY);
     var futureLogShowTasks = rawFutureLogShowTasks === null ? true : rawFutureLogShowTasks !== 'false';
     var rawFutureLogShowMemos = safeGet(FUTURE_LOG_SHOW_MEMOS_KEY);
     var futureLogShowMemos = rawFutureLogShowMemos === null ? true : rawFutureLogShowMemos !== 'false';
     var rawFutureLogMiniCalScale = parseFloat(safeGet(FUTURE_LOG_MINI_CAL_SCALE_KEY));
+    // 새 기본값은 최대 배율(140%). 예전 기본값 100%가 그대로 저장된 기존 사용자도
+    // 한 번 자연스럽게 새 기본값으로 올라오게 하고, 사용자가 직접 고른 80~135% 값은 보존한다.
     var futureLogMiniCalScale = isFinite(rawFutureLogMiniCalScale)
-      ? Math.min(FUTURE_LOG_MINI_CAL_SCALE_MAX, Math.max(FUTURE_LOG_MINI_CAL_SCALE_MIN, rawFutureLogMiniCalScale))
+      ? (Math.abs(rawFutureLogMiniCalScale - FUTURE_LOG_MINI_CAL_SCALE_LEGACY_DEFAULT) < 0.001
+          ? FUTURE_LOG_MINI_CAL_SCALE_DEFAULT
+          : Math.min(FUTURE_LOG_MINI_CAL_SCALE_MAX, Math.max(FUTURE_LOG_MINI_CAL_SCALE_MIN, rawFutureLogMiniCalScale)))
       : FUTURE_LOG_MINI_CAL_SCALE_DEFAULT;
 
     return {
@@ -1161,8 +1154,8 @@ endDateDraftActive: false,
       autoRolloverEnabled: autoRolloverEnabled,
       futureLogStartMonth: futureLogStartMonth,
       futureLogMonthCount: futureLogMonthCount,
-      futureLogLunarMode: futureLogLunarMode,
-      futureLogCompletedMode: futureLogCompletedMode,
+      futureLogLunarEnabled: futureLogLunarEnabled,
+      futureLogHideCompleted: futureLogHideCompleted,
       futureLogShowTasks: futureLogShowTasks,
       futureLogShowMemos: futureLogShowMemos,
       futureLogMiniCalScale: futureLogMiniCalScale,
@@ -1248,16 +1241,13 @@ endDateDraftActive: false,
       localStorage.setItem(MONTHLY_LOG_SHOW_MEMOS_KEY, String(state.monthlyLogShowMemos));
       localStorage.setItem(DEFAULT_INPUT_MODE_KEY, state.defaultInputMode || 'task');
       localStorage.setItem(TODAY_DEFAULT_INPUT_MODE_KEY, state.todayDefaultInputMode || 'task');
-      localStorage.setItem(CALENDAR_DEFAULT_INPUT_MODE_KEY, state.calendarDefaultInputMode || 'task');
+      localStorage.setItem(CALENDAR_DEFAULT_INPUT_MODE_KEY, state.calendarDefaultInputMode || 'schedule');
       localStorage.setItem(FUTURE_LOG_DEFAULT_INPUT_MODE_KEY, state.futureLogDefaultInputMode || 'schedule');
       localStorage.setItem(AUTO_ROLLOVER_ENABLED_KEY, String(state.autoRolloverEnabled !== false));
       localStorage.setItem(FUTURE_LOG_START_MONTH_KEY, state.futureLogStartMonth);
       localStorage.setItem(FUTURE_LOG_MONTH_COUNT_KEY, String(state.futureLogMonthCount));
-      localStorage.setItem(FUTURE_LOG_LUNAR_MODE_KEY, state.futureLogLunarMode || 'simple');
-      // 구버전 fallback -- 옛 boolean 키도 새 모드에서 파생해 계속 써 둔다(하위호환).
-      localStorage.setItem(FUTURE_LOG_LUNAR_ENABLED_KEY, String(state.futureLogLunarMode !== 'off'));
-      localStorage.setItem(FUTURE_LOG_COMPLETED_MODE_KEY, state.futureLogCompletedMode || 'collapse');
-      localStorage.setItem(FUTURE_LOG_HIDE_COMPLETED_KEY, String(state.futureLogCompletedMode === 'hide'));
+      localStorage.setItem(FUTURE_LOG_LUNAR_ENABLED_KEY, String(state.futureLogLunarEnabled !== false));
+      localStorage.setItem(FUTURE_LOG_HIDE_COMPLETED_KEY, String(!!state.futureLogHideCompleted));
       localStorage.setItem(FUTURE_LOG_SHOW_TASKS_KEY, String(state.futureLogShowTasks));
       localStorage.setItem(FUTURE_LOG_SHOW_MEMOS_KEY, String(state.futureLogShowMemos));
       localStorage.setItem(FUTURE_LOG_MINI_CAL_SCALE_KEY, String(state.futureLogMiniCalScale));
@@ -1324,7 +1314,7 @@ endDateDraftActive: false,
       deletedAt: null,
       // 이달의 할 일(monthlyItem)에서 이 항목을 Daily/Weekly/Monthly Log로 "배치"해
       // 만든 것이면 그 원본 monthlyItem.id를 담는다(기존 항목은 없던 필드라 항상
-      // undefined/null -> "배치 아님"으로 취급, 하위 호환). 제목/타입/설명/하위 할일은
+      // undefined/null -> "배치 아님"으로 취급, 하위 호환). 제목/타입/설명/하위 할 일은
       // 원본과 모든 배치가 공유하고(syncSharedMonthlyFields), date/order/completed 등은
       // 배치마다 독립이다.
       sourceMonthlyItemId: null,
@@ -3134,7 +3124,7 @@ menu.appendChild(swatchRow);
     createDividerItem(target.date, target.afterItemId);
   }
 
-  // 라운드2 8: Today "완료한 할 일 정리하기" -- schedule은 해당 날짜 occurrence 완료
+  // 라운드2 8: Today "완료 항목 정리하기" -- schedule은 해당 날짜 occurrence 완료
   // 여부(completionByDate 우선순위는 isOccurrenceCompleted가 이미 처리), task/memo는
   // item.completed를 그대로 본다.
   function isItemCompletedForCleanup(item, date) {
@@ -5326,7 +5316,7 @@ handleItemPointerSelect(
       // week-grid 전부 포함) — 여기를 클릭했다고 선택이 조용히 풀리면 안 된다(7: 내렸다
       // 올려도 선택 유지 요구사항). week-grid만 따로 보던 예전 범위를 패널 전체로 넓혔다.
       (weeklyPanel && weeklyPanel.contains(e.target)) ||
-      // Monthly Log 기능 복구: 날짜 행 목록(#monthly-log-rows)과 오른쪽 월간 할일 패널
+      // Monthly Log 기능 복구: 날짜 행 목록(#monthly-log-rows)과 오른쪽 월간 할 일 패널
       // 전부를 포함하는 .monthly-log-view 전체를 "알려진 컨테이너"에 추가한다 -- 이게
       // 없으면 Monthly Log 항목을 클릭해 방금 만든 선택이 이 문서 레벨 핸들러에 의해
       // 바로 뒤이어 조용히 지워진다(실제 재현 확인된 버그).
@@ -5439,7 +5429,7 @@ handleItemPointerSelect(
       return;
     }
 
-    // 4: 이번달 할 일 패널 토글 -- Ctrl/Cmd+Shift+/. 키보드 배열에 안전하도록 event.code를
+    // 4: 이번 달 할 일 패널 토글 -- Ctrl/Cmd+Shift+/. 키보드 배열에 안전하도록 event.code를
     // 우선 판정한다(자판이 달라도 물리적 '/' 위치는 대개 Slash). Today 화면에서만 동작하며
     // 입력/편집/휠/타입메뉴/상세 패널이 열려 있으면 가로채지 않는다.
     if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.code === 'Slash' || key === '/')) {
@@ -6467,7 +6457,7 @@ input.addEventListener('blur', onTitleEditBlur);
     { type: 'heading3', label: 'H3 소제목', kw: 'h3 heading 제목', desc: '작은 크기 제목입니다.' },
     { type: 'bulleted', label: '글머리 기호', kw: 'bullet list 목록', desc: '들여쓰기 단계별로 기호가 바뀌는 목록입니다.' },
     { type: 'numbered', label: '번호 기호', kw: 'number list 목록', desc: '들여쓰기 단계별로 번호 형식이 바뀌는 목록입니다.' },
-    { type: 'todo', label: '할 일 목록', kw: 'todo 할일 체크 completed check', desc: '완료 여부를 체크할 수 있는 항목을 만듭니다.' },
+    { type: 'todo', label: '할 일 목록', kw: 'todo 할 일 체크 completed check', desc: '완료 여부를 체크할 수 있는 항목을 만듭니다.' },
     { type: 'toggle', label: '토글 목록', kw: 'toggle 토글', desc: '클릭해 자식 블록을 접고 펼칩니다.' },
     { type: 'quote', label: '인용', kw: 'quote 인용', desc: '왼쪽 세로선이 있는 인용문입니다.' },
     { type: 'divider', label: '구분선', kw: 'divider 구분', desc: '얇은 가로 구분선을 삽입합니다.' },
@@ -13697,7 +13687,7 @@ footer.appendChild(trashBtn);
     var closingItem = state.activeDetailItemId ? findActiveDetailEntity() : null;
     flushDescriptionEditorPending(closingItem);
 
-    // 이달의 할 일 배치 인스턴스의 상세(drawer)를 닫는 시점에 그동안의 설명/하위 할일
+    // 이달의 할 일 배치 인스턴스의 상세(drawer)를 닫는 시점에 그동안의 설명/하위 할 일
     // 변경을 원본 및 다른 배치들에 한 번에 전파한다(블록 단위마다 매번 동기화하면 리치
     // 에디터의 수십 개 변형 지점을 전부 손대야 해 위험이 크다 -- drawer를 닫을 때 최종
     // 상태 하나만 퍼뜨리는 편이 안전하고 요구사항도 "닫을 때"가 아니라 "반영"만 요구한다).
@@ -18224,6 +18214,49 @@ function applyFutureLogRowReorder(ids, monthKey, overRowKey, dropPosition) {
   return changed;
 }
 
+// 최종 감사: "완료 항목 정리" -- Today의 "완료 항목 정리하기"(cleanupCompletedItemsForDate)와
+// 같은 1회성 동작으로 통일한다(요구사항: 상시 모드가 아니라 클릭 즉시 실행). 완료 항목을
+// 미완료 항목 뒤로 실제 order를 옮겨 정리한다 -- reorderFutureLogRows와 마찬가지로 반드시
+// buildFutureLogMonthRowsFiltered(표시 정렬 없는 실제 order 기준)를 써야 데이터가 오염되지 않는다.
+function cleanupFutureLogCompletedForMonth(monthKey) {
+  var rows = buildFutureLogMonthRowsFiltered(monthKey);
+  var incomplete = [], completed = [];
+  rows.forEach(function (row) {
+    (isFutureLogRowFullyCompleted(row) ? completed : incomplete).push(row);
+  });
+  if (!completed.length) return false;
+  var result = incomplete.concat(completed);
+  var changed = false;
+  result.forEach(function (row, index) {
+    var entity = row.kind === 'master' ? row.master : row.item;
+    if (entity.order !== index) {
+      entity.order = index;
+      entity.updatedAt = Date.now();
+      changed = true;
+    }
+  });
+  return changed;
+}
+
+// "···" 설정 메뉴는 카드별이 아니라 Future Log 화면 전체에 하나뿐인 헤더 버튼이라
+// (future-log-menu-btn), 정리도 현재 화면에 보이는 월 전체(state.futureLogStartMonth
+// ~ +futureLogMonthCount)에 대해 한 번에 실행한다 -- 카드 단위 monthKey를 받지 않는다.
+function applyFutureLogCompletedCleanup() {
+  var changed = false;
+  withHistoryTransaction(function () {
+    for (var i = 0; i < state.futureLogMonthCount; i++) {
+      var monthKey = addMonthsToMonthKey(state.futureLogStartMonth, i);
+      if (cleanupFutureLogCompletedForMonth(monthKey)) changed = true;
+    }
+  });
+  if (changed) {
+    saveItems();
+    saveMonthlyItems();
+    renderFutureLogBody();
+  }
+  return changed;
+}
+
 // 5차 감사(혼합 행 순서 검증 -- 실제 재현으로 발견): reorderFutureLogRows는 항상
 // "행의 정체성"으로 매칭한다(master 행은 배치 개수와 무관하게 master.id, item/projection
 // 행은 그 item.id -- buildFutureLogMonthRows/rowId 참고). 그런데 배치가 1개인 master의
@@ -19848,7 +19881,11 @@ projectId: master.projectId || null,
       afterWeekNavigate();
     }
     renderApp();
+    // 같은 주 시작 설정을 공유하는 모든 달력 UI를 즉시 동기화한다.
+    rebuildFutureLogMiniCalendarWeekLayout();
     renderCalendarSettingsMenuState();
+    renderMonthlyLogMenuState();
+    renderFutureLogMenuState();
   }
 
   function setLunarEnabled(value) {
@@ -19859,6 +19896,8 @@ projectId: master.projectId || null,
     renderCalendarMonthGrid(parseLocalDate(state.calendarViewDate));
     renderApp();
     renderCalendarSettingsMenuState();
+    renderMonthlyLogMenuState();
+    renderFutureLogMenuState();
   }
 
   function moveCalendarSettingsMenuFocus(items, target) {
@@ -19923,27 +19962,7 @@ projectId: master.projectId || null,
     menu.setAttribute('role', 'menu');
     menu.setAttribute('aria-label', '달력 설정');
 
-    var weekLabel = document.createElement('div');
-    weekLabel.className = 'week-range-menu-label';
-    weekLabel.textContent = '주 시작 요일';
-    menu.appendChild(weekLabel);
-
-    [{ value: 0, label: '일요일 시작' }, { value: 1, label: '월요일 시작' }].forEach(function (opt) {
-      var checked = state.calendarWeekStartsOn === opt.value;
-      var mi = document.createElement('div');
-      mi.className = 'week-range-menu-item';
-      mi.setAttribute('role', 'menuitemradio');
-      mi.setAttribute('aria-checked', String(checked));
-      mi.dataset.weekStartsOn = String(opt.value);
-      mi.tabIndex = checked ? 0 : -1;
-      mi.textContent = opt.label;
-      mi.addEventListener('click', function () { setCalendarWeekStartsOn(opt.value); });
-      menu.appendChild(mi);
-    });
-
-    // 라운드2 2: "표시 켜기/표시 끄기" 2행 라디오 대신, Monthly Log와 같은 단일 checkbox
-    // 1개로 통일한다(요구사항 -- 체크박스/텍스트가 같은 줄에서 좌측 정렬되는 기존
-    // .monthly-log-menu-item 패턴을 그대로 재사용).
+    // 자주 켜고 끄는 표시 옵션을 먼저 둔다.
     var lunarItem = document.createElement('div');
     lunarItem.className = 'monthly-log-menu-item';
     lunarItem.setAttribute('role', 'menuitemcheckbox');
@@ -19958,6 +19977,25 @@ projectId: master.projectId || null,
     lunarItem.appendChild(lunarLabel);
     lunarItem.addEventListener('click', function () { setLunarEnabled(!state.lunarEnabled); });
     menu.appendChild(lunarItem);
+
+    var displayDivider = document.createElement('div');
+    displayDivider.className = 'week-range-menu-divider';
+    displayDivider.setAttribute('role', 'separator');
+    menu.appendChild(displayDivider);
+
+    // 주 시작 요일은 한 번 정하면 자주 바꾸지 않는 설정이므로 아래쪽에 둔다.
+    [{ value: 0, label: '일요일 시작' }, { value: 1, label: '월요일 시작' }].forEach(function (opt) {
+      var checked = state.calendarWeekStartsOn === opt.value;
+      var mi = document.createElement('div');
+      mi.className = 'week-range-menu-item';
+      mi.setAttribute('role', 'menuitemradio');
+      mi.setAttribute('aria-checked', String(checked));
+      mi.dataset.weekStartsOn = String(opt.value);
+      mi.tabIndex = checked ? 0 : -1;
+      mi.textContent = opt.label;
+      mi.addEventListener('click', function () { setCalendarWeekStartsOn(opt.value); });
+      menu.appendChild(mi);
+    });
 
     document.body.appendChild(menu);
     positionPopup(menu, anchorEl);
@@ -19984,7 +20022,7 @@ projectId: master.projectId || null,
   // 라운드2 1/2/16: Today 우측 상단 "..." 메뉴 -- Monthly Log의 openMonthlyLogMenu와
   // 완전히 같은 상호작용 패턴/CSS 클래스(.monthly-log-menu*)를 그대로 재사용해 두 메뉴의
   // 시각 위계·체크박스 정렬을 통일한다(요구사항). 음력 표시(공유 state.lunarEnabled)와
-  // 완료한 할 일 정리하기 두 항목만 담는다.
+  // 완료 항목 정리하기 두 항목만 담는다.
   // ---------------------------------------------------------------------
   var activeTodayMenu = null; // { el }
 
@@ -20061,6 +20099,7 @@ projectId: master.projectId || null,
 
   var dividerLabel = document.createElement('span');
   dividerLabel.textContent = '구분선 추가';
+
   dividerItem.appendChild(dividerLabel);
 
   dividerItem.addEventListener('click', function () {
@@ -20081,8 +20120,11 @@ projectId: master.projectId || null,
   });
 
   menu.appendChild(dividerItem);
-
-  // 2. 완료한 할 일 정리하기
+const dividerMenuSeparator = document.createElement('div');
+dividerMenuSeparator.className = 'future-log-menu-divider';
+dividerMenuSeparator.setAttribute('role', 'separator');
+menu.appendChild(dividerMenuSeparator);
+  // 2. 완료 항목 정리하기
   var cleanupItem = document.createElement('div');
   cleanupItem.className = 'monthly-log-menu-item menu-item-has-help';
   cleanupItem.setAttribute('role', 'menuitem');
@@ -20092,7 +20134,7 @@ projectId: master.projectId || null,
   cleanupItem.tabIndex = -1;
 
   var cleanupLabel = document.createElement('span');
-  cleanupLabel.textContent = '완료한 할 일 정리하기';
+  cleanupLabel.textContent = '완료 항목 정리하기';
   cleanupItem.appendChild(cleanupLabel);
 
   cleanupItem.addEventListener('click', function () {
@@ -20681,7 +20723,7 @@ projectId: master.projectId || null,
   }
 
   // ---------------------------------------------------------------------
-  // Today 우측 월간 할일 패널 -- Calendar 패널과 완전히 같은 렌더/생성/편집/삭제 함수
+  // Today 우측 월간 할 일 패널 -- Calendar 패널과 완전히 같은 렌더/생성/편집/삭제 함수
   // (renderMonthlyItemsInto/wireMonthlyItemsListDelegation/wireMonthlyQuickInput/
   // createMonthlyItem 등, 모두 아래 monthlyItems 모듈에 정의됨)를 그대로 공유한다.
   // 이 패널만의 고유 로직은 열림/닫힘 상태(세션 한정, localStorage 저장 안 함)와 그
@@ -20698,7 +20740,7 @@ projectId: master.projectId || null,
     var monthKey = currentTodayMonthKey();
     if (titleEl) {
       var d = parseLocalDate(monthKey + '-01');
-      titleEl.textContent = d.getFullYear() + '년 ' + (d.getMonth() + 1) + '월 할일';
+      titleEl.textContent = d.getFullYear() + '년 ' + (d.getMonth() + 1) + '월 할 일';
     }
     renderMonthlyItemsInto(document.getElementById('today-monthly-list'), monthKey, '이번 달에 해둘 일을 적어보세요.');
     renderTodayMonthlyOverdue(monthKey);
@@ -20851,7 +20893,7 @@ projectId: master.projectId || null,
       // 요구사항: icon-only 버튼 툴팁은 앱 전체 공용 시스템(data-tooltip-label/kbd,
       // wireInlineTooltips)으로 통일한다 -- 이 버튼 전용 커스텀 hover/focus 배선과
       // 툴팁 DOM은 더 이상 따로 두지 않는다.
-      applyIconButtonTooltip(toggle, '이번달 할 일', 'Ctrl+Shift+/');
+      applyIconButtonTooltip(toggle, '이번 달 할 일', 'Ctrl+Shift+/');
       toggle.addEventListener('click', function () { toggleMonthlyPanel(); hideInlineTooltip(); });
     }
     var closeBtn = document.getElementById('today-monthly-panel-close');
@@ -20882,7 +20924,7 @@ projectId: master.projectId || null,
   }
 
   // ---------------------------------------------------------------------
-  // 월간 할일(monthlyItems) -- 날짜가 없는 "이 달 안에 할 일" 전용 CRUD. state.items와
+  // 월간 할 일(monthlyItems) -- 날짜가 없는 "이 달 안에 할 일" 전용 CRUD. state.items와
   // 완전히 분리된 배열(state.monthlyItems)만 다루며, Calendar 우측 패널과 Today 우측
   // 패널이 아래 함수들을 그대로 공유한다(생성·완료·종류변경·삭제·목록 렌더링·제목 편집
   // 전부 이 한 곳에만 구현 -- 두 화면에 중복 구현하지 않는다).
@@ -21074,30 +21116,18 @@ projectId: master.projectId || null,
       var entity = row.kind === 'master' ? row.master : row.item;
       if (entity.type === 'task' && !state.futureLogShowTasks) return false;
       if (entity.type === 'memo' && !state.futureLogShowMemos) return false;
-      if (state.futureLogCompletedMode === 'hide' && isFutureLogRowFullyCompleted(row)) return false;
+      if (state.futureLogHideCompleted && isFutureLogRowFullyCompleted(row)) return false;
       return true;
     });
   }
 
-  // 렌더/도트/+N 전용 진입점 -- buildFutureLogMonthRowsFiltered(실제 order 기준)에
-  // '아래로 모으기' 표시 정렬만 얹는다. entity.order 등 실제 데이터는 전혀 건드리지
-  // 않는 순수 렌더 정렬이다 -- 매 렌더마다 이 함수를 새로 호출해 필터링된 목록을 다시
-  // 계산하므로, 사용자가 "그대로 표시"로 되돌리면 다음 렌더에서 이 분기를 그냥
-  // 건너뛰어 원래(order 기준) 순서가 자동으로 복원된다(별도 복원 로직 불필요).
-  // 미완료/완료 각각의 상대 순서는 원래 배열을 한 번만 훑어 안정적으로 보존한다.
-  // 드래그 재정렬(reorderFutureLogRows)은 반드시 buildFutureLogMonthRowsFiltered를
-  // 직접 써야 한다 -- 이 함수를 쓰면 collapse 표시 순서가 그대로 entity.order에
-  // 쓰여 데이터가 오염된다(위 buildFutureLogMonthRowsFiltered 주석 참고).
+  // 렌더/도트/+N 전용 진입점 -- 최종 감사: "아래로 모으기" 상시 표시 정렬 모드를
+  // 없애면서(요구사항: Today 패턴과 통일) 순수 표시 정렬 분기도 함께 제거했다.
+  // buildFutureLogMonthRowsFiltered(실제 order 기준)를 그대로 반환한다. "완료 항목
+  // 정리"는 이제 클릭 시 실제 order를 바꾸는 1회성 동작(cleanupFutureLogCompletedForMonth)
+  // 이라, 그 정렬 결과가 자연스럽게 이 함수의 반환값에도 반영된다.
   function buildFutureLogMonthRows(monthKey) {
-    var filtered = buildFutureLogMonthRowsFiltered(monthKey);
-    if (state.futureLogCompletedMode === 'collapse') {
-      var incompleteRows = [], completedRows = [];
-      filtered.forEach(function (row) {
-        (isFutureLogRowFullyCompleted(row) ? completedRows : incompleteRows).push(row);
-      });
-      return incompleteRows.concat(completedRows);
-    }
-    return filtered;
+    return buildFutureLogMonthRowsFiltered(monthKey);
   }
 
   // Future Log 3단계: 월 블록 미니 캘린더의 날짜 도트 집합. buildFutureLogMonthRows가
@@ -21213,15 +21243,21 @@ projectId: master.projectId || null,
   // 전환 시 시작월 유지). 범위 밖 값은 무시한다(스테퍼 −/+가 경계에서 이미 비활성화되고,
   // 직접 선택 팝업도 2~12만 제시하므로 정상 경로로는 발생하지 않는다 -- 방어적 가드).
   function setFutureLogMonthCount(count) {
-    if (count < FUTURE_LOG_MONTH_COUNT_MIN || count > FUTURE_LOG_MONTH_COUNT_MAX || count === state.futureLogMonthCount) return;
+    if (FUTURE_LOG_MONTH_COUNT_OPTIONS.indexOf(count) === -1 || count === state.futureLogMonthCount) return;
     state.futureLogMonthCount = count;
     savePreferences();
     renderFutureLogHeader();
     renderFutureLogBody();
   }
 
-  function stepFutureLogMonthCount(delta) {
-    setFutureLogMonthCount(state.futureLogMonthCount + delta);
+  // 최종 감사: 3/6/12는 균일 간격이 아니라서(3->6=+3, 6->12=+6) 고정 델타 증감이 아니라
+  // FUTURE_LOG_MONTH_COUNT_OPTIONS 안에서 인접 값으로 이동한다. direction: -1 또는 1.
+  function stepFutureLogMonthCount(direction) {
+    var idx = FUTURE_LOG_MONTH_COUNT_OPTIONS.indexOf(state.futureLogMonthCount);
+    if (idx === -1) idx = FUTURE_LOG_MONTH_COUNT_OPTIONS.indexOf(FUTURE_LOG_MONTH_COUNT_DEFAULT);
+    var nextIdx = idx + direction;
+    if (nextIdx < 0 || nextIdx >= FUTURE_LOG_MONTH_COUNT_OPTIONS.length) return;
+    setFutureLogMonthCount(FUTURE_LOG_MONTH_COUNT_OPTIONS[nextIdx]);
   }
 
   // ---------------------------------------------------------------------
@@ -21289,7 +21325,7 @@ projectId: master.projectId || null,
     menu.setAttribute('aria-label', '표시 개월 수 선택');
 
     var focusTarget = null;
-    for (var n = FUTURE_LOG_MONTH_COUNT_MIN; n <= FUTURE_LOG_MONTH_COUNT_MAX; n += FUTURE_LOG_MONTH_COUNT_STEP) {
+    FUTURE_LOG_MONTH_COUNT_OPTIONS.forEach(function (n) {
       var item = document.createElement('div');
       item.className = 'monthly-log-menu-item future-log-month-count-menu-item';
       item.setAttribute('role', 'menuitemradio');
@@ -21304,7 +21340,7 @@ projectId: master.projectId || null,
       });
       if (isCurrent) focusTarget = item;
       menu.appendChild(item);
-    }
+    });
 
     document.body.appendChild(menu);
     positionPopup(menu, anchorEl);
@@ -21324,19 +21360,20 @@ projectId: master.projectId || null,
   // 같을 뿐 완전히 독립된 Future Log 전용 저장값(state.futureLog*)을 쓴다.
   var activeFutureLogMenu = null; // { el }
 
-  var FUTURE_LOG_LUNAR_MODE_LABELS = { off: '끄기', simple: '간단히', full: '전체' };
-  var FUTURE_LOG_COMPLETED_MODE_LABELS = { show: '그대로', collapse: '아래로', hide: '숨기기' };
-
+  // 최종 감사: Today/Calendar 메뉴 패턴과 통일(요구사항) -- 음력 표시/완료 항목 숨기기는
+  // 값 표시+submenu가 아니라 단순 on/off menuitemcheckbox, "완료 항목 정리"는 클릭 즉시
+  // 실행되는 menuitem이라 갱신할 값 텍스트가 없다.
   function renderFutureLogMenuState() {
     if (!activeFutureLogMenu) return;
-    var lunarValueEl = activeFutureLogMenu.el.querySelector('[data-future-log-menu-action="lunar"] .future-log-menu-item-value-text');
-    if (lunarValueEl) lunarValueEl.textContent = FUTURE_LOG_LUNAR_MODE_LABELS[state.futureLogLunarMode] || '간단히';
-    var completedValueEl = activeFutureLogMenu.el.querySelector('[data-future-log-menu-action="completed-mode"] .future-log-menu-item-value-text');
-    if (completedValueEl) completedValueEl.textContent = FUTURE_LOG_COMPLETED_MODE_LABELS[state.futureLogCompletedMode] || '아래로';
+    var hideCompletedItem = activeFutureLogMenu.el.querySelector('[data-future-log-menu-action="hide-completed"]');
+    if (hideCompletedItem) hideCompletedItem.setAttribute('aria-checked', String(!!state.futureLogHideCompleted));
     var showTasksItem = activeFutureLogMenu.el.querySelector('[data-future-log-menu-action="show-tasks"]');
     if (showTasksItem) showTasksItem.setAttribute('aria-checked', String(!!state.futureLogShowTasks));
     var showMemosItem = activeFutureLogMenu.el.querySelector('[data-future-log-menu-action="show-memos"]');
     if (showMemosItem) showMemosItem.setAttribute('aria-checked', String(!!state.futureLogShowMemos));
+    activeFutureLogMenu.el.querySelectorAll('[data-future-log-week-start]').forEach(function (item) {
+      item.setAttribute('aria-checked', String(Number(item.dataset.futureLogWeekStart) === state.calendarWeekStartsOn));
+    });
   }
 
   function onOutsideFutureLogMenuPointerDown(e) {
@@ -21411,14 +21448,15 @@ projectId: master.projectId || null,
     }
   }
 
+  // 최종 감사: Today(openTodayMenu)/Calendar(openCalendarSettingsMenu) 패턴과 통일
+  // (요구사항) -- 값 표시+submenu 구조를 없애고 평평한 항목 목록으로 되돌린다.
+  // "완료 항목 정리"는 Today의 "완료 항목 정리하기"처럼 클릭 즉시 실행되는
+  // role="menuitem", "완료 항목 숨기기"/"음력 표시"는 Today/Calendar와 같은
+  // role="menuitemcheckbox" 즉시 토글이다. Future Log 특성상 필요한 최소 항목만
+  // 남겨 메뉴가 차지하는 공간도 줄인다(그룹 라벨/구분선 1개 제거).
   function openFutureLogMenu(anchorEl) {
     if (activeFutureLogMenu) { closeFutureLogMenu(); return; }
     if (activeFutureLogMonthCountMenu) closeFutureLogMonthCountMenu(false);
-    // 방어적 정리: 값 submenu(음력 표시/완료 항목 정리)가 열려 있는 채로 "···" 버튼을
-    // 다시 누르면 두 팝업의 outside-click/Escape 리스너가 겹쳐 등록될 수 있다 --
-    // 새 메인 메뉴를 열기 전에 먼저 정리한다.
-    if (activeFutureLogLunarModeSubmenu) closeFutureLogLunarModeSubmenu(false);
-    if (activeFutureLogCompletedModeSubmenu) closeFutureLogCompletedModeSubmenu(false);
 
     var menu = document.createElement('div');
     menu.className = 'monthly-log-menu';
@@ -21426,75 +21464,43 @@ projectId: master.projectId || null,
     menu.setAttribute('role', 'menu');
     menu.setAttribute('aria-label', '퓨처로그 설정');
 
-    // 최종 감사(메뉴 재구성): 평평한 checkbox 목록을 "보기"/"레이아웃" 두 그룹으로
-    // 나눈다. 음력 표시·완료 항목 정리는 더 이상 단일 on/off가 아니라 3단계 값이라
-    // 오른쪽에 현재 값을 보여주고, 클릭하면 이 메뉴를 닫고 같은 트리거에 앵커된 작은
-    // radio submenu를 연다(기존 "표시 개월 수" 팝업과 같은 패턴 재사용).
-    var viewGroupLabel = document.createElement('div');
-    viewGroupLabel.className = 'future-log-menu-group-label';
-    viewGroupLabel.textContent = '보기';
-    menu.appendChild(viewGroupLabel);
-
-    var lunarItem = document.createElement('div');
-    lunarItem.className = 'monthly-log-menu-item future-log-menu-value-item';
-    lunarItem.setAttribute('role', 'menuitem');
-    lunarItem.setAttribute('aria-haspopup', 'menu');
-    lunarItem.dataset.futureLogMenuAction = 'lunar';
-    lunarItem.tabIndex = 0;
-    // 최종 감사(디자인 정돈): 체크박스 행(할 일/메모 표시)은 .monthly-log-menu-item-check
-    // (16px)+gap(8px)만큼 라벨이 오른쪽으로 밀려 시작한다. 이 값 표시 행에는 체크박스가
-    // 없어 라벨이 그만큼 왼쪽으로 당겨 보였다(실제 확인된 기준선 어긋남) -- 같은 폭의
-    // 빈 스페이서로 네 행의 라벨 시작 x좌표를 맞춘다.
-    lunarItem.appendChild(document.createElement('span')).className = 'monthly-log-menu-item-check future-log-menu-item-spacer';
-    var lunarLabel = document.createElement('span');
-    lunarLabel.textContent = '음력 표시';
-    lunarItem.appendChild(lunarLabel);
-    var lunarValue = document.createElement('span');
-    lunarValue.className = 'future-log-menu-item-value';
-    var lunarValueText = document.createElement('span');
-    lunarValueText.className = 'future-log-menu-item-value-text';
-    lunarValueText.textContent = FUTURE_LOG_LUNAR_MODE_LABELS[state.futureLogLunarMode] || '간단히';
-    lunarValue.appendChild(lunarValueText);
-    var lunarCaret = document.createElement('span');
-    lunarCaret.className = 'future-log-menu-item-caret';
-    lunarCaret.textContent = '›';
-    lunarValue.appendChild(lunarCaret);
-    lunarItem.appendChild(lunarValue);
-    lunarItem.addEventListener('click', function () {
-      var anchor = document.getElementById('future-log-menu-btn');
-      closeFutureLogMenu(false);
-      openFutureLogLunarModeSubmenu(anchor);
+    // 1) 자주 쓰는 완료 항목 제어.
+    var cleanupItem = document.createElement('div');
+    cleanupItem.className = 'monthly-log-menu-item';
+    cleanupItem.setAttribute('role', 'menuitem');
+    cleanupItem.dataset.futureLogMenuAction = 'cleanup-completed';
+    cleanupItem.tabIndex = 0;
+    cleanupItem.textContent = '완료 항목 정리하기';
+    cleanupItem.addEventListener('click', function () {
+      applyFutureLogCompletedCleanup();
+      closeFutureLogMenu(true);
     });
-    menu.appendChild(lunarItem);
+    menu.appendChild(cleanupItem);
 
-    var completedItem = document.createElement('div');
-    completedItem.className = 'monthly-log-menu-item future-log-menu-value-item';
-    completedItem.setAttribute('role', 'menuitem');
-    completedItem.setAttribute('aria-haspopup', 'menu');
-    completedItem.dataset.futureLogMenuAction = 'completed-mode';
-    completedItem.tabIndex = -1;
-    completedItem.appendChild(document.createElement('span')).className = 'monthly-log-menu-item-check future-log-menu-item-spacer';
-    var completedLabel = document.createElement('span');
-    completedLabel.textContent = '완료 항목 정리';
-    completedItem.appendChild(completedLabel);
-    var completedValue = document.createElement('span');
-    completedValue.className = 'future-log-menu-item-value';
-    var completedValueText = document.createElement('span');
-    completedValueText.className = 'future-log-menu-item-value-text';
-    completedValueText.textContent = FUTURE_LOG_COMPLETED_MODE_LABELS[state.futureLogCompletedMode] || '아래로';
-    completedValue.appendChild(completedValueText);
-    var completedCaret = document.createElement('span');
-    completedCaret.className = 'future-log-menu-item-caret';
-    completedCaret.textContent = '›';
-    completedValue.appendChild(completedCaret);
-    completedItem.appendChild(completedValue);
-    completedItem.addEventListener('click', function () {
-      var anchor = document.getElementById('future-log-menu-btn');
-      closeFutureLogMenu(false);
-      openFutureLogCompletedModeSubmenu(anchor);
+    var hideCompletedItem = document.createElement('div');
+    hideCompletedItem.className = 'monthly-log-menu-item';
+    hideCompletedItem.setAttribute('role', 'menuitemcheckbox');
+    hideCompletedItem.setAttribute('aria-checked', String(!!state.futureLogHideCompleted));
+    hideCompletedItem.dataset.futureLogMenuAction = 'hide-completed';
+    hideCompletedItem.tabIndex = -1;
+    hideCompletedItem.appendChild(document.createElement('span')).className = 'monthly-log-menu-item-check';
+    var hideCompletedLabel = document.createElement('span');
+    hideCompletedLabel.textContent = '완료 항목 숨기기';
+    hideCompletedItem.appendChild(hideCompletedLabel);
+    hideCompletedItem.addEventListener('click', function () {
+      state.futureLogHideCompleted = !state.futureLogHideCompleted;
+      applyFutureLogFilterChange();
+      hideCompletedItem.setAttribute('aria-checked', String(!!state.futureLogHideCompleted));
     });
-    menu.appendChild(completedItem);
+    menu.appendChild(hideCompletedItem);
 
+    // 완료 항목 제어와 표시 옵션 사이 구분선.
+    var completedDivider = document.createElement('div');
+    completedDivider.className = 'future-log-menu-divider';
+    completedDivider.setAttribute('role', 'separator');
+    menu.appendChild(completedDivider);
+
+    // 2) 항목 표시 옵션. 음력 표시는 전역 설정에서 관리한다.
     var showTasksItem = document.createElement('div');
     showTasksItem.className = 'monthly-log-menu-item';
     showTasksItem.setAttribute('role', 'menuitemcheckbox');
@@ -21527,19 +21533,13 @@ projectId: master.projectId || null,
     });
     menu.appendChild(showMemosItem);
 
-    var layoutDivider = document.createElement('div');
-    layoutDivider.className = 'future-log-menu-divider';
-    layoutDivider.setAttribute('role', 'separator');
-    menu.appendChild(layoutDivider);
+    // 표시 옵션과 크기 초기화 사이 구분선.
+    var beforeResetDivider = document.createElement('div');
+    beforeResetDivider.className = 'future-log-menu-divider';
+    beforeResetDivider.setAttribute('role', 'separator');
+    menu.appendChild(beforeResetDivider);
 
-    var layoutGroupLabel = document.createElement('div');
-    layoutGroupLabel.className = 'future-log-menu-group-label';
-    layoutGroupLabel.textContent = '레이아웃';
-    menu.appendChild(layoutGroupLabel);
-
-    // Ctrl+휠로 조절한 미니 달력 배율을 100%로 되돌리는 명령(요구사항) -- 체크형이
-    // 아니라 즉시 실행되는 일반 명령이라 Monthly Log의 "달력 크기 초기화"와 같은
-    // role="menuitem" 패턴을 그대로 재사용한다.
+    // 3) 드물게 쓰는 레이아웃 초기화는 단독 그룹으로 둔다.
     var resetScaleItem = document.createElement('div');
     resetScaleItem.className = 'monthly-log-menu-item menu-item-has-help';
     resetScaleItem.setAttribute('role', 'menuitem');
@@ -21554,170 +21554,17 @@ projectId: master.projectId || null,
     });
     menu.appendChild(resetScaleItem);
 
+    // 주 시작 요일은 전역 설정에서 관리한다. Today 미니 달력 메뉴만 빠른 접근을 유지한다.
+
     document.body.appendChild(menu);
     positionPopup(menu, anchorEl);
     anchorEl.setAttribute('aria-expanded', 'true');
     activeFutureLogMenu = { el: menu };
-    lunarItem.focus();
+    cleanupItem.focus();
 
     setTimeout(function () {
       document.addEventListener('pointerdown', onOutsideFutureLogMenuPointerDown, true);
       document.addEventListener('keydown', onFutureLogMenuKeydown, true);
-    }, 0);
-  }
-
-  // 최종 감사(메뉴 재구성): "음력 표시"/"완료 항목 정리" 값 선택 submenu -- 기존
-  // openFutureLogMonthCountMenu(표시 개월 수 팝업)와 완전히 같은 열기/닫기/바깥 클릭/
-  // Escape/방향키 패턴을 각각 독립된 상태로 복제한다(같은 트리거 버튼에 앵커되지만
-  // 메인 "···" 메뉴와는 항상 하나만 열려 있다 -- 값 항목 클릭이 먼저 메인 메뉴를
-  // 닫으므로 리스너가 겹치지 않는다).
-  var activeFutureLogLunarModeSubmenu = null; // { el }
-
-  function closeFutureLogLunarModeSubmenu(restoreFocus) {
-    if (!activeFutureLogLunarModeSubmenu) return;
-    activeFutureLogLunarModeSubmenu.el.remove();
-    document.removeEventListener('pointerdown', onOutsideFutureLogLunarModeSubmenuPointerDown, true);
-    document.removeEventListener('keydown', onFutureLogLunarModeSubmenuKeydown, true);
-    activeFutureLogLunarModeSubmenu = null;
-    var btn = document.getElementById('future-log-menu-btn');
-    if (btn) {
-      btn.setAttribute('aria-expanded', 'false');
-      if (restoreFocus !== false) btn.focus();
-    }
-  }
-
-  function onOutsideFutureLogLunarModeSubmenuPointerDown(e) {
-    if (!activeFutureLogLunarModeSubmenu) return;
-    if (activeFutureLogLunarModeSubmenu.el.contains(e.target)) return;
-    closeFutureLogLunarModeSubmenu(false);
-  }
-
-  function onFutureLogLunarModeSubmenuKeydown(e) {
-    if (!activeFutureLogLunarModeSubmenu) return;
-    var items = Array.prototype.slice.call(activeFutureLogLunarModeSubmenu.el.querySelectorAll('[role="menuitemradio"]'));
-    if (e.key === 'Escape') {
-      e.preventDefault();
-      closeFutureLogLunarModeSubmenu();
-    } else if (e.key === 'ArrowDown') {
-      e.preventDefault();
-      var next = items.indexOf(document.activeElement) + 1;
-      if (items[next]) items[next].focus();
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault();
-      var prev = items.indexOf(document.activeElement) - 1;
-      if (items[prev]) items[prev].focus();
-    } else if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault();
-      if (document.activeElement && items.indexOf(document.activeElement) !== -1) document.activeElement.click();
-    }
-  }
-
-  function openFutureLogLunarModeSubmenu(anchorEl) {
-    if (activeFutureLogLunarModeSubmenu) { closeFutureLogLunarModeSubmenu(); return; }
-    var menu = document.createElement('div');
-    menu.className = 'monthly-log-menu';
-    menu.setAttribute('role', 'menu');
-    menu.setAttribute('aria-label', '음력 표시');
-    var focusTarget = null;
-    ['off', 'simple', 'full'].forEach(function (mode) {
-      var item = document.createElement('div');
-      item.className = 'monthly-log-menu-item future-log-radio-menu-item';
-      item.setAttribute('role', 'menuitemradio');
-      var isCurrent = mode === state.futureLogLunarMode;
-      item.setAttribute('aria-checked', String(isCurrent));
-      item.tabIndex = isCurrent ? 0 : -1;
-      item.textContent = FUTURE_LOG_LUNAR_MODE_LABELS[mode];
-      item.addEventListener('click', function () {
-        state.futureLogLunarMode = mode;
-        applyFutureLogFilterChange();
-        closeFutureLogLunarModeSubmenu(true);
-      });
-      if (isCurrent) focusTarget = item;
-      menu.appendChild(item);
-    });
-    document.body.appendChild(menu);
-    positionPopup(menu, anchorEl);
-    anchorEl.setAttribute('aria-expanded', 'true');
-    activeFutureLogLunarModeSubmenu = { el: menu };
-    (focusTarget || menu.firstChild).focus();
-    setTimeout(function () {
-      document.addEventListener('pointerdown', onOutsideFutureLogLunarModeSubmenuPointerDown, true);
-      document.addEventListener('keydown', onFutureLogLunarModeSubmenuKeydown, true);
-    }, 0);
-  }
-
-  var activeFutureLogCompletedModeSubmenu = null; // { el }
-
-  function closeFutureLogCompletedModeSubmenu(restoreFocus) {
-    if (!activeFutureLogCompletedModeSubmenu) return;
-    activeFutureLogCompletedModeSubmenu.el.remove();
-    document.removeEventListener('pointerdown', onOutsideFutureLogCompletedModeSubmenuPointerDown, true);
-    document.removeEventListener('keydown', onFutureLogCompletedModeSubmenuKeydown, true);
-    activeFutureLogCompletedModeSubmenu = null;
-    var btn = document.getElementById('future-log-menu-btn');
-    if (btn) {
-      btn.setAttribute('aria-expanded', 'false');
-      if (restoreFocus !== false) btn.focus();
-    }
-  }
-
-  function onOutsideFutureLogCompletedModeSubmenuPointerDown(e) {
-    if (!activeFutureLogCompletedModeSubmenu) return;
-    if (activeFutureLogCompletedModeSubmenu.el.contains(e.target)) return;
-    closeFutureLogCompletedModeSubmenu(false);
-  }
-
-  function onFutureLogCompletedModeSubmenuKeydown(e) {
-    if (!activeFutureLogCompletedModeSubmenu) return;
-    var items = Array.prototype.slice.call(activeFutureLogCompletedModeSubmenu.el.querySelectorAll('[role="menuitemradio"]'));
-    if (e.key === 'Escape') {
-      e.preventDefault();
-      closeFutureLogCompletedModeSubmenu();
-    } else if (e.key === 'ArrowDown') {
-      e.preventDefault();
-      var next = items.indexOf(document.activeElement) + 1;
-      if (items[next]) items[next].focus();
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault();
-      var prev = items.indexOf(document.activeElement) - 1;
-      if (items[prev]) items[prev].focus();
-    } else if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault();
-      if (document.activeElement && items.indexOf(document.activeElement) !== -1) document.activeElement.click();
-    }
-  }
-
-  function openFutureLogCompletedModeSubmenu(anchorEl) {
-    if (activeFutureLogCompletedModeSubmenu) { closeFutureLogCompletedModeSubmenu(); return; }
-    var menu = document.createElement('div');
-    menu.className = 'monthly-log-menu';
-    menu.setAttribute('role', 'menu');
-    menu.setAttribute('aria-label', '완료 항목 정리');
-    var focusTarget = null;
-    ['show', 'collapse', 'hide'].forEach(function (mode) {
-      var item = document.createElement('div');
-      item.className = 'monthly-log-menu-item future-log-radio-menu-item';
-      item.setAttribute('role', 'menuitemradio');
-      var isCurrent = mode === state.futureLogCompletedMode;
-      item.setAttribute('aria-checked', String(isCurrent));
-      item.tabIndex = isCurrent ? 0 : -1;
-      item.textContent = FUTURE_LOG_COMPLETED_MODE_LABELS[mode];
-      item.addEventListener('click', function () {
-        state.futureLogCompletedMode = mode;
-        applyFutureLogFilterChange();
-        closeFutureLogCompletedModeSubmenu(true);
-      });
-      if (isCurrent) focusTarget = item;
-      menu.appendChild(item);
-    });
-    document.body.appendChild(menu);
-    positionPopup(menu, anchorEl);
-    anchorEl.setAttribute('aria-expanded', 'true');
-    activeFutureLogCompletedModeSubmenu = { el: menu };
-    (focusTarget || menu.firstChild).focus();
-    setTimeout(function () {
-      document.addEventListener('pointerdown', onOutsideFutureLogCompletedModeSubmenuPointerDown, true);
-      document.addEventListener('keydown', onFutureLogCompletedModeSubmenuKeydown, true);
     }, 0);
   }
 
@@ -21732,8 +21579,8 @@ projectId: master.projectId || null,
     var incrBtn = document.getElementById('future-log-month-incr-btn');
     var countBtn = document.getElementById('future-log-month-count-btn');
     var menuBtn = document.getElementById('future-log-menu-btn');
-    if (decrBtn) decrBtn.addEventListener('click', function () { stepFutureLogMonthCount(-FUTURE_LOG_MONTH_COUNT_STEP); });
-    if (incrBtn) incrBtn.addEventListener('click', function () { stepFutureLogMonthCount(FUTURE_LOG_MONTH_COUNT_STEP); });
+    if (decrBtn) decrBtn.addEventListener('click', function () { stepFutureLogMonthCount(-1); });
+    if (incrBtn) incrBtn.addEventListener('click', function () { stepFutureLogMonthCount(1); });
     if (countBtn) countBtn.addEventListener('click', function () { openFutureLogMonthCountMenu(countBtn); });
     if (menuBtn) menuBtn.addEventListener('click', function (e) { e.stopPropagation(); openFutureLogMenu(menuBtn); });
     // 3단계: 미니 캘린더에서 고른 날짜를 Escape로 해제한다. wireFutureLogHeader는 init에서
@@ -21811,7 +21658,7 @@ projectId: master.projectId || null,
     return (d.getMonth() + 1) + '월';
   }
 
-  // master(월간 할일)는 날짜 필드가 없어 iconForType의 진행률 계산(computeSchedulePct)이
+  // master(월간 할 일)는 날짜 필드가 없어 iconForType의 진행률 계산(computeSchedulePct)이
   // 맞지 않는다 -- 기존 이달의 할 일 목록(buildMonthlyItemRowEl)과 같은 단순 종류 기호로만.
   function buildFutureLogTypeIconEl(row) {
     if (row.kind === 'master') {
@@ -22076,7 +21923,7 @@ projectId: master.projectId || null,
       el.setAttribute('role', 'button');
       el.tabIndex = 0;
     }
-    // master(월간 할일)는 항상 item.completed 하나만 쓴다(occurrenceDate/completionByDate
+    // master(월간 할 일)는 항상 item.completed 하나만 쓴다(occurrenceDate/completionByDate
     // 개념이 없음). projection은 이 카드(월)가 실제로 보여주는 구간(segStart~segEnd)
     // 전체를 봐서, 구간 전부가 완료·같은 그룹일 때만 완료/그룹을 표시한다(대표 하루만
     // 보는 근사 금지) -- isFutureLogRowFullyCompleted/getFutureLogRowUniformGroupId 참고.
@@ -22366,10 +22213,9 @@ projectId: master.projectId || null,
   }
 
   // ---------------------------------------------------------------------
-  // Future Log 3단계: 월 블록 전용 미니 캘린더. Today의 renderCalendarMonthGrid와 같은
-  // "항상 42칸(6주×7일)" 규칙만 참고하고, 전역 state.selectedDate/state.calendarViewDate/
-  // state.calendarWeekStartsOn은 전혀 읽거나 쓰지 않는다(요구사항 -- Future Log 전용으로
-  // 새로 작성, 일요일 시작 고정). 클릭은 이 카드 스코프의 futureLogSelectedQuickDate만
+  // Future Log 월 블록 전용 미니 캘린더. Today/Monthly Log와 같은
+  // state.calendarWeekStartsOn(일요일/월요일 시작)을 공유하고 항상 42칸(6주×7일)로 그린다.
+  // 클릭은 이 카드 스코프의 futureLogSelectedQuickDate만
   // 바꾸고, 실제 완료/드래그/삭제 같은 항목 조작으로는 이어지지 않는다.
   // ---------------------------------------------------------------------
   var FUTURE_LOG_MINI_CAL_WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -22389,7 +22235,7 @@ projectId: master.projectId || null,
     el.appendChild(num);
     if (!isPadding) {
       // 5차 감사(Future Log 설정 -- 음력 표시): 칸은 항상 만들어 두고(빈 채로) renderFutureLogMiniCal이
-      // 매 렌더마다 state.futureLogLunarMode(끄기/간단히/전체)에 맞춰 텍스트/표시 여부만 갱신한다 --
+      // 매 렌더마다 state.futureLogLunarEnabled(on/off)에 맞춰 텍스트/표시 여부만 갱신한다 --
       // 카드 셸(mini-cal 칸 자체)은 처음 만들 때 한 번만 짓고 재사용되므로(요구사항 4단계
       // 기존 관례) 토글 즉시 반영되려면 칸을 다시 짓지 않고 이 갱신 경로로만 처리해야 한다.
       var lunarEl = document.createElement('span');
@@ -22488,13 +22334,15 @@ projectId: master.projectId || null,
 
     var weekdaysEl = document.createElement('div');
     weekdaysEl.className = 'future-log-mini-cal-weekdays';
-    FUTURE_LOG_MINI_CAL_WEEKDAYS.forEach(function (label, dow) {
+    var startsOn = state.calendarWeekStartsOn === 1 ? 1 : 0;
+    for (var weekdayIndex = 0; weekdayIndex < 7; weekdayIndex++) {
+      var dow = (startsOn + weekdayIndex) % 7;
       var span = document.createElement('span');
       if (dow === 0) span.className = 'sun';
       else if (dow === 6) span.className = 'sat';
-      span.textContent = label;
+      span.textContent = FUTURE_LOG_MINI_CAL_WEEKDAYS[dow];
       weekdaysEl.appendChild(span);
-    });
+    }
     wrap.appendChild(weekdaysEl);
 
     var datesEl = document.createElement('div');
@@ -22503,11 +22351,12 @@ projectId: master.projectId || null,
     var year = Number(monthKey.slice(0, 4));
     var month0 = Number(monthKey.slice(5, 7)) - 1;
     var firstDow = new Date(year, month0, 1).getDay();
+    var leading = (firstDow - startsOn + 7) % 7;
     var total = daysInMonthFromParts(year, month0);
-    var trailing = 42 - firstDow - total;
+    var trailing = 42 - leading - total;
     var prevMonthLastDay = new Date(year, month0, 0).getDate();
 
-    for (var i = firstDow - 1; i >= 0; i--) {
+    for (var i = leading - 1; i >= 0; i--) {
       datesEl.appendChild(buildFutureLogMiniCalDateCell(new Date(year, month0 - 1, prevMonthLastDay - i), true));
     }
     for (var d = 1; d <= total; d++) {
@@ -22519,6 +22368,19 @@ projectId: master.projectId || null,
 
     wrap.appendChild(datesEl);
     return wrap;
+  }
+
+  // 주 시작 요일을 바꾸면 기존 Future Log 카드가 DOM을 재사용하더라도 미니 달력의
+  // 요일 순서와 42칸 배치를 즉시 다시 만든다. quick-add/목록 DOM은 건드리지 않는다.
+  function rebuildFutureLogMiniCalendarWeekLayout() {
+    document.querySelectorAll('.future-log-card').forEach(function (card) {
+      var monthKey = card.dataset.monthKey;
+      var oldMiniCal = card.querySelector('.future-log-mini-cal');
+      if (!monthKey || !oldMiniCal) return;
+      oldMiniCal.replaceWith(buildFutureLogMiniCalEl(monthKey));
+      renderFutureLogMiniCal(card, monthKey);
+      updateFutureLogCardSelectionUI(card, monthKey);
+    });
   }
 
   // today/도트 갱신 -- 매 renderFutureLogCard 호출마다(항목 생성·삭제·이동 직후 포함)
@@ -22549,21 +22411,22 @@ projectId: master.projectId || null,
     var miniCal = card.querySelector('.future-log-mini-cal');
     if (!miniCal) return;
     var dotSet = getFutureLogDateDotSetForMonth(monthKey);
-    var mode = state.futureLogLunarMode || 'simple';
+    // 최종 감사: 음력 표시는 Today/Calendar와 같은 on/off 단일 토글로 통일(3단계 폐지,
+    // 요구사항) -- 켜져 있을 때의 표시 규칙은 Future Log 특성상 공간을 아끼는 기존
+    // "간단히" 규칙(shouldShowFutureLogLunarDateSimple) 하나만 남긴다.
+    var lunarOn = !!state.lunarEnabled;
     var active = (futureLogSelectedQuickDate && futureLogSelectedQuickDate.monthKey === monthKey) ? futureLogSelectedQuickDate : null;
     var selStart = active ? active.dateStr : null;
     var selEnd = active ? (active.endDateStr || active.dateStr) : null;
-    miniCal.classList.toggle('has-lunar', mode !== 'off');
+    miniCal.classList.toggle('has-lunar', lunarOn);
     Array.prototype.forEach.call(miniCal.querySelectorAll('.future-log-mini-cal-date'), function (cell) {
       var d = cell.dataset.date;
       cell.classList.toggle('today', d === state.todayDate);
       cell.classList.toggle('has-dot', !!dotSet[d]);
       var lunarEl = cell.querySelector('.future-log-mini-cal-date-lunar');
-      var lunar = mode !== 'off' ? getLunarForSolarDate(d) : null;
+      var lunar = lunarOn ? getLunarForSolarDate(d) : null;
       if (lunarEl) {
-        var visible = mode === 'full'
-          ? !!lunar
-          : (mode === 'simple' ? shouldShowFutureLogLunarDateSimple(d, lunar, getHolidayForDate(d), selStart, selEnd) : false);
+        var visible = lunarOn && shouldShowFutureLogLunarDateSimple(d, lunar, getHolidayForDate(d), selStart, selEnd);
         lunarEl.hidden = !visible;
         lunarEl.textContent = visible ? formatFutureLogLunarShort(lunar) : '';
       }
@@ -23057,16 +22920,6 @@ projectId: master.projectId || null,
   // "+N개"가 차지한다. 슬롯에 다 들어가면 +N DOM 자체를 만들지 않는다.
   // 최종 감사(완료 항목 "아래로 모으기"): 미완료/완료 구간 사이의 얇은 시각 구분선 --
   // 데이터 항목이 아니라 순수 UI 요소라 selection/drag/재정렬 어디에도 끼지 않는다.
-  function buildFutureLogCompletedDividerEl(count) {
-    var el = document.createElement('div');
-    el.className = 'future-log-completed-divider';
-    el.setAttribute('role', 'separator');
-    var label = document.createElement('span');
-    label.textContent = '완료 ' + count;
-    el.appendChild(label);
-    return el;
-  }
-
   function renderFutureLogCard(card, monthKey) {
     var titleText = card.querySelector('.future-log-card-header-title');
     if (titleText) titleText.textContent = formatFutureLogCardTitle(monthKey);
@@ -23086,13 +22939,10 @@ projectId: master.projectId || null,
       rowsEl.appendChild(empty);
       return;
     }
-    // 최종 감사(완료 항목 "아래로 모으기"): 구분선도 실제 픽셀 높이를 차지하는 한 줄이라,
-    // slotCount(고정 행 높이 기준 계산, "+N" 버튼과 같은 자리 예약 관례) 예산에서 미리
-    // 한 칸을 빼 두지 않으면 마지막 행이 .future-log-card-rows의 overflow:hidden에 잘릴
-    // 수 있다(요구사항에는 없지만 실제 확인된 회귀라 "+N"과 같은 방식으로 예약한다).
-    // 이 달에 완료 항목이 하나도 없으면 애초에 구분선이 안 뜨므로 예약하지 않는다.
-    var showCompletedDivider = state.futureLogCompletedMode === 'collapse' && rows.some(isFutureLogRowFullyCompleted);
-    var slotBudget = showCompletedDivider ? Math.max(1, futureLogSlotCount - 1) : futureLogSlotCount;
+    // 최종 감사(메뉴 재구성): "아래로 모으기" 상시 모드가 없어지면서(요구사항: Today
+    // 패턴과 통일, 완료 항목 정리는 1회성 동작) 표시 정렬이 항상 실제 order 그대로라
+    // 구분선이 완료 블록 중간에 잘못 낄 수 있어 구분선 자체를 없앤다(공간도 절약).
+    var slotBudget = futureLogSlotCount;
     var visibleRows, overflowCount;
     if (rows.length <= slotBudget) {
       visibleRows = rows;
@@ -23107,13 +22957,7 @@ projectId: master.projectId || null,
       visibleRows = rows.slice(0, visibleCount);
       overflowCount = rows.length - visibleRows.length;
     }
-    var completedDividerInserted = false;
     visibleRows.forEach(function (row) {
-      if (showCompletedDivider && !completedDividerInserted && isFutureLogRowFullyCompleted(row)) {
-        var visibleCompletedCount = visibleRows.filter(isFutureLogRowFullyCompleted).length;
-        rowsEl.appendChild(buildFutureLogCompletedDividerEl(visibleCompletedCount));
-        completedDividerInserted = true;
-      }
       rowsEl.appendChild(buildFutureLogRowEl(row, monthKey));
     });
     if (overflowCount > 0) {
@@ -23345,7 +23189,7 @@ projectId: master.projectId || null,
   }
 
   // ---------------------------------------------------------------------
-  // 원본(마스터)<->배치 인스턴스 공유 필드 동기화. 제목/종류/설명/하위 할일은 원본과
+  // 원본(마스터)<->배치 인스턴스 공유 필드 동기화. 제목/종류/설명/하위 할 일은 원본과
   // 모든 배치가 공유하고, date/order/completed 등은 배치마다 독립이다(요구사항 3).
   // editedEntity를 생략하면 "마스터 자신이 방금 바뀐 값의 근원"이라는 뜻으로 마스터의
   // 현재 값을 그대로 모든 배치에 뿌린다. editedEntity에 배치 하나를 넘기면 그 배치의
@@ -23527,7 +23371,7 @@ projectId: master.projectId || null,
   // 인스턴스 복제(instanceGroupId) 연결 해제 -- 요구사항 5: 선택한 항목만 그룹에서
   // 빠지고 나머지는 계속 연결된 채로 남는다("A, A', A'' 중 A만 해제하면 A는 독립
   // 항목이 되고 A', A''는 계속 연결"). 해제된 항목은 지금 갖고 있던 제목/설명/하위
-  // 할일 등 공유 필드 값을 그대로 유지한다(필드 자체를 지우는 게 아니라 연결 고리
+  // 할 일 등 공유 필드 값을 그대로 유지한다(필드 자체를 지우는 게 아니라 연결 고리
   // instanceGroupId만 끊으므로 자동으로 보장된다).
   function unlinkInstanceGroupItems(itemIds) {
     var touched = [];
@@ -24810,7 +24654,7 @@ if (typeBtn) {
     wireItemListMarqueeDelegation(containerEl);
   }
 
-  // 월간 할일 전용 빠른 입력 -- Calendar 패널 상단과 Today 패널 상단이 이 한 함수로
+  // 월간 할 일 전용 빠른 입력 -- Calendar 패널 상단과 Today 패널 상단이 이 한 함수로
   // 각자의 입력창을 연결한다(각 wrapEl은 서로 다른 DOM 인스턴스이므로 현재 선택된
   // 종류는 전역이 아니라 wrapEl.dataset.mode에 각자 보관한다). getMonthKey()는 호출 시점의
   // "현재 표시 중인 달"을 돌려주는 콜백이라 Calendar는 monthlyLogViewMonth를, Today는
@@ -26463,7 +26307,7 @@ if (typeBtn) {
     if (monthLabel && !(activeYearMonthWheel && activeYearMonthWheel.titleEl === monthLabel)) {
       monthLabel.textContent = label + ' 달력';
     }
-    if (inboxTitle) inboxTitle.textContent = label + ' 할일';
+    if (inboxTitle) inboxTitle.textContent = label + ' 할 일';
   }
 
   function renderMonthlyLog() {
@@ -26670,7 +26514,7 @@ if (typeBtn) {
   // 완전히 같은 패턴(pointer capture + rAF 스로틀 + pointerup/cancel/Escape 안전 종료)이되
   // 세로(top, height) 대신 가로(left, width)를 조절한다는 점만 다르다. 별도 state
   // 변수를 쓰는 독립된 조절이라 Weekly 쪽 드래그와 이벤트가 얽히지 않는다.
-  // 1199px 미만(기존 반응형 분기점)에서는 Monthly Log/월간 할일이 위아래로 쌓이므로
+  // 1199px 미만(기존 반응형 분기점)에서는 Monthly Log/월간 할 일이 위아래로 쌓이므로
   // 이 분할 자체가 의미 없어 경계선을 숨긴다.
   // ---------------------------------------------------------------------
   function isMonthlySplitNarrowLayout() {
@@ -26797,7 +26641,7 @@ if (typeBtn) {
   }
 
   // Monthly Log도 Today 패널과 같은 원칙: .artboard 바깥에 실제 여유 공간이 있으면(1625px
-  // 보다 넓은 화면) 오른쪽 월간 할일 패널만 그 공간으로 빼내 왼쪽으로 넓힌다
+  // 보다 넓은 화면) 오른쪽 월간 할 일 패널만 그 공간으로 빼내 왼쪽으로 넓힌다
   // (position:fixed, getMonthlyPanelDockGap/MONTHLY_PANEL_MIN_WIDTH·MAX_WIDTH 재사용).
   // 이때는 calendarMonthlySplitRatio 기반 flex 분할(applyMonthlySplitLayout)이 더 이상
   // 적용되지 않으므로(패널이 flex 흐름을 벗어남) Monthly Log 메인 날짜 목록(.monthly-log-body)
@@ -30075,7 +29919,7 @@ originalEndTime: state.timeDraft.endTime || null,
     cleanupItem.dataset.help = '현재 Weekly에 보이는 ' + getVisibleWeeklyDates().length + '일 전체에서 완료 항목을 각 날짜의 완료 구분선 아래로 모읍니다.';
     cleanupItem.title = cleanupItem.dataset.help;
     cleanupItem.tabIndex = -1;
-    cleanupItem.textContent = '완료한 할 일 정리하기';
+    cleanupItem.textContent = '완료 항목 정리하기';
     cleanupItem.addEventListener('click', function () {
       cleanupCompletedItemsForVisibleWeek();
       closeWeekRangeMenu(true);
@@ -30137,14 +29981,15 @@ originalEndTime: state.timeDraft.endTime || null,
 
   function renderMonthlyLogMenuState() {
     if (!activeMonthlyLogMenu) return;
-    var lunarItem = activeMonthlyLogMenu.el.querySelector('[data-monthly-log-menu-action="lunar"]');
-    if (lunarItem) lunarItem.setAttribute('aria-checked', String(!!state.lunarEnabled));
     var hideCompletedItem = activeMonthlyLogMenu.el.querySelector('[data-monthly-log-menu-action="hide-completed"]');
     if (hideCompletedItem) hideCompletedItem.setAttribute('aria-checked', String(!!state.monthlyLogHideCompleted));
     var showTasksItem = activeMonthlyLogMenu.el.querySelector('[data-monthly-log-menu-action="show-tasks"]');
     if (showTasksItem) showTasksItem.setAttribute('aria-checked', String(!!state.monthlyLogShowTasks));
     var showMemosItem = activeMonthlyLogMenu.el.querySelector('[data-monthly-log-menu-action="show-memos"]');
     if (showMemosItem) showMemosItem.setAttribute('aria-checked', String(!!state.monthlyLogShowMemos));
+    activeMonthlyLogMenu.el.querySelectorAll('[data-monthly-log-week-start]').forEach(function (item) {
+      item.setAttribute('aria-checked', String(Number(item.dataset.monthlyLogWeekStart) === state.calendarWeekStartsOn));
+    });
   }
 
   function onOutsideMonthlyLogMenuPointerDown(e) {
@@ -30390,7 +30235,10 @@ originalEndTime: state.timeDraft.endTime || null,
     } else if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
       var action = document.activeElement && document.activeElement.dataset.monthlyLogMenuAction;
-      if (action === 'lunar') { toggleMonthlyLogLunarMenuItem(); closeMonthlyLogMenu(true); }
+      if (action === 'cleanup-completed') {
+        cleanupCompletedItemsForMonthlyLogMonth();
+        closeMonthlyLogMenu(true);
+      }
       else if (action === 'hide-completed') {
         state.monthlyLogHideCompleted = !state.monthlyLogHideCompleted;
         savePreferences();
@@ -30410,6 +30258,10 @@ originalEndTime: state.timeDraft.endTime || null,
         renderMonthlyLogRows();
         renderMonthlyLogMenuState();
       }
+      else if (action === 'week-start-0' || action === 'week-start-1') {
+        setCalendarWeekStartsOn(action === 'week-start-1' ? 1 : 0);
+        closeMonthlyLogMenu(true);
+      }
     }
   }
 
@@ -30427,23 +30279,20 @@ originalEndTime: state.timeDraft.endTime || null,
     menu.setAttribute('role', 'menu');
     menu.setAttribute('aria-label', 'Monthly Log 설정');
 
-    var lunarItem = document.createElement('div');
-    lunarItem.className = 'monthly-log-menu-item';
-    lunarItem.setAttribute('role', 'menuitemcheckbox');
-    lunarItem.setAttribute('aria-checked', String(!!state.lunarEnabled));
-    lunarItem.dataset.monthlyLogMenuAction = 'lunar';
-    lunarItem.tabIndex = 0;
-    var check = document.createElement('span');
-    check.className = 'monthly-log-menu-item-check';
-    var label = document.createElement('span');
-    label.textContent = '음력 표시';
-    lunarItem.appendChild(check);
-    lunarItem.appendChild(label);
-    lunarItem.addEventListener('click', function () {
-      toggleMonthlyLogLunarMenuItem();
+    // 1) 완료 항목 정리/표시 제어.
+    var cleanupItem = document.createElement('div');
+    cleanupItem.className = 'monthly-log-menu-item menu-item-has-help';
+    cleanupItem.setAttribute('role', 'menuitem');
+    cleanupItem.dataset.monthlyLogMenuAction = 'cleanup-completed';
+    cleanupItem.dataset.help = '현재 Monthly Log에 표시 중인 달의 완료 항목을 날짜별 완료 구분선 아래로 정리합니다.';
+    cleanupItem.title = cleanupItem.dataset.help;
+    cleanupItem.tabIndex = 0;
+    cleanupItem.textContent = '완료 항목 정리하기';
+    cleanupItem.addEventListener('click', function () {
+      cleanupCompletedItemsForMonthlyLogMonth();
       closeMonthlyLogMenu(true);
     });
-    menu.appendChild(lunarItem);
+    menu.appendChild(cleanupItem);
 
     var hideCompletedItem = document.createElement('div');
     hideCompletedItem.className = 'monthly-log-menu-item menu-item-has-help';
@@ -30467,25 +30316,12 @@ originalEndTime: state.timeDraft.endTime || null,
     });
     menu.appendChild(hideCompletedItem);
 
-    // 요구사항: Ctrl/Shift+휠로 조절한 행 높이·칸 너비 사용자 값을 모두 지우고
-    // auto-fit 기본값으로 즉시 되돌린다(localStorage/CSS 변수까지 함께 제거).
-    var resetSizeItem = document.createElement('div');
-    resetSizeItem.className = 'monthly-log-menu-item menu-item-has-help';
-    resetSizeItem.setAttribute('role', 'menuitem');
-    resetSizeItem.dataset.monthlyLogMenuAction = 'reset-size';
-    resetSizeItem.dataset.help = 'Ctrl/Shift+휠로 조절한 행 높이·칸 너비를 기본 크기로 되돌립니다.';
-    resetSizeItem.title = resetSizeItem.dataset.help;
-    resetSizeItem.tabIndex = -1;
-    resetSizeItem.textContent = '달력 크기 초기화';
-    resetSizeItem.addEventListener('click', function () {
-      resetMonthlyLogCustomSize();
-      closeMonthlyLogMenu(true);
-    });
-    menu.appendChild(resetSizeItem);
+    // 완료 항목 제어와 항목 표시 필터 사이 구분선. 음력 표시는 전역 설정에서 관리한다.
+    var completedDivider = document.createElement('div');
+    completedDivider.className = 'future-log-menu-divider';
+    completedDivider.setAttribute('role', 'separator');
+    menu.appendChild(completedDivider);
 
-    // 요구사항: Monthly 달력 본체 유형 표시 필터 -- 일정은 항상 표시(끌 수 없어 여기
-    // 항목이 없다), 할 일/메모는 각각 이 체크로만 켤 수 있고 우측 "이달의 할 일"
-    // 패널에는 영향이 없다.
     var showTasksItem = document.createElement('div');
     showTasksItem.className = 'monthly-log-menu-item';
     showTasksItem.setAttribute('role', 'menuitemcheckbox');
@@ -30526,11 +30362,34 @@ originalEndTime: state.timeDraft.endTime || null,
     });
     menu.appendChild(showMemosItem);
 
+    // 표시 옵션과 크기 초기화 사이 구분선.
+    var beforeResetDivider = document.createElement('div');
+    beforeResetDivider.className = 'future-log-menu-divider';
+    beforeResetDivider.setAttribute('role', 'separator');
+    menu.appendChild(beforeResetDivider);
+
+    // 3) 레이아웃 초기화는 단독 그룹.
+    var resetSizeItem = document.createElement('div');
+    resetSizeItem.className = 'monthly-log-menu-item menu-item-has-help';
+    resetSizeItem.setAttribute('role', 'menuitem');
+    resetSizeItem.dataset.monthlyLogMenuAction = 'reset-size';
+    resetSizeItem.dataset.help = 'Ctrl/Shift+휠로 조절한 행 높이·칸 너비를 기본 크기로 되돌립니다.';
+    resetSizeItem.title = resetSizeItem.dataset.help;
+    resetSizeItem.tabIndex = -1;
+    resetSizeItem.textContent = '달력 크기 초기화';
+    resetSizeItem.addEventListener('click', function () {
+      resetMonthlyLogCustomSize();
+      closeMonthlyLogMenu(true);
+    });
+    menu.appendChild(resetSizeItem);
+
+    // 주 시작 요일은 전역 설정에서 관리한다. Today 미니 달력 메뉴만 빠른 접근을 유지한다.
+
     document.body.appendChild(menu);
     positionPopup(menu, anchorEl);
     anchorEl.setAttribute('aria-expanded', 'true');
     activeMonthlyLogMenu = { el: menu };
-    lunarItem.focus();
+    cleanupItem.focus();
 
     setTimeout(function () {
       document.addEventListener('pointerdown', onOutsideMonthlyLogMenuPointerDown, true);
@@ -30694,7 +30553,10 @@ function openMonthlyInboxMenu(anchorEl) {
   );
 
   menu.appendChild(dividerItem);
-
+const dividerMenuSeparator = document.createElement('div');
+dividerMenuSeparator.className = 'future-log-menu-divider';
+dividerMenuSeparator.setAttribute('role', 'separator');
+menu.appendChild(dividerMenuSeparator);
   var cleanupCompletedItem = document.createElement('div');
   cleanupCompletedItem.className = 'monthly-log-menu-item menu-item-has-help';
   cleanupCompletedItem.setAttribute('role', 'menuitem');
@@ -30702,7 +30564,7 @@ function openMonthlyInboxMenu(anchorEl) {
   cleanupCompletedItem.dataset.help = '현재 이달의 할 일에서 완료 항목을 완료 구분선 아래로 모읍니다.';
   cleanupCompletedItem.title = cleanupCompletedItem.dataset.help;
   cleanupCompletedItem.tabIndex = -1;
-  cleanupCompletedItem.textContent = '완료한 할 일 정리하기';
+  cleanupCompletedItem.textContent = '완료 항목 정리하기';
   cleanupCompletedItem.addEventListener('click', function () {
     cleanupCompletedMonthlyItems(getMonthlyInboxMenuMonthKey(anchorEl));
     closeMonthlyInboxMenu(true);
@@ -30714,13 +30576,13 @@ function openMonthlyInboxMenu(anchorEl) {
   hideCompletedItem.setAttribute('role', 'menuitemcheckbox');
   hideCompletedItem.setAttribute('aria-checked', String(!!state.monthlyInboxHideCompleted));
   hideCompletedItem.dataset.monthlyInboxAction = 'hide-completed';
-  hideCompletedItem.dataset.help = '이달의 할 일에서 완료한 항목만 화면에서 숨깁니다. 항목은 삭제되지 않습니다.';
+  hideCompletedItem.dataset.help = '이달의 할 일에서 완료된 항목만 화면에서 숨깁니다. 항목은 삭제되지 않습니다.';
   hideCompletedItem.title = hideCompletedItem.dataset.help;
   hideCompletedItem.tabIndex = -1;
   var hideCompletedCheck = document.createElement('span');
   hideCompletedCheck.className = 'monthly-log-menu-item-check';
   var hideCompletedLabel = document.createElement('span');
-  hideCompletedLabel.textContent = '완료한 항목 숨기기';
+  hideCompletedLabel.textContent = '완료 항목 숨기기';
   hideCompletedItem.appendChild(hideCompletedCheck);
   hideCompletedItem.appendChild(hideCompletedLabel);
   hideCompletedItem.addEventListener('click', function () {
@@ -31230,13 +31092,13 @@ function wireMonthlyInboxMenuButtons() {
     state.monthlyLogShowMemos = loaded.monthlyLogShowMemos;
     state.defaultInputMode = loaded.defaultInputMode || 'task';
     state.todayDefaultInputMode = loaded.todayDefaultInputMode || 'task';
-    state.calendarDefaultInputMode = loaded.calendarDefaultInputMode || 'task';
+    state.calendarDefaultInputMode = loaded.calendarDefaultInputMode || 'schedule';
     state.futureLogDefaultInputMode = loaded.futureLogDefaultInputMode || 'schedule';
     state.autoRolloverEnabled = loaded.autoRolloverEnabled !== false;
     state.futureLogStartMonth = loaded.futureLogStartMonth;
     state.futureLogMonthCount = loaded.futureLogMonthCount;
-    state.futureLogLunarMode = loaded.futureLogLunarMode;
-    state.futureLogCompletedMode = loaded.futureLogCompletedMode;
+    state.futureLogLunarEnabled = loaded.futureLogLunarEnabled;
+    state.futureLogHideCompleted = loaded.futureLogHideCompleted;
     state.futureLogShowTasks = loaded.futureLogShowTasks;
     state.futureLogShowMemos = loaded.futureLogShowMemos;
     state.futureLogMiniCalScale = loaded.futureLogMiniCalScale;
@@ -31376,6 +31238,8 @@ wireMonthlyPanelToggle();
     getMonthlyLogScheduleColorSeed: getMonthlyLogScheduleColorSeed,
     palette: MONTHLY_LOG_SCHEDULE_PALETTE,
     setView: setView,
+    setCalendarWeekStartsOn: setCalendarWeekStartsOn,
+    setLunarEnabled: setLunarEnabled,
     setScreenDefaultInputMode: setScreenDefaultInputMode,
     exportAllDataAsJson: exportAllDataAsJson,
     reportStorageFailure: reportStorageFailure,

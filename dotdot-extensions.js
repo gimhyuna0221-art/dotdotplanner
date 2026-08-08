@@ -406,13 +406,24 @@
   function inputModeField(id,label,current){
     return '<div class="dotdot-ext-field"><span>'+esc(label)+'</span><select class="dotdot-ext-select" id="'+id+'">'+inputModeSelectOptions(current)+'</select></div>';
   }
+  function weekStartField(current){
+    var value=Number(current)===1?'1':'0';
+    return '<div class="dotdot-ext-field"><span>주 시작 요일</span><select class="dotdot-ext-select" id="ext-week-start"><option value="0" '+(value==='0'?'selected':'')+'>일요일 시작</option><option value="1" '+(value==='1'?'selected':'')+'>월요일 시작</option></select></div>';
+  }
+  function lunarField(enabled){
+    return '<div class="dotdot-ext-field"><span>음력 표시</span><label><input type="checkbox" id="ext-lunar-enabled" '+(enabled?'checked':'')+'> 사용</label></div>';
+  }
   function renderSettings(){
     var todayMode=S.todayDefaultInputMode||'task',
-        calendarMode=S.calendarDefaultInputMode||'task',
+        calendarMode=S.calendarDefaultInputMode||'schedule',
         futureLogMode=S.futureLogDefaultInputMode||'schedule',
+        weekStartsOn=Number(S.calendarWeekStartsOn)===1?1:0,
+        lunarEnabled=!!S.lunarEnabled,
         auto=localStorage.getItem(P+'autoRolloverEnabled')!=='false';
     return head('설정','실제 앱에 연결되는 로컬 설정과 데이터 관리','복원 전 현재 정보는 타임스탬프 백업 키로 한 번 더 보존합니다.')
       +'<div class="dotdot-ext-card"><h3>표시·입력</h3>'
+      +weekStartField(weekStartsOn)
+      +lunarField(lunarEnabled)
       +inputModeField('ext-default-type-today','오늘 기본 빠른 입력 유형',todayMode)
       +inputModeField('ext-default-type-calendar','달력 기본 빠른 입력 유형',calendarMode)
       +inputModeField('ext-default-type-futurelog','퓨처로그 기본 빠른 입력 유형',futureLogMode)
@@ -496,7 +507,14 @@
       if(id==='ext-search-to'){searchState.to=e.target.value;renderSideView();}
       if(id==='ext-theme'){if(safeSetRaw(P+'theme',e.target.value,'preferences'))document.documentElement.dataset.theme=e.target.value;}
       if(id==='ext-week-days'){if(safeSetRaw(P+'weeklyVisibleDays',e.target.value,'preferences'))location.reload();}
-      if(id==='ext-week-start'){if(safeSetRaw(P+'calendarWeekStartsOn',e.target.value,'preferences'))location.reload();}
+      if(id==='ext-week-start'){
+        if(B.setCalendarWeekStartsOn) B.setCalendarWeekStartsOn(Number(e.target.value));
+        else if(safeSetRaw(P+'calendarWeekStartsOn',e.target.value,'preferences')) location.reload();
+      }
+      if(id==='ext-lunar-enabled'){
+        if(B.setLunarEnabled) B.setLunarEnabled(!!e.target.checked);
+        else if(safeSetRaw(P+'lunarEnabled',String(!!e.target.checked),'preferences')) location.reload();
+      }
       // 최종 감사: 화면별 기본 빠른 입력 유형 -- B.setScreenDefaultInputMode가 상태
       // 갱신·저장·(그 화면이 열려 있으면) 즉시 반영을 전부 처리하므로 여기서는
       // location.reload()를 부르지 않는다(요구사항: reload 없이 즉시 반영).
