@@ -2541,10 +2541,10 @@ body.dnd-active .group-drag{cursor:grabbing}
 
 
 
-/* 2026-07-29: 정리 명령 설명 툴팁. 메뉴 항목에 마우스를 올리거나 키보드 포커스하면
-   현재 범위가 무엇인지 짧게 설명한다. */
+/* 정리 명령 설명 툴팁. 메뉴 항목에 실제로 마우스를 올렸을 때만
+   현재 범위가 무엇인지 짧게 설명한다. 메뉴를 여는 순간의 자동 포커스에는 표시하지 않는다. */
 .menu-item-has-help{position:relative}
-.menu-item-has-help:hover::after,.menu-item-has-help:focus::after{
+.menu-item-has-help:hover::after{
   content:attr(data-help);
   position:absolute;
   right:calc(100% + 8px);
