@@ -1697,7 +1697,7 @@ body.desc-block-dnd-active .desc-block-add{
    만들지 않기 위함(요구사항) -- +N 계산이 맞으면 실제로 넘치지 않는다. */
 .future-log-card-rows{flex:0 0 auto;height:clamp(180px,26vh,260px);overflow:hidden;padding:8px 10px;display:flex;flex-direction:column;gap:4px;box-sizing:border-box}
 .future-log-card-empty{margin:0;padding:4px 2px;font-size:12px;color:var(--muted)}
-/* 요구사항 4(4차 감사): 배치가 4개 이상이면 고정 68px 날짜 칸 안에서 배지가 줄바꿈
+/* 요구사항 4(4차 감사): 배치가 4개 이상이면 고정 48px 날짜 칸 안에서 배지가 줄바꿈
    되므로(아래 .future-log-row-datecol) 행 자체도 그만큼 늘어나야 잘리지 않는다 --
    고정 height/overflow:hidden을 min-height + 내용에 따른 자동 높이로 바꾼다(증상을
    부모 overflow:hidden으로 덮지 않음, 요구사항). */
@@ -1725,19 +1725,19 @@ body.desc-block-dnd-active .desc-block-add{
    유형 기호·제목이 같은 x좌표에서 시작하게 한다 -- 내용이 없어도 칸 자체는 항상
    만든다(buildFutureLogRowDateColEl). 배치가 여러 개인 행은 배지 여러 개가 이 고정
    폭 안에 나란히 들어가야 하므로 gap을 좁게, 배지 자체도 소형으로 둔다. */
-/* 요구사항 4(4차 감사): 고정 68px 폭은 유지하되, 배지가 4개 이상이면(각 배지 폭
+/* 요구사항 4(4차 감사): 고정 48px 폭은 유지하되, 배지가 4개 이상이면(각 배지 폭
    ~20px 안팎) 한 줄에 다 안 들어가므로 칸 안에서 줄바꿈한다(overflow:hidden으로
    가리지 않고 실제로 다 보이게). 세로로 몇 줄이 되든 이 칸의 실제 필요 높이가
    부모 .future-log-row의 min-height를 넘으면 위 min-height 규칙 덕분에 행 자체가
    그만큼 커진다. */
-.future-log-row-datecol{flex:0 0 42px;width:42px;display:flex;flex-wrap:wrap;align-items:center;align-content:center;gap:3px;overflow:visible}
+.future-log-row-datecol{flex:0 0 48px;width:48px;display:flex;flex-wrap:wrap;align-items:center;align-content:center;gap:3px;overflow:visible}
 /* 요구사항 4: 날짜 배지를 그 항목의 실제 시작 날짜로 Calendar 이동하는 버튼으로 쓴다
    -- <button> 기본 테두리/배경/폰트를 지워 기존 <span> 배지와 같은 모양을 유지한다. */
-.future-log-row-date{flex:none;border:0;background:none;padding:0;font:inherit;font-size:10.5px;font-weight:700;color:var(--muted);white-space:nowrap;cursor:pointer}
+.future-log-row-date{flex:none;border:0;background:none;padding:0;font:inherit;font-size:9.5px;font-weight:700;color:var(--muted);white-space:nowrap;cursor:pointer}
 /* placement가 여러 개라 배지가 한 칸에 여럿 들어갈 때만 살짝 축소한다(고정 폭 안에
-   맞추기 위함, 단일 배지는 그대로 10.5px 유지) -- buildFutureLogRowDateColEl이
+   맞추기 위함, 단일 배지는 9.5px 유지) -- buildFutureLogRowDateColEl이
    2개 이상일 때만 이 클래스를 붙인다. */
-.future-log-row-date.is-compact{font-size:9px}
+.future-log-row-date.is-compact{font-size:8.5px}
 .future-log-row-date:hover,.future-log-row-date:focus-visible{color:var(--lav);text-decoration:underline;outline:none}
 .future-log-overflow-btn{background:none;border:1px dashed var(--line2);color:var(--lav);justify-content:center;font-weight:750;cursor:pointer}
 .future-log-overflow-btn:hover,.future-log-overflow-btn:focus-visible{background:var(--lav-soft);outline:none}

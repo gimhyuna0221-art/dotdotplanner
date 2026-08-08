@@ -177,7 +177,8 @@
   var FUTURE_LOG_MINI_CAL_SCALE_MIN = 0.8;
   var FUTURE_LOG_MINI_CAL_SCALE_MAX = 1.4;
   var FUTURE_LOG_MINI_CAL_SCALE_STEP = 0.05;
-  var FUTURE_LOG_MINI_CAL_SCALE_DEFAULT = 1;
+  var FUTURE_LOG_MINI_CAL_SCALE_LEGACY_DEFAULT = 1;
+  var FUTURE_LOG_MINI_CAL_SCALE_DEFAULT = FUTURE_LOG_MINI_CAL_SCALE_MAX;
   // 구버전에서 저장된 패널 경계선 표시값은 더 이상 사용하지 않는다. 패널 경계는 넓은
   // 화면에서 항상 보이며 마우스로 드래그해 폭을 조절한다.
   var MONTHLY_SPLIT_DIVIDER_VISIBLE_KEY = STORAGE_PREFIX + 'monthlySplitDividerVisible';
@@ -1116,8 +1117,12 @@ endDateDraftActive: false,
     var rawFutureLogShowMemos = safeGet(FUTURE_LOG_SHOW_MEMOS_KEY);
     var futureLogShowMemos = rawFutureLogShowMemos === null ? true : rawFutureLogShowMemos !== 'false';
     var rawFutureLogMiniCalScale = parseFloat(safeGet(FUTURE_LOG_MINI_CAL_SCALE_KEY));
+    // 새 기본값은 최대 배율(140%). 예전 기본값 100%가 그대로 저장된 기존 사용자도
+    // 한 번 자연스럽게 새 기본값으로 올라오게 하고, 사용자가 직접 고른 80~135% 값은 보존한다.
     var futureLogMiniCalScale = isFinite(rawFutureLogMiniCalScale)
-      ? Math.min(FUTURE_LOG_MINI_CAL_SCALE_MAX, Math.max(FUTURE_LOG_MINI_CAL_SCALE_MIN, rawFutureLogMiniCalScale))
+      ? (Math.abs(rawFutureLogMiniCalScale - FUTURE_LOG_MINI_CAL_SCALE_LEGACY_DEFAULT) < 0.001
+          ? FUTURE_LOG_MINI_CAL_SCALE_DEFAULT
+          : Math.min(FUTURE_LOG_MINI_CAL_SCALE_MAX, Math.max(FUTURE_LOG_MINI_CAL_SCALE_MIN, rawFutureLogMiniCalScale)))
       : FUTURE_LOG_MINI_CAL_SCALE_DEFAULT;
 
     return {
@@ -30230,7 +30235,11 @@ originalEndTime: state.timeDraft.endTime || null,
     } else if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
       var action = document.activeElement && document.activeElement.dataset.monthlyLogMenuAction;
-      if (action === 'hide-completed') {
+      if (action === 'cleanup-completed') {
+        cleanupCompletedItemsForMonthlyLogMonth();
+        closeMonthlyLogMenu(true);
+      }
+      else if (action === 'hide-completed') {
         state.monthlyLogHideCompleted = !state.monthlyLogHideCompleted;
         savePreferences();
         renderMonthlyLogRows();
@@ -30270,7 +30279,21 @@ originalEndTime: state.timeDraft.endTime || null,
     menu.setAttribute('role', 'menu');
     menu.setAttribute('aria-label', 'Monthly Log 설정');
 
-    // 1) 완료 항목 표시 제어.
+    // 1) 완료 항목 정리/표시 제어.
+    var cleanupItem = document.createElement('div');
+    cleanupItem.className = 'monthly-log-menu-item menu-item-has-help';
+    cleanupItem.setAttribute('role', 'menuitem');
+    cleanupItem.dataset.monthlyLogMenuAction = 'cleanup-completed';
+    cleanupItem.dataset.help = '현재 Monthly Log에 표시 중인 달의 완료 항목을 날짜별 완료 구분선 아래로 정리합니다.';
+    cleanupItem.title = cleanupItem.dataset.help;
+    cleanupItem.tabIndex = 0;
+    cleanupItem.textContent = '완료 항목 정리하기';
+    cleanupItem.addEventListener('click', function () {
+      cleanupCompletedItemsForMonthlyLogMonth();
+      closeMonthlyLogMenu(true);
+    });
+    menu.appendChild(cleanupItem);
+
     var hideCompletedItem = document.createElement('div');
     hideCompletedItem.className = 'monthly-log-menu-item menu-item-has-help';
     hideCompletedItem.setAttribute('role', 'menuitemcheckbox');
@@ -30278,7 +30301,7 @@ originalEndTime: state.timeDraft.endTime || null,
     hideCompletedItem.dataset.monthlyLogMenuAction = 'hide-completed';
     hideCompletedItem.dataset.help = '현재 Monthly Log 달력에서 완료된 항목만 화면에서 숨깁니다. 항목은 삭제되지 않습니다.';
     hideCompletedItem.title = hideCompletedItem.dataset.help;
-    hideCompletedItem.tabIndex = 0;
+    hideCompletedItem.tabIndex = -1;
     var hideCheck = document.createElement('span');
     hideCheck.className = 'monthly-log-menu-item-check';
     var hideLabel = document.createElement('span');
@@ -30366,7 +30389,7 @@ originalEndTime: state.timeDraft.endTime || null,
     positionPopup(menu, anchorEl);
     anchorEl.setAttribute('aria-expanded', 'true');
     activeMonthlyLogMenu = { el: menu };
-    hideCompletedItem.focus();
+    cleanupItem.focus();
 
     setTimeout(function () {
       document.addEventListener('pointerdown', onOutsideMonthlyLogMenuPointerDown, true);
