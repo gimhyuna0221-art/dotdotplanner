@@ -22,11 +22,17 @@
 .dotdot-ext-btn:hover{background:var(--bg-hover)}
 .dotdot-ext-btn:focus-visible{outline:2px solid var(--lav);outline-offset:1px}
 .dotdot-ext-btn.primary{background:var(--lav);border-color:var(--lav);color:#fff}
-.dotdot-ext-btn.danger{color:var(--sun)}
+.dotdot-ext-btn.danger{color:var(--danger)}
 .dotdot-ext-btn:disabled{opacity:.4;cursor:default}
 .dotdot-ext-input,.dotdot-ext-select{border:1px solid var(--line2);background:var(--bg-input);color:var(--ink);border-radius:8px;padding:6px 9px;font-size:12px;font-family:inherit}
 .dotdot-ext-input:focus-visible,.dotdot-ext-select:focus-visible{outline:2px solid var(--lav);outline-offset:1px}
 .dotdot-ext-input{min-width:190px}
+/* 디자인 정돈: type="date"의 네이티브 달력 아이콘이 항상 진하게 떠 있어 나머지
+   커스텀 입력보다 시각적으로 무거워 보였다 -- 평소엔 옅게, hover에서만 진하게
+   (다크모드는 :root의 color-scheme:dark가 이미 아이콘 색을 반전시켜준다,
+   Chromium 계열 전용 의사요소, 다른 브라우저는 그냥 무시된다). */
+.dotdot-ext-input[type="date"]::-webkit-calendar-picker-indicator{opacity:.55;cursor:pointer}
+.dotdot-ext-input[type="date"]::-webkit-calendar-picker-indicator:hover{opacity:1}
 .dotdot-ext-list{list-style:none;margin:0;padding:0}
 .dotdot-ext-list li{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--line);font-size:12.5px;color:var(--ink)}
 .dotdot-ext-list li:last-child{border-bottom:0}

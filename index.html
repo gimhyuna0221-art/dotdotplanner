@@ -41,6 +41,7 @@
     --lav-soft:#efeefe;
     --sun:#ff5652;
     --sat:#4d92ff;
+    --danger:#ff5652;
 
     --bg-page:#f3f3f5;
     --bg-card:#ffffff;
@@ -92,6 +93,23 @@
     --schedule-neutral-bg:#e3e5ea;
     --schedule-neutral-border:#aeb3bd;
     --schedule-neutral-text:#3d414a;
+
+    /* 디자인 시스템 정돈(2026-08): 기존 하드코딩 값을 일괄 치환하지 않고, 이번에
+       손대는 규칙과 앞으로의 신규 규칙이 재사용할 스페이싱/반경/컨트롤/그림자 스케일. */
+    --space-1:4px;
+    --space-2:8px;
+    --space-3:12px;
+    --space-4:16px;
+    --space-5:20px;
+    --space-6:24px;
+    --radius-sm:6px;
+    --radius-md:8px;
+    --radius-lg:10px;
+    --radius-xl:14px;
+    --radius-pill:999px;
+    --control-sm:26px;
+    --control-md:34px;
+    --shadow-menu:0 4px 16px var(--overlay-shadow);
   }
   :root[data-theme="dark"]{
     color-scheme: dark;
@@ -208,7 +226,9 @@
   .side-nav-bottom{display:flex;flex-direction:column;align-items:center;gap:6px;margin-top:auto;margin-bottom:60px}
   .side-item{position:relative;width:76px;height:68px;border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-size:14px;font-weight:700;color:var(--icon-strong);flex:none;cursor:pointer}
   .side-item svg{width:25px;height:25px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+  .side-item:hover{background:var(--bg-hover)}
   .side-item.active{background:var(--lav-soft);color:var(--lav);font-weight:700}
+  .side-item.active:hover{background:var(--lav-soft)}
   .side-item:focus{outline:none}
   .side-item:focus-visible{outline:2px solid var(--lav);outline-offset:2px}
   /* 8: 휴지통에 항목이 있을 때만 보이는 작은 개수 표시 — 아이콘 위 모서리에 겹쳐 배치해
@@ -488,7 +508,7 @@
   .date-row{margin-top:15px}.time-row{margin-top:8px}.time-row .range-box{text-align:center;justify-content:center;font-variant-numeric:tabular-nums}
 
   /* 날짜 휠 선택 팝업 — 기존 type-menu/move-menu와 같은 카드 배경/테두리/그림자 언어를 재사용한다. */
-  .date-wheel-popup{position:fixed;z-index:50;background:var(--bg-card);border:1px solid var(--line2);border-radius:10px;box-shadow:0 4px 16px var(--overlay-shadow);padding:8px;width:220px}
+  .date-wheel-popup{position:fixed;z-index:50;background:var(--bg-card);border:1px solid var(--line2);border-radius:var(--radius-lg);box-shadow:var(--shadow-menu);padding:8px;width:220px}
   .date-wheel-cols{display:flex;gap:4px;position:relative}
   .date-wheel-col{flex:1;height:160px;overflow-y:auto;scroll-snap-type:y mandatory;outline:none;-ms-overflow-style:none;scrollbar-width:none}
   .date-wheel-col::-webkit-scrollbar{display:none}
@@ -531,9 +551,14 @@
   .rollover-toggle,.rollover-count,.rollover-today-btn,.delete-btn{white-space:nowrap}
   .rollover-toggle{border:0;background:none;padding:0;cursor:pointer;font:inherit;display:flex;align-items:center;gap:6px;color:var(--muted)}
   /* 이월 헤더의 일괄 '오늘'/'삭제' -- 이월 항목이 0개면 비활성화한다(요구사항). */
-  .rollover-today-btn{border:0;background:none;padding:0;cursor:pointer;font:inherit;color:var(--lav);font-weight:700}
+  /* 디자인 정돈: 대괄호로 감싼 텍스트 링크 대신, 화면 곳곳의 다른 보조 버튼과 같은
+     hover/focus 배경 언어(6px 반경 칩)를 준다 -- 라벨 텍스트에서 대괄호는 제거하고
+     (기능·aria-label은 그대로), 대신 이 padding/radius로 클릭 가능 영역을 표시한다. */
+  .rollover-today-btn{border:0;background:none;padding:3px 7px;margin:-3px -7px;border-radius:var(--radius-sm);cursor:pointer;font:inherit;color:var(--lav);font-weight:700}
+  .rollover-today-btn:hover:not(:disabled),.rollover-today-btn:focus-visible{background:var(--lav-soft);outline:none}
   .rollover-today-btn:disabled{color:var(--faint);cursor:default}
-  .delete-btn{border:0;background:none;padding:0;cursor:pointer;font:inherit;color:var(--muted)}
+  .delete-btn{border:0;background:none;padding:3px 7px;margin:-3px -7px;border-radius:var(--radius-sm);cursor:pointer;font:inherit;color:var(--muted)}
+  .delete-btn:hover:not(:disabled),.delete-btn:focus-visible{background:var(--bg-danger-soft);color:var(--danger);outline:none}
   .delete-btn:disabled{color:var(--faint);cursor:default}
   /* 이월 목록과 오늘 일반 목록 사이의 단순 구분선 -- 접혔거나 이월이 0개면 숨긴다. */
   .rollover-divider{height:1px;background:var(--line);margin:12px 0}
@@ -543,7 +568,7 @@
   .rollover-item-actions{display:flex;align-items:center;gap:2px;flex:none}
   .rollover-item-action-btn{border:0;background:none;padding:4px 8px;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;color:var(--lav);white-space:nowrap}
   .rollover-item-action-btn:hover,.rollover-item-action-btn:focus-visible{background:var(--bg-hover);outline:none}
-  .rollover-item-action-btn.danger{color:var(--sun)}
+  .rollover-item-action-btn.danger{color:var(--danger)}
   .rollover-item-action-btn.danger:hover{background:var(--bg-danger-soft)}
   /* 이달의 할 일: 지난달 미완료 이월 안내 -- 위 Daily .rollover/.rollover-toggle/.tri/
      .rollover-count/.rollover-item-actions/.rollover-item-action-btn/.rollover-divider를
@@ -578,7 +603,13 @@
   .task>.event-body,.task>.row-title{flex:1 1 auto;min-width:0}
   /* 3: 부모(.task)에서 user-select:none이 상속되긴 하지만, Shift 범위 선택 중 파란 텍스트
      선택이 생기지 않아야 한다는 요구를 명시적으로 보장하기 위해 여기서도 직접 선언한다. */
-  .row-title{font-size:14px;font-weight:650;line-height:1.3;letter-spacing:normal;cursor:text;user-select:none}
+  .row-title{font-size:14px;font-weight:650;line-height:1.3;letter-spacing:normal;cursor:text;user-select:none;display:flex;align-items:baseline;min-width:0}
+  /* 320px 감사: Daily의 .row-title엔 뒤따르는 상세/todo 배지(card-detail-badge)가
+     같은 줄에 붙어야 해서(3589줄 주석) ellipsis를 title 전체가 아니라 텍스트 span
+     (.row-title-text)에만 건다 -- 배지는 잘리지 않고, 좁은 폭에서 제목 글자 수만
+     줄어든다. 이전에는 폭 제약이 전혀 없어(min-width:0도 없음) CJK 텍스트가 글자
+     단위로 세로 줄바꿈되는 심각한 붕괴가 있었다(320px 실측 확인). */
+  .row-title-text{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:28px;flex:0 1 auto}
   .task.done{color:var(--text-disabled)}.task.done .row-title{text-decoration:line-through}.task.muted{color:var(--faint)}
   .task.event .event-body{display:flex;flex-direction:column;line-height:1.25}
   .task.event small{font-size:10px;color:var(--text-tertiary);padding-left:6px}
@@ -634,7 +665,7 @@
   .trash-row-actions{display:flex;gap:6px}
   .trash-action-btn{border:0;background:none;padding:4px 10px;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;color:var(--lav);font-family:inherit}
   .trash-action-btn:hover{background:var(--lav-soft)}
-  .trash-action-btn.danger{color:var(--sun)}
+  .trash-action-btn.danger{color:var(--danger)}
   /* 라운드2 10: 휴지통 행의 드래그 핸들 -- .trash-row는 34px/1fr/auto 3칸 grid라 새 칸을
      끼워 넣으면 4번째 항목이 다음 줄로 밀려 레이아웃이 깨진다. 그래서 grid 칸수를 바꾸지
      않고, 아이콘 칸 위에 절대 위치로 살짝 겹쳐 그린다(다른 grip 핸들처럼 hover/focus 시만
@@ -666,7 +697,7 @@
   .trash-filter{display:flex;align-items:center;gap:6px}
   .trash-filter-btn{border:1px solid var(--line2);background:var(--bg-card);border-radius:999px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;color:var(--muted);font-family:inherit;display:flex;align-items:center;justify-content:center}
   .trash-filter-btn[aria-pressed="true"]{color:var(--lav);border-color:var(--lav);background:var(--lav-soft)}
-  .empty-trash-btn{border:1px solid var(--line2);background:var(--bg-card);border-radius:8px;padding:7px 12px;font-size:12px;font-weight:700;cursor:pointer;color:var(--sun);font-family:inherit}
+  .empty-trash-btn{border:1px solid var(--line2);background:var(--bg-card);border-radius:8px;padding:7px 12px;font-size:12px;font-weight:700;cursor:pointer;color:var(--danger);font-family:inherit}
   .empty-trash-btn:disabled{color:var(--faint);border-color:var(--line2);cursor:default}
   .empty-trash-btn:not(:disabled):hover{background:var(--bg-danger-soft)}
 
@@ -682,8 +713,8 @@
   .trash-bulk-btn{border:0;background:var(--bg-card);border-radius:6px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;color:var(--lav);font-family:inherit}
   .trash-bulk-btn:hover{background:var(--lav)}
   .trash-bulk-btn:hover{color:#fff}
-  .trash-bulk-btn.danger{color:var(--sun)}
-  .trash-bulk-btn.danger:hover{background:var(--sun);color:#fff}
+  .trash-bulk-btn.danger{color:var(--danger)}
+  .trash-bulk-btn.danger:hover{background:var(--danger);color:#fff}
 
   /* Weekly 패널 전체를 세로 flex 컨테이너로 바꿔 헤더는 고정, 본문(.weekly-body)만 스크롤되게
      한다. 위치·배경·모서리는 기존 값 그대로 유지한다. 4: top(JS가 state.weeklyPanel.top으로
@@ -726,7 +757,8 @@
      밀어내고, 표시일수/이동 버튼과 헷갈리지 않게 더 작은 아이콘 버튼으로 둔다. */
   .week-range-menu-btn{margin-left:auto;border:0;background:none;padding:0;cursor:pointer;color:var(--icon-muted);width:28px;height:28px;border-radius:6px;display:grid;place-items:center;font-size:20px;font-weight:700;line-height:1}
   .week-range-menu-btn:hover,.week-range-menu-btn[aria-expanded="true"]{background:var(--bg-hover);color:var(--ink)}
-  .week-range-menu{position:fixed;z-index:50;background:var(--bg-card);border:1px solid var(--line2);border-radius:10px;box-shadow:0 4px 16px var(--overlay-shadow);padding:6px;min-width:168px}
+  .week-range-menu-btn:focus-visible{outline:2px solid var(--lav);outline-offset:1px}
+  .week-range-menu{position:fixed;z-index:50;background:var(--bg-card);border:1px solid var(--line2);border-radius:var(--radius-lg);box-shadow:var(--shadow-menu);padding:6px;min-width:168px}
   .week-range-menu-label{padding:6px 10px 4px;font-size:11px;font-weight:800;color:var(--muted)}
   .week-range-menu-item{padding:8px 10px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:650;color:var(--ink);white-space:nowrap}
   .week-range-menu-item:hover,.week-range-menu-item:focus{background:var(--bg-hover);outline:none}
@@ -870,7 +902,7 @@
   .week-inline-input{flex:1;min-width:0;border:0;outline:none;font:inherit;font-size:13px;color:var(--ink);background:transparent;user-select:text}
   .week-inline-input::placeholder{color:var(--text-placeholder)}
 
-  .type-menu{position:fixed;z-index:50;background:var(--bg-card);border:1px solid var(--line2);border-radius:10px;box-shadow:0 4px 16px var(--overlay-shadow);padding:6px;min-width:128px}
+  .type-menu{position:fixed;z-index:50;background:var(--bg-card);border:1px solid var(--line2);border-radius:var(--radius-lg);box-shadow:var(--shadow-menu);padding:6px;min-width:128px}
   .type-menu-item{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:6px;cursor:pointer;font-size:14px;font-weight:650;color:var(--ink)}
   .type-menu-item:hover,.type-menu-item:focus{background:var(--bg-hover);outline:none}
   .type-menu-item[aria-checked="true"]{color:var(--lav);background:var(--lav-soft)}
@@ -879,7 +911,7 @@
   .task.is-selected{box-shadow:inset 0 0 0 2px var(--lav)}
   .week-card li.is-selected{box-shadow:inset 0 0 0 2px var(--lav)}
 
-  .move-menu{position:fixed;z-index:50;background:var(--bg-card);border:1px solid var(--line2);border-radius:10px;box-shadow:0 4px 16px var(--overlay-shadow);padding:6px;min-width:200px}
+  .move-menu{position:fixed;z-index:50;background:var(--bg-card);border:1px solid var(--line2);border-radius:var(--radius-lg);box-shadow:var(--shadow-menu);padding:6px;min-width:200px}
   .move-menu-item{display:block;width:100%;text-align:left;border:0;background:none;padding:8px 10px;border-radius:6px;cursor:pointer;font-size:14px;font-weight:650;color:var(--ink)}
   .move-menu-item:hover,.move-menu-item:focus{background:var(--bg-hover);outline:none}
   .move-menu-divider{height:1px;background:var(--line2);margin:6px 4px}
@@ -1199,7 +1231,7 @@ body.desc-block-dnd-active .desc-block-add{
   .desc-todo-text-done{color:var(--text-disabled);text-decoration:line-through}
   .desc-todo-delete{visibility:hidden;border:0;background:none;padding:2px;width:20px;height:20px;border-radius:6px;display:grid;place-items:center;cursor:pointer;color:var(--icon-muted);font-size:14px;line-height:1;flex:none}
   .desc-block[data-block-type="todo"]:hover .desc-todo-delete,.desc-block[data-block-type="todo"]:focus-within .desc-todo-delete{visibility:visible}
-  .desc-todo-delete:hover,.desc-todo-delete:focus-visible{background:var(--bg-danger-soft);color:var(--sun);outline:none}
+  .desc-todo-delete:hover,.desc-todo-delete:focus-visible{background:var(--bg-danger-soft);color:var(--danger);outline:none}
   .desc-block-text{flex:1 1 auto;min-width:0;outline:none;font-size:14px;font-weight:500;line-height:1.6;color:var(--ink);white-space:pre-wrap;overflow-wrap:break-word;cursor:text;padding:1px 4px;margin:-1px -4px;border-radius:4px}
   .desc-block-text:focus{background:var(--bg-input)}
   .desc-block-text:empty:before{content:attr(data-placeholder);color:var(--text-placeholder);font-weight:500}
@@ -1221,8 +1253,8 @@ body.desc-block-dnd-active .desc-block-add{
   .desc-attachment-size{font-size:12px;color:var(--text-tertiary)}
   .desc-attachment-btn{border:0;background:none;padding:4px;border-radius:6px;cursor:pointer;color:var(--icon-muted);display:flex;align-items:center;justify-content:center;flex:none;font-size:13px}
   .desc-attachment-btn:hover{background:var(--bg-hover)}
-  .desc-attachment-btn.danger:hover{background:var(--bg-danger-soft);color:var(--sun)}
-  .desc-attachment-error{font-size:12px;color:var(--sun);margin:4px 0 0}
+  .desc-attachment-btn.danger:hover{background:var(--bg-danger-soft);color:var(--danger)}
+  .desc-attachment-error{font-size:12px;color:var(--danger);margin:4px 0 0}
 
   /* 상세 사진: 네이버 블로그형 블록 + 흡착 배치. 자유 좌표/12열 크기조절 대신
      단독 사진은 크기 단계·정렬, 사진 묶음은 한 행 최대 3장 균등 배치로 동작한다. */
@@ -1249,7 +1281,7 @@ body.desc-block-dnd-active .desc-block-add{
   .desc-media-block:hover .desc-media-actions,.desc-media-block:focus-within .desc-media-actions{opacity:1}
   .desc-media-action-btn{border:none;background:rgba(0,0,0,.55);color:#fff;width:26px;height:26px;border-radius:6px;cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center}
   .desc-media-action-btn:hover{background:rgba(0,0,0,.75)}
-  .desc-media-action-btn.danger:hover{background:var(--sun)}
+  .desc-media-action-btn.danger:hover{background:var(--danger)}
   .desc-media-caption{font-size:12px;color:var(--text-tertiary);padding:2px 4px;outline:none;min-height:16px}
   .desc-media-caption:empty::before{content:attr(data-placeholder);color:var(--text-placeholder)}
   .desc-media-caption:focus{color:var(--ink);background:var(--bg-hover);border-radius:4px}
@@ -1276,7 +1308,7 @@ body.desc-block-dnd-active .desc-block-add{
   .desc-media-gallery-item:hover .desc-media-gallery-item-actions,.desc-media-gallery-item:focus-within .desc-media-gallery-item-actions{opacity:1}
   .desc-media-gallery-item-btn{border:none;background:rgba(0,0,0,.55);color:#fff;width:24px;height:24px;border-radius:6px;cursor:pointer;font-size:11px;display:flex;align-items:center;justify-content:center}
   .desc-media-gallery-item-btn:hover{background:rgba(0,0,0,.75)}
-  .desc-media-gallery-item-btn.danger:hover{background:var(--sun)}
+  .desc-media-gallery-item-btn.danger:hover{background:var(--danger)}
   .desc-media-gallery-drop-placeholder{min-width:0;aspect-ratio:4/3;border:2px dashed rgba(var(--lav-rgb),.72);border-radius:10px;background:rgba(var(--lav-rgb),.08);box-sizing:border-box}
   .desc-media-gallery-drag-source-hidden{display:none!important}
   .desc-media-gallery.is-gallery-drop-active{outline:2px dashed rgba(var(--lav-rgb),.38);outline-offset:5px;border-radius:10px}
@@ -1385,7 +1417,7 @@ body.desc-block-dnd-active .desc-block-add{
   .desc-table-context-menu{display:flex;flex-direction:column;gap:2px;min-width:150px}
   .desc-table-context-menu-item{border:none;background:none;text-align:left;padding:6px 8px;border-radius:6px;font-size:12px;font-weight:650;color:var(--ink);cursor:pointer;font-family:inherit}
   .desc-table-context-menu-item:hover,.desc-table-context-menu-item:focus-visible{background:var(--bg-hover);outline:none}
-  .desc-table-context-menu-item.danger{color:var(--sun)}
+  .desc-table-context-menu-item.danger{color:var(--danger)}
   .desc-table-context-menu-sep{height:1px;background:var(--line);margin:3px 2px}
   .desc-table-context-menu-colorrow{display:flex;gap:4px;padding:2px 4px}
 
@@ -1409,7 +1441,7 @@ body.desc-block-dnd-active .desc-block-add{
   /* 5: 슬래시 명령 메뉴 — 기존 .type-menu와 같은 시각 언어(카드/그림자/hover)를 그대로 쓰되,
      DOM 포커스는 여전히 편집 중인 블록에 남아 있어야 하므로(커서 유지) 메뉴 자체는 포커스를
      받지 않는다 — 방향키 이동은 activeIndex를 바꾸고 aria-activedescendant로만 표시한다. */
-  .desc-slash-menu{position:fixed;z-index:50;background:var(--bg-card);border:1px solid var(--line2);border-radius:10px;box-shadow:0 4px 16px var(--overlay-shadow);padding:6px;min-width:200px;max-height:320px;overflow-y:auto}
+  .desc-slash-menu{position:fixed;z-index:50;background:var(--bg-card);border:1px solid var(--line2);border-radius:var(--radius-lg);box-shadow:var(--shadow-menu);padding:6px;min-width:200px;max-height:320px;overflow-y:auto}
   .desc-slash-item{display:flex;align-items:center;gap:10px;padding:6px 10px;border-radius:6px;cursor:pointer;font-size:14px;font-weight:650;color:var(--ink)}
   .desc-slash-item.is-active{background:var(--lav-soft);color:var(--lav)}
   .desc-slash-item-icon{flex:none;width:18px;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:12px;font-weight:800}
@@ -1513,7 +1545,7 @@ body.desc-block-dnd-active .desc-block-add{
   /* 6차 8: 휴지통 버튼을 완료/날짜이동과 충분히 떨어뜨려 오른쪽 끝에 고정한다 — DOM
      순서·footer 높이·모달 크기는 그대로 두고 margin-left:auto만으로 해결한다(줄바꿈 시
      자기 줄에서는 자연히 왼쪽부터 배치돼 안전하다). */
-  .detail-trash-btn{color:var(--sun);margin-left:auto}
+  .detail-trash-btn{color:var(--danger);margin-left:auto}
   /* 마스터 Drawer 하단 날짜 버튼(moveDateBtn)이 배치 0/1/N개를 모두 처리한다(별도 상시
      "날짜 배치" 섹션 없음). 배치가 0개 또는 2개 이상일 때만 이 목록/추가 UI가 뜨는
      팝오버(.move-menu) 안에 쓰인다 -- 버튼은 .detail-action-btn을 그대로 재사용한다. */
@@ -1586,7 +1618,8 @@ body.desc-block-dnd-active .desc-block-add{
    패턴(팝업 role="menu", 단일 menuitemcheckbox). margin-left:auto로 nav 행 오른쪽 끝에 붙는다. */
 .monthly-log-menu-btn{margin-left:auto;border:0;background:none;padding:0;cursor:pointer;color:var(--icon-muted);width:26px;height:26px;border-radius:6px;display:grid;place-items:center;font-size:18px;font-weight:700;line-height:1}
 .monthly-log-menu-btn:hover,.monthly-log-menu-btn[aria-expanded="true"]{background:var(--bg-hover);color:var(--ink)}
-.monthly-log-menu{position:fixed;z-index:50;background:var(--bg-card);border:1px solid var(--line2);border-radius:10px;box-shadow:0 4px 16px var(--overlay-shadow);padding:6px;min-width:168px}
+.monthly-log-menu-btn:focus-visible{outline:2px solid var(--lav);outline-offset:1px}
+.monthly-log-menu{position:fixed;z-index:50;background:var(--bg-card);border:1px solid var(--line2);border-radius:var(--radius-lg);box-shadow:var(--shadow-menu);padding:6px;min-width:168px}
 .monthly-log-menu-item{padding:8px 10px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:650;color:var(--ink);white-space:nowrap;display:flex;align-items:center;gap:8px}
 .monthly-log-menu-item:hover,.monthly-log-menu-item:focus{background:var(--bg-hover);outline:none}
 /* 메뉴 체크박스도 할 일 체크박스와 완전히 같은 형태 */
@@ -1657,6 +1690,7 @@ body.desc-block-dnd-active .desc-block-add{
 .future-log-period-label{font-size:14px;font-weight:800;color:var(--ink);min-width:0}
 .future-log-nav-btn{border:0;background:none;padding:0;cursor:pointer;color:var(--icon-muted);width:26px;height:26px;border-radius:6px;display:grid;place-items:center;font-size:18px;line-height:1}
 .future-log-nav-btn:hover{background:var(--bg-hover)}
+.future-log-nav-btn:focus-visible{outline:2px solid var(--lav);outline-offset:1px}
 .future-log-nav-btn:disabled{opacity:.35;cursor:default;pointer-events:none}
 /* "이번 달" -- 정렬 계산 없이 시작월을 오늘이 속한 월로 되돌린다(요구사항). */
 .future-log-today-btn{border:1px solid var(--line2);background:none;color:var(--muted);padding:4px 10px;border-radius:999px;font-size:12px;font-weight:700;cursor:pointer}
@@ -1897,11 +1931,11 @@ body.desc-block-dnd-active .desc-block-add{
 .monthly-log-row.is-sat .monthly-log-row-weekday{color:var(--sat)}
 .monthly-log-row-lanes{flex:1 1 auto;min-width:0;min-height:0;display:flex;flex-direction:column;position:relative}
 .monthly-log-row-items{min-width:0;display:flex;flex-direction:column;align-items:stretch;gap:2px}
-.monthly-log-item{display:inline-flex;align-items:center;gap:5px;max-width:240px;cursor:pointer;border-radius:6px;padding:2px 4px;margin:-2px -4px;font-size:12.5px;font-weight:650;color:var(--ink);position:relative}
+.monthly-log-item{display:inline-flex;align-items:center;gap:5px;max-width:min(240px,100%);overflow:hidden;cursor:pointer;border-radius:6px;padding:2px 4px;margin:-2px -4px;font-size:12.5px;font-weight:650;color:var(--ink);position:relative;box-sizing:border-box}
 .monthly-log-item.divider-item-row{flex:1 0 100%;max-width:none;cursor:default}
 .monthly-log-item:hover,.monthly-log-item:focus-visible{background:var(--bg-hover);outline:none}
 .monthly-log-item .ic-dot,.monthly-log-item .ic-ring,.monthly-log-item .ic-dash{flex:none}
-.monthly-log-item-title{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.monthly-log-item-title{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;flex:1 1 auto}
 .monthly-log-item.is-done{color:var(--text-disabled)}
 .monthly-log-item.is-done .monthly-log-item-title{text-decoration:line-through}
 /* Monthly Log 기능 복구: Daily/Weekly와 같은 체크박스·타입버튼·드래그 핸들을 압축 폭(240px)
@@ -2054,7 +2088,7 @@ body.monthly-split-dragging,body.monthly-split-dragging *{cursor:col-resize!impo
 .cal-title:hover,.monthly-log-month-label:hover,.cal-title[aria-expanded="true"],.monthly-log-month-label[aria-expanded="true"]{background:var(--bg-hover)}
 .year-month-wheel-popup{width:160px}
 .year-month-edit-input{font:inherit;font-weight:inherit;color:inherit;background:var(--bg-hover);border:1px solid var(--line2);border-radius:6px;padding:0 4px;width:9ch;outline:none}
-.year-month-edit-input.is-invalid{border-color:var(--sun);color:var(--sun)}
+.year-month-edit-input.is-invalid{border-color:var(--danger);color:var(--danger)}
 
 /* 음력 보조 텍스트(미니 달력 날짜 칸 / Monthly Log 날짜 행) -- 실제 날짜보다 작고 옅게. */
 .date-lunar{position:absolute;left:50%;top:25px;transform:translateX(-50%);display:block;font-size:9px;font-weight:600;color:var(--text-tertiary);line-height:1;margin:0;white-space:nowrap;pointer-events:none}
@@ -2277,7 +2311,7 @@ body.dnd-active .group-drag{cursor:grabbing}
 .project-menu-swatch{flex:none}
 .project-menu-name{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer}
 .project-menu-delete{flex:none;opacity:.55}
-.project-menu-delete:hover{opacity:1;background:var(--bg-danger-soft);color:var(--sun)}
+.project-menu-delete:hover{opacity:1;background:var(--bg-danger-soft);color:var(--danger)}
 .project-menu-create-input{margin:6px 10px 4px;width:calc(100% - 20px);box-sizing:border-box}
 /* 좁은 Weekly 열에서는 들여쓰기 때문에 카드 폭이 무너지는 것을 막고, 색 테두리만으로
    소속을 표시한다. */
@@ -2299,6 +2333,7 @@ body.dnd-active .group-drag{cursor:grabbing}
    .daily-header-actions 묶음째로 다음 줄로 내려간다. */
 .today-menu-btn{position:static;border:0;background:none;padding:0;cursor:pointer;color:var(--icon-muted);width:26px;height:26px;border-radius:6px;display:grid;place-items:center;font-size:18px;font-weight:700;line-height:1}
 .today-menu-btn:hover,.today-menu-btn[aria-expanded="true"]{background:var(--bg-hover);color:var(--ink)}
+.today-menu-btn:focus-visible{outline:2px solid var(--lav);outline-offset:1px}
 /* Today 우측 월간 할 일 토글(보라색) -- 툴팁은 이제 공용 #inline-tooltip
    (.is-kbd-tooltip, 위 .project-dot-tooltip 근처)로 통일됐다(요구사항: 앱 전체
    icon-only 버튼과 같은 툴팁 시스템 재사용, 이 버튼 전용 커스텀 툴팁 제거). */
@@ -2460,6 +2495,55 @@ body.dnd-active .group-drag{cursor:grabbing}
   .monthly-inbox-panel.is-open{transform:translateX(0)}
   .monthly-inbox-list{max-height:none}
   .monthly-inbox-toggle-btn,.monthly-inbox-close-btn{display:grid}
+}
+/* Responsive Design Pass 2 (640px 이하): 사이드바를 56~64px 아이콘 레일로
+   전환한다. Pass 1에서는 112px 사이드바를 그대로 둔 채 화면별로 미세조정만
+   했는데, 320px에서 본문 가용폭이 208px까지 깎이는 것 자체가 근본 원인이었다
+   (실측 확인). 레일 폭을 줄이면 이 미디어 쿼리 아래 모든 화면의 가용폭이
+   한 번에 넓어진다. 9개 네비게이션 타겟과 라벨 텍스트(span)는 전부 그대로
+   DOM에 남기고 시각 크기만 줄인다 -- 스크린리더 접근성 트리는 변하지 않는다.
+   현재 위치는 hover가 없는 터치 환경에서도 lav 배경 채움(.active)만으로
+   충분히 구분된다(기존 desktop과 같은 시각 언어). */
+@media (max-width: 640px) {
+  .artboard{grid-template-columns:60px minmax(0,1fr)}
+  .sidebar{width:60px}
+  .profile{width:26px;height:26px;font-size:10px;margin-top:16px}
+  .side-nav-top{gap:4px;margin-top:10px}
+  .side-nav-bottom{gap:3px;margin-bottom:44px}
+  .side-item{width:52px;height:48px;border-radius:8px;gap:2px;font-size:8px}
+  .side-item svg{width:20px;height:20px;stroke-width:2}
+  .trash-badge{top:2px;right:5px;min-width:13px;height:13px;font-size:8px;line-height:13px}
+  .theme{left:2px;bottom:14px;width:48px;height:24px}
+  .theme-btn{width:19px;height:19px;font-size:13px}
+}
+/* 320px 감사: 사이드바 112px를 뺀 나머지 폭이 208px 아래로 내려가면 .top의
+   좌우 24px 패딩(위 1199px 블록)만으로 Daily 카드 제목이 놓일 자리가 거의
+   남지 않아 .row-title-text가 0px로 눌린다(실측 확인). 폰트 축소 대신
+   padding·gap을 먼저 줄인다(2516줄 부근 기존 Monthly Log 320px 수정과 같은
+   원칙). */
+@media (max-width: 400px) {
+  .top{padding:16px 10px 0 10px}
+  .daily{margin-top:16px}
+  .task{gap:8px;padding:8px 8px}
+  .weekly{margin:16px 10px 16px 0}
+  /* 320px 감사: 시작/화살표/종료 3열 grid가 이 폭에서 라벨을 자르고 종료일 칸을
+     빈 것처럼 보이게 눌렀다(실측 확인) -- 세로 스택으로 바꾸고 화살표를 회전해
+     "위→아래" 방향으로 읽히게 한다. 기능(값/이벤트)은 그대로, 배치만 바뀐다. */
+  .range-row{grid-template-columns:1fr;gap:4px}
+  .range-arrow{transform:rotate(90deg);padding:2px 0}
+  /* range-row를 세로 스택으로 바꾸면 기존 고정 height:107px보다 실제 필요한 높이가
+     커진다(실측: 약 235px) -- .schedule-panel은 절대배치라도 내부가 일반 흐름이라
+     height:auto로 내용에 맞춰지고, .calendar-card는 그 늘어난 패널을 담을 만큼
+     고정 높이를 늘린다(카드 자신도 자식이 전부 절대배치라 auto를 쓸 수 없다). */
+  .schedule-panel{height:auto;padding-bottom:16px}
+  .calendar-card{height:720px}
+  /* 320px 감사: 다일 일정 segment(.monthly-log-schedule-segment)는 데스크톱에서
+     여러 날짜 칸에 걸쳐 이어 보이도록 의도적으로 overflow:visible이다(주 경계를
+     넘는 이음선 표현). 이 폭에서는 칸 자체가 ~23px까지 줄어들어, 그 의도된
+     overflow가 카드 오른쪽 경계 밖으로 실제로 잘려나가는 결과로 이어진다(실측
+     확인). 개별 칸이 아니라 주 행(.monthly-log-week-row) 전체 경계에서만 잘라,
+     같은 행 안의 이어붙임 표현은 그대로 두고 카드 밖으로 새는 것만 막는다. */
+  .monthly-log-week-row{overflow:hidden}
 }
 .monthly-inbox-toggle-btn{display:none;border:0;background:none;padding:0;cursor:pointer;color:var(--icon-muted);width:26px;height:26px;border-radius:6px;place-items:center;font-size:15px;line-height:1;margin-left:4px}
 .monthly-inbox-toggle-btn:hover{background:var(--bg-hover);color:var(--ink)}
@@ -2804,7 +2888,7 @@ body.dnd-active .group-drag{cursor:grabbing}
    폰트를 만들지 않고 기존 --sun/--lav-soft/--bg-card/--line2 토큰만 재사용한다. */
 #system-banner-root{position:fixed;top:0;left:0;right:0;z-index:500;display:flex;flex-direction:column;pointer-events:none}
 .system-banner{display:flex;align-items:center;gap:12px;padding:10px 16px;font-size:13px;font-weight:650;border-bottom:1px solid var(--line2);pointer-events:auto}
-.system-banner-danger{background:var(--sun);color:#fff}
+.system-banner-danger{background:var(--danger);color:#fff}
 .system-banner-info{background:var(--lav-soft);color:var(--ink)}
 .system-banner-text{flex:1 1 auto;line-height:1.4}
 .system-banner-btn{border:0;background:rgba(255,255,255,.3);color:inherit;padding:5px 10px;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;flex:none;font-family:inherit}
@@ -2871,7 +2955,7 @@ body.dnd-active .group-drag{cursor:grabbing}
 .ic-list::before{top:-4px}
 .ic-list::after{top:4px}
 /* +N 읽기 전용 팝오버 -- 새 작성/드래그 없음, 항목 클릭은 기존 상세 Drawer를 연다. */
-.monthly-log-overflow-popover{position:fixed;z-index:60;background:var(--bg-card);border:1px solid var(--line2);border-radius:10px;box-shadow:0 4px 16px var(--overlay-shadow);padding:8px;min-width:220px;max-width:300px}
+.monthly-log-overflow-popover{position:fixed;z-index:60;background:var(--bg-card);border:1px solid var(--line2);border-radius:var(--radius-lg);box-shadow:var(--shadow-menu);padding:8px;min-width:220px;max-width:300px}
 .monthly-log-overflow-popover-title{padding:4px 8px 8px;font-size:12px;font-weight:750;color:var(--muted);border-bottom:1px solid var(--line);margin-bottom:4px}
 .monthly-log-overflow-popover-list{max-height:280px;overflow-y:auto}
 .monthly-log-overflow-row{display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:6px;cursor:pointer;font-size:13px;color:var(--ink)}
@@ -3048,7 +3132,7 @@ body.dnd-active .monthly-log-week-segment{pointer-events:none}
       </div>
       <div class="daily-normal-view">
         <div class="quick"><span class="quick-icons" role="group" aria-label="입력 종류"><button type="button" class="q-slot" data-mode="task" aria-pressed="true" aria-label="할 일" data-tooltip-label="할 일"><span class="ic-dot"></span></button><button type="button" class="q-slot" data-mode="schedule" aria-pressed="false" aria-label="일정" data-tooltip-label="일정"><span class="ic-ring"></span></button><button type="button" class="q-slot" data-mode="memo" aria-pressed="false" aria-label="메모" data-tooltip-label="메모"><span class="ic-dash"></span></button></span><input type="text" id="quick-input" class="placeholder" placeholder="할 일을 입력하고 엔터를 누르세요." autocomplete="off" aria-label="할 일 빠른 입력" /></div>
-        <div class="rollover"><div class="rollover-actions"><button type="button" class="rollover-toggle" aria-expanded="false"><span class="tri"></span><span class="rollover-count">이월(0)</span></button><button type="button" class="rollover-today-btn" aria-label="이월 항목 전체 오늘로 이동">[오늘]</button><button type="button" class="delete-btn" aria-label="이월 항목 전체 삭제">[삭제]</button></div></div>
+        <div class="rollover"><div class="rollover-actions"><button type="button" class="rollover-toggle" aria-expanded="false"><span class="tri"></span><span class="rollover-count">이월(0)</span></button><button type="button" class="rollover-today-btn" aria-label="이월 항목 전체 오늘로 이동">오늘</button><button type="button" class="delete-btn" aria-label="이월 항목 전체 삭제">삭제</button></div></div>
         <div class="task-list" id="rollover-list" hidden></div>
         <div class="rollover-divider" id="rollover-divider" hidden></div>
         <div class="task-list" id="daily-list"></div>
