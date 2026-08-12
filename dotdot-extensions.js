@@ -49,8 +49,21 @@
   // ------------------------------------------------------------------
   // Side feature views
   // ------------------------------------------------------------------
+  function isCompactMobile() {
+    return !!(window.matchMedia && window.matchMedia('(max-width:640px), (max-width:900px) and (max-height:500px) and (pointer:coarse)').matches);
+  }
   function placeSideOverlay() {
     if (!sideOverlay) return;
+    // 모바일에서는 sidebar가 화면 하단 전체 폭을 차지한다. 데스크톱 계산(s.right~b.right)을
+    // 그대로 쓰면 폭이 0px이 되는 구조적 버그가 생기므로 모바일 보조 화면은 viewport를
+    // 직접 사용한다. 실제 크기/안전영역은 CSS의 !important 규칙이 최종 결정한다.
+    if (isCompactMobile()) {
+      sideOverlay.style.left = '0px';
+      sideOverlay.style.top = '0px';
+      sideOverlay.style.width = '100%';
+      sideOverlay.style.height = 'calc(100dvh - var(--mobile-nav-h,66px) - env(safe-area-inset-bottom))';
+      return;
+    }
     var side = document.querySelector('.sidebar'), board = document.querySelector('.artboard');
     if (!side || !board) return;
     var s = side.getBoundingClientRect(), b = board.getBoundingClientRect();
@@ -279,23 +292,37 @@
   // (B.buildProjectDot)·커스텀 툴팁(B.applyInlineTooltip)을 그대로 재사용해 다른
   // 화면과 같은 문법으로 보이게 한다(요구사항: schedule/task/divider 영어 pill 제거).
   // 정보 위계: 날짜 -> 유형 기호 -> 프로젝트 점/그룹선 -> 제목 -> 실행 버튼.
+  function searchProjectById(projectId){
+    if(!projectId) return null;
+    for(var i=0;i<S.projects.length;i++) if(S.projects[i].id===projectId) return S.projects[i];
+    return null;
+  }
   function buildSearchRows(results){
-    if(!results.length) return '<li class="dotdot-ext-muted">검색 결과가 없습니다.</li>';
+    if(!results.length) return '<li class="dotdot-ext-muted search-empty">검색 결과가 없습니다.</li>';
     var typeLabels={task:'할 일',schedule:'일정',memo:'메모',divider:'구분선'};
     var ul=document.createElement('ul');
     results.slice(0,150).forEach(function(it){
       var li=document.createElement('li');
       li.className='search-row';
+      // Todoist의 검색 결과처럼 행 전체를 큰 터치 대상으로 쓰되, 동작은 상세페이지가 아니라
+      // 사용자가 선호한 "실제 위치로 이동 + 강조"를 유지한다. 데스크톱에서는 기존 버튼도 남는다.
+      li.dataset.itemId=it.id;
+      li.dataset.date=it.date||'';
+      if(isCompactMobile() && /^\d{4}-\d{2}-\d{2}$/.test(it.date||'')){
+        li.dataset.ext='search-open';
+        li.setAttribute('role','button');
+        li.tabIndex=0;
+        li.setAttribute('aria-label',(it.text||'제목 없음')+', '+(it.date||'')+' 위치 보기');
+      }
       var groupId=B.getItemGroupIdAt(it,'weekly',it.date);
       var group=groupId?B.findGroupById(groupId):null;
-      var dot=B.buildProjectDot(it,'is-lg',group?group.name:null);
+      var compactSearch=isCompactMobile();
+      var dot=compactSearch?null:B.buildProjectDot(it,'is-lg',group?group.name:null);
       if(group){
         var bar=document.createElement('span');
         bar.className='search-group-bar';
         bar.style.setProperty('--group-accent',group.color||'var(--lav)');
-        // 프로젝트 점이 있으면 그 점의 툴팁에 그룹명이 이미 함께 담기므로(위 buildProjectDot),
-        // 막대 자체는 순수 시각 표시만 하고 별도 툴팁 트리거를 중복으로 만들지 않는다.
-        if(!dot) B.applyInlineTooltip(bar, group.name, '그룹: '+group.name);
+        if(!dot&&!compactSearch) B.applyInlineTooltip(bar, group.name, '그룹: '+group.name);
         li.appendChild(bar);
       }
       var dateEl=document.createElement('span');
@@ -308,28 +335,46 @@
       B.applyInlineTooltip(iconWrap, typeLabels[it.type]||it.type);
       li.appendChild(iconWrap);
       if(dot) li.appendChild(dot);
+      var titleWrap=document.createElement('span');
+      titleWrap.className='search-title-wrap';
       var titleEl=document.createElement('span');
       titleEl.className='search-title'+(it.completed?' is-done':'');
       titleEl.textContent=it.text||'';
-      li.appendChild(titleEl);
+      titleWrap.appendChild(titleEl);
+      var project=searchProjectById(it.projectId);
+      if(project){
+        var chip=document.createElement('span');
+        chip.className='search-project-chip';
+        chip.style.setProperty('--project-accent',project.color||'var(--lav)');
+        chip.textContent=project.name;
+        titleWrap.appendChild(chip);
+      }
+      li.appendChild(titleWrap);
       if(/^\d{4}-\d{2}-\d{2}$/.test(it.date||'')){
         var btn=document.createElement('button');
-        btn.className='dotdot-ext-btn';
+        btn.className='dotdot-ext-btn search-open-btn';
         btn.setAttribute('data-ext','search-open');
         btn.setAttribute('data-date', it.date);
         btn.setAttribute('data-item-id', it.id);
-        btn.textContent='Today에서 열기';
+        btn.textContent='위치 보기';
         li.appendChild(btn);
       }
       ul.appendChild(li);
     });
     return ul.innerHTML;
   }
-  function renderSearch(){var q=searchState.q.trim().toLowerCase();var projects={};S.projects.forEach(function(p){projects[p.id]=p.name;});var results=getAliveItems().filter(function(it){var hay=(it.text+' '+(it.description||'')+' '+(projects[it.projectId]||'')).toLowerCase();return(!q||hay.indexOf(q)>=0)&&(searchState.type==='all'||it.type===searchState.type)&&(searchState.done==='all'||(searchState.done==='done')===!!it.completed)&&(!searchState.from||it.date>=searchState.from)&&(!searchState.to||it.date<=searchState.to);})
-    // 렌더 직전 실제 존재 여부를 다시 확인한다: 완전 삭제된 항목이나 오래된 참조는
-    // getAliveItems()의 스냅샷에 남아 있더라도 여기서 걸러 절대 표시하지 않는다.
-    .filter(function(it){var found=B.findItemById(it.id);return !!found&&!found.deletedAt;})
-    .sort(function(a,b){return a.date<b.date?1:-1;});var rows=buildSearchRows(results);return head('검색','제목·설명·프로젝트 검색과 필터','검색 결과는 원본 항목을 가리키며 복사본을 만들지 않습니다.')+'<div class="dotdot-ext-card"><div class="dotdot-ext-row"><input class="dotdot-ext-input" id="ext-search-q" value="'+esc(searchState.q)+'" placeholder="검색어"><select class="dotdot-ext-select" id="ext-search-type"><option value="all">모든 유형</option><option value="task">할 일</option><option value="schedule">일정</option><option value="memo">메모</option></select><select class="dotdot-ext-select" id="ext-search-done"><option value="all">전체</option><option value="open">미완료</option><option value="done">완료</option></select><input class="dotdot-ext-input" style="min-width:auto" type="date" id="ext-search-from" value="'+searchState.from+'"><span>~</span><input class="dotdot-ext-input" style="min-width:auto" type="date" id="ext-search-to" value="'+searchState.to+'"></div><p class="dotdot-ext-muted">'+results.length+'건</p><ul class="dotdot-ext-list">'+rows+'</ul></div>';}
+  function renderSearch(){
+    var q=searchState.q.trim().toLowerCase();var projects={};S.projects.forEach(function(p){projects[p.id]=p.name;});
+    var results=getAliveItems().filter(function(it){var hay=(it.text+' '+(it.description||'')+' '+(projects[it.projectId]||'')).toLowerCase();return(!q||hay.indexOf(q)>=0)&&(searchState.type==='all'||it.type===searchState.type)&&(searchState.done==='all'||(searchState.done==='done')===!!it.completed)&&(!searchState.from||it.date>=searchState.from)&&(!searchState.to||it.date<=searchState.to);})
+      .filter(function(it){var found=B.findItemById(it.id);return !!found&&!found.deletedAt;})
+      .sort(function(a,b){return a.date<b.date?1:-1;});
+    var rows=buildSearchRows(results);
+    return '<div class="ext-mobile-page ext-search-page">'+head('검색','제목·설명·프로젝트 검색과 필터','검색 결과를 누르면 상세페이지를 강제로 열지 않고 실제 날짜의 위치로 이동해 강조합니다.')+
+      '<div class="dotdot-ext-card search-controls-card"><div class="dotdot-ext-row search-controls">'+
+      '<input class="dotdot-ext-input search-main-input" id="ext-search-q" value="'+esc(searchState.q)+'" placeholder="검색어" aria-label="검색어">'+
+      '<div class="search-filter-strip"><select class="dotdot-ext-select" id="ext-search-type" aria-label="유형"><option value="all">모든 유형</option><option value="task">할 일</option><option value="schedule">일정</option><option value="memo">메모</option></select><select class="dotdot-ext-select" id="ext-search-done" aria-label="완료 상태"><option value="all">전체</option><option value="open">미완료</option><option value="done">완료</option></select><input class="dotdot-ext-input search-date-filter" type="date" id="ext-search-from" value="'+searchState.from+'" aria-label="시작 날짜"><span class="search-date-sep">~</span><input class="dotdot-ext-input search-date-filter" type="date" id="ext-search-to" value="'+searchState.to+'" aria-label="종료 날짜"></div></div></div>'+
+      '<div class="search-result-head"><strong>검색 결과</strong><span>'+results.length+'건</span></div><ul class="dotdot-ext-list search-results">'+rows+'</ul></div>';
+  }
   // 검색 결과의 "Today에서 열기" -- 예전에는 localStorage에 날짜만 써넣고 새로고침해
   // 날짜만 맞을 뿐 대상이 어디 있는지 못 찾는 문제가 있었다. itemId 기준으로 실제 상태를
   // 옮기고(새로고침 없음), 그룹/완료숨김 때문에 가려졌으면 이번만 펼치고, 렌더 후 DOM을
@@ -379,7 +424,81 @@
     B.renderApp();
     requestAnimationFrame(function(){ flashSearchTarget(itemId); });
   }
-  function renderStats(){var items=getAliveItems();var today=B.formatLocalDate(new Date());function period(n){var from=B.addCalendarDays(today,-(n-1));var list=items.filter(function(it){return it.date>=from&&it.date<=today;});var done=list.filter(function(it){return it.completed;}).length;return{total:list.length,done:done,rate:list.length?Math.round(done/list.length*100):0};}var w7=period(7),w30=period(30),moved=items.filter(function(it){return it.migratedFrom||(it.originalDate&&it.originalDate!==it.date);}).length;function stat(label,value,sub){return '<div class="dotdot-ext-stat"><b>'+value+'</b><span>'+label+(sub?' · '+sub:'')+'</span></div>';}return head('통계','완료·이월·유형 분포를 현재 로컬 데이터에서 계산','삭제되지 않은 항목만 집계하며 성과 압박용 스트릭은 만들지 않습니다.')+'<div class="dotdot-ext-card"><h3>최근 7일</h3>'+stat('완료',w7.done,'전체 '+w7.total)+stat('완료율',w7.rate+'%')+'<div class="dotdot-ext-bar"><i style="width:'+w7.rate+'%"></i></div></div><div class="dotdot-ext-card"><h3>최근 30일</h3>'+stat('완료',w30.done,'전체 '+w30.total)+stat('완료율',w30.rate+'%')+'<div class="dotdot-ext-bar"><i style="width:'+w30.rate+'%"></i></div></div><div class="dotdot-ext-card"><h3>계획 변경</h3>'+stat('이월·이동 흔적',moved+'건')+'</div>';
+  var statsState={tab:'overview',days:7};
+  function statsAliveItems(){
+    return getAliveItems().filter(function(it){return it&&it.type!=='divider'&&!it.rolloverPending&&/^\d{4}-\d{2}-\d{2}$/.test(it.date||'');});
+  }
+  function statsOccursOn(it,date){
+    var end=it.endDate||it.date;
+    return !!it.date&&it.date<=date&&end>=date;
+  }
+  function statsDay(items,date){
+    var planned=items.filter(function(it){return statsOccursOn(it,date);});
+    var done=planned.filter(function(it){return B.isOccurrenceCompleted?B.isOccurrenceCompleted(it,date):!!it.completed;}).length;
+    return {date:date,total:planned.length,done:done,rate:planned.length?Math.round(done/planned.length*100):0};
+  }
+  function statsPeriod(items,days,today){
+    var rows=[];for(var i=days-1;i>=0;i--){rows.push(statsDay(items,B.addCalendarDays(today,-i)));}
+    var total=rows.reduce(function(n,r){return n+r.total;},0),done=rows.reduce(function(n,r){return n+r.done;},0);
+    return {rows:rows,total:total,done:done,rate:total?Math.round(done/total*100):0};
+  }
+  function statsShortDate(date){var d=B.parseLocalDate(date);return (d.getMonth()+1)+'/'+d.getDate();}
+  function statsBars(rows){
+    var max=Math.max.apply(null,rows.map(function(r){return r.total;}));if(!isFinite(max)||max<1)max=1;
+    return '<div class="mobile-stats-bars">'+rows.map(function(r){
+      var h=r.total?Math.max(8,Math.round((r.done/max)*100)):0;
+      var planned=Math.max(0,Math.round((r.total/max)*100));
+      return '<div class="mobile-stats-bar-col" title="'+esc(r.date)+' 완료 '+r.done+'/'+r.total+'"><span class="mobile-stats-bar-track" style="--planned:'+planned+'%;--done:'+h+'%"><i></i></span><small>'+esc(statsShortDate(r.date))+'</small></div>';
+    }).join('')+'</div>';
+  }
+  function statsProjectRows(items,from,today){
+    var projects={};S.projects.forEach(function(p){projects[p.id]=p;});var map={};
+    items.forEach(function(it){
+      if(!it.projectId||!projects[it.projectId])return;
+      var touched=false,completed=false;
+      for(var d=from;d<=today;d=B.addCalendarDays(d,1)){
+        if(statsOccursOn(it,d)){touched=true;if(B.isOccurrenceCompleted?B.isOccurrenceCompleted(it,d):!!it.completed)completed=true;}
+      }
+      if(!touched)return;
+      if(!map[it.projectId])map[it.projectId]={project:projects[it.projectId],total:0,done:0};
+      map[it.projectId].total++;if(completed)map[it.projectId].done++;
+    });
+    return Object.keys(map).map(function(k){return map[k];}).sort(function(a,b){return b.total-a.total;}).slice(0,8);
+  }
+  function statsProjectHtml(rows){
+    if(!rows.length)return '<p class="mobile-stats-empty">이 기간에는 프로젝트가 지정된 항목이 없어요.</p>';
+    return '<div class="mobile-stats-projects">'+rows.map(function(r){var rate=r.total?Math.round(r.done/r.total*100):0;return '<div class="mobile-stats-project"><div><span class="mobile-stats-project-dot" style="--project-accent:'+(r.project.color||'var(--lav)')+'"></span><strong>'+esc(r.project.name)+'</strong><span>'+r.done+'/'+r.total+'</span></div><div class="mobile-stats-progress"><i style="width:'+rate+'%;--project-accent:'+(r.project.color||'var(--lav)')+'"></i></div></div>';}).join('')+'</div>';
+  }
+  function renderMobileStats(){
+    var items=statsAliveItems(),today=B.formatLocalDate(new Date()),p7=statsPeriod(items,7,today),p30=statsPeriod(items,30,today),todayStat=statsDay(items,today);
+    var movedItems=items.filter(function(it){return !!(it.migratedFrom||(it.originalDate&&it.originalDate!==it.date));});
+    var tab=statsState.tab;
+    var tabs='<div class="mobile-stats-tabs" role="tablist"><button type="button" data-ext="stats-tab" data-tab="overview" aria-selected="'+(tab==='overview')+'">개요</button><button type="button" data-ext="stats-tab" data-tab="complete" aria-selected="'+(tab==='complete')+'">완료</button><button type="button" data-ext="stats-tab" data-tab="change" aria-selected="'+(tab==='change')+'">계획 변경</button></div>';
+    var summary='<div class="mobile-stats-summary"><div><b>'+todayStat.done+'</b><span>오늘 완료</span></div><div><b>'+p7.rate+'%</b><span>최근 7일 완료율</span></div><div><b>'+p30.done+'</b><span>최근 30일 완료</span></div><div><b>'+movedItems.length+'</b><span>이월·이동</span></div></div>';
+    var body='';
+    if(tab==='overview'){
+      var projectRows=statsProjectRows(items,B.addCalendarDays(today,-29),today);
+      body=summary+
+        '<section class="mobile-stats-card"><div class="mobile-stats-card-head"><h3>최근 7일</h3><span>계획한 날짜 기준</span></div>'+statsBars(p7.rows)+'<div class="mobile-stats-rate"><b>'+p7.rate+'%</b><span>완료 '+p7.done+' / 계획 '+p7.total+'</span></div></section>'+
+        '<section class="mobile-stats-card"><div class="mobile-stats-card-head"><h3>프로젝트별 완료</h3><span>최근 30일</span></div>'+statsProjectHtml(projectRows)+'</section>';
+    }else if(tab==='complete'){
+      var days=statsState.days===30?30:7,period=days===30?p30:p7;
+      var counts={task:{label:'할 일',total:0,done:0},schedule:{label:'일정',total:0,done:0},memo:{label:'메모',total:0,done:0}};
+      var from=B.addCalendarDays(today,-(days-1));
+      items.forEach(function(it){if(!counts[it.type])return;var seen=false,done=false;for(var d=from;d<=today;d=B.addCalendarDays(d,1)){if(statsOccursOn(it,d)){seen=true;if(B.isOccurrenceCompleted?B.isOccurrenceCompleted(it,d):!!it.completed)done=true;}}if(seen){counts[it.type].total++;if(done)counts[it.type].done++;}});
+      body='<div class="mobile-stats-period"><button type="button" data-ext="stats-period" data-days="7" aria-pressed="'+(days===7)+'">7일</button><button type="button" data-ext="stats-period" data-days="30" aria-pressed="'+(days===30)+'">30일</button></div>'+
+        '<section class="mobile-stats-card"><div class="mobile-stats-card-head"><h3>완료 추이</h3><span>완료 '+period.done+' / 계획 '+period.total+'</span></div>'+statsBars(period.rows)+'</section>'+
+        '<section class="mobile-stats-card"><div class="mobile-stats-card-head"><h3>유형별 완료</h3></div><div class="mobile-stats-types">'+Object.keys(counts).map(function(k){var c=counts[k],rate=c.total?Math.round(c.done/c.total*100):0;return '<div><span>'+c.label+'</span><b>'+c.done+'/'+c.total+'</b><i><em style="width:'+rate+'%"></em></i></div>';}).join('')+'</div></section>';
+    }else{
+      var recent=movedItems.slice().sort(function(a,b){return (b.updatedAt||0)-(a.updatedAt||0);}).slice(0,12);
+      body='<section class="mobile-stats-card"><div class="mobile-stats-card-head"><h3>계획 변경</h3><span>현재 데이터 기준</span></div><div class="mobile-stats-change-kpi"><b>'+movedItems.length+'</b><span>날짜가 이동된 항목</span></div><p class="mobile-stats-explain">완료를 많이 하는 것보다 계획을 얼마나 자주 옮기는지 확인해 다음 계획을 현실적으로 잡는 데 쓰는 지표예요.</p></section>'+
+        '<section class="mobile-stats-card"><div class="mobile-stats-card-head"><h3>최근 이동 항목</h3></div>'+(recent.length?'<ul class="mobile-stats-change-list">'+recent.map(function(it){var from=it.migratedFrom||it.originalDate||'이전 날짜';return '<li><span>'+esc(it.text||'제목 없음')+'</span><small>'+esc(from)+' → '+esc(it.date)+'</small></li>';}).join('')+'</ul>':'<p class="mobile-stats-empty">아직 이동 기록이 없어요.</p>')+'</section>';
+    }
+    return '<div class="ext-mobile-page mobile-stats-page">'+head('통계','완료와 계획 변경을 실제 로컬 데이터에서 계산','완료 시각 기록이 없는 기존 데이터는 “완료한 날”이 아니라 “그 날짜에 계획된 항목의 현재 완료 상태”로 집계합니다.')+tabs+body+'</div>';
+  }
+  function renderStats(){
+    if(isCompactMobile()) return renderMobileStats();
+    var items=getAliveItems();var today=B.formatLocalDate(new Date());function period(n){var from=B.addCalendarDays(today,-(n-1));var list=items.filter(function(it){return it.date>=from&&it.date<=today;});var done=list.filter(function(it){return it.completed;}).length;return{total:list.length,done:done,rate:list.length?Math.round(done/list.length*100):0};}var w7=period(7),w30=period(30),moved=items.filter(function(it){return it.migratedFrom||(it.originalDate&&it.originalDate!==it.date);}).length;function stat(label,value,sub){return '<div class="dotdot-ext-stat"><b>'+value+'</b><span>'+label+(sub?' · '+sub:'')+'</span></div>';}return head('통계','완료·이월·유형 분포를 현재 로컬 데이터에서 계산','삭제되지 않은 항목만 집계하며 성과 압박용 스트릭은 만들지 않습니다.')+'<div class="dotdot-ext-card"><h3>최근 7일</h3>'+stat('완료',w7.done,'전체 '+w7.total)+stat('완료율',w7.rate+'%')+'<div class="dotdot-ext-bar"><i style="width:'+w7.rate+'%"></i></div></div><div class="dotdot-ext-card"><h3>최근 30일</h3>'+stat('완료',w30.done,'전체 '+w30.total)+stat('완료율',w30.rate+'%')+'<div class="dotdot-ext-bar"><i style="width:'+w30.rate+'%"></i></div></div><div class="dotdot-ext-card"><h3>계획 변경</h3>'+stat('이월·이동 흔적',moved+'건')+'</div>';
   }
   function fullBackupPayload(){var storage={};for(var i=0;i<localStorage.length;i++){var key=localStorage.key(i);if(key&&key.indexOf(P)===0)storage[key]=localStorage.getItem(key);}return{format:'dotdotplanner-full-backup-v1',exportedAt:new Date().toISOString(),storage:storage};}
   function downloadJson(payload,name){var blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(url);},1000);}
@@ -392,43 +511,7 @@
   // 않으면서 데이터 일부만 담는 앱 JSON 내보내기는 중복 버튼으로 판단해 제거한다
   // (요구사항: 실제 차이 없는데 중복 유지 금지 -- 여기서는 "복원 가능한 형식이
   // 하나뿐"이라는 실제 차이가 있으므로, 더 완전하고 실제로 쓰이는 쪽만 남긴다).
-  // 최종 감사: 단일 "기본 빠른 입력 유형"을 오늘/달력/퓨처로그 3개로 분리한다(요구사항).
-  // 현재값은 localStorage가 아니라 B.state(app.js와 실시간 공유되는 참조)에서 읽어
-  // 항상 실제 적용 중인 값을 보여준다. 변경은 B.setScreenDefaultInputMode로 위임 --
-  // 그쪽이 상태 갱신+저장+새로고침 없는 즉시 반영을 전부 처리하므로 여기서는
-  // location.reload()를 부르지 않는다(요구사항).
-  function inputModeSelectOptions(current){
-    return ['task','schedule','memo'].map(function(v){
-      var label=v==='task'?'할 일':(v==='schedule'?'일정':'메모');
-      return '<option value="'+v+'" '+(current===v?'selected':'')+'>'+label+'</option>';
-    }).join('');
-  }
-  function inputModeField(id,label,current){
-    return '<div class="dotdot-ext-field"><span>'+esc(label)+'</span><select class="dotdot-ext-select" id="'+id+'">'+inputModeSelectOptions(current)+'</select></div>';
-  }
-  function weekStartField(current){
-    var value=Number(current)===1?'1':'0';
-    return '<div class="dotdot-ext-field"><span>주 시작 요일</span><select class="dotdot-ext-select" id="ext-week-start"><option value="0" '+(value==='0'?'selected':'')+'>일요일 시작</option><option value="1" '+(value==='1'?'selected':'')+'>월요일 시작</option></select></div>';
-  }
-  function lunarField(enabled){
-    return '<div class="dotdot-ext-field"><span>음력 표시</span><label><input type="checkbox" id="ext-lunar-enabled" '+(enabled?'checked':'')+'> 사용</label></div>';
-  }
-  function renderSettings(){
-    var todayMode=S.todayDefaultInputMode||'task',
-        calendarMode=S.calendarDefaultInputMode||'schedule',
-        futureLogMode=S.futureLogDefaultInputMode||'schedule',
-        weekStartsOn=Number(S.calendarWeekStartsOn)===1?1:0,
-        lunarEnabled=!!S.lunarEnabled,
-        auto=localStorage.getItem(P+'autoRolloverEnabled')!=='false';
-    return head('설정','실제 앱에 연결되는 로컬 설정과 데이터 관리','복원 전 현재 정보는 타임스탬프 백업 키로 한 번 더 보존합니다.')
-      +'<div class="dotdot-ext-card"><h3>표시·입력</h3>'
-      +weekStartField(weekStartsOn)
-      +lunarField(lunarEnabled)
-      +inputModeField('ext-default-type-today','오늘 기본 빠른 입력 유형',todayMode)
-      +inputModeField('ext-default-type-calendar','달력 기본 빠른 입력 유형',calendarMode)
-      +inputModeField('ext-default-type-futurelog','퓨처로그 기본 빠른 입력 유형',futureLogMode)
-      +'<div class="dotdot-ext-field"><span>과거 미완료 자동 이월</span><label><input type="checkbox" id="ext-auto-rollover" '+(auto?'checked':'')+'> 사용</label></div></div><div class="dotdot-ext-card"><h3>데이터 관리</h3><div class="dotdot-ext-row"><button class="dotdot-ext-btn" data-ext="export-full">백업 파일 만들기</button><button class="dotdot-ext-btn" data-ext="import-full">백업에서 복원</button><button class="dotdot-ext-btn danger" data-ext="reset-all">모든 정보 초기화</button></div><p class="dotdot-ext-muted"><b>백업 파일 만들기</b> — 할 일, 일정, 메모, 완료 기록, 휴지통과 화면·입력 설정을 파일로 저장합니다. 첨부 파일은 포함되지 않습니다.</p><p class="dotdot-ext-muted"><b>백업에서 복원</b> — 현재 항목과 설정을 백업 파일의 내용으로 교체합니다. 첨부 파일은 변경되지 않습니다.</p><p class="dotdot-ext-muted"><b>모든 정보 초기화</b> — 할 일·일정·메모, 완료 기록, 휴지통, 첨부 파일, 화면·입력 설정을 전부 삭제합니다. 되돌릴 수 없습니다.</p></div>';
-  }
+  function renderSettings(){var def=localStorage.getItem(P+'defaultInputMode')||'task',auto=localStorage.getItem(P+'autoRolloverEnabled')!=='false';return head('설정','실제 앱에 연결되는 로컬 설정과 데이터 관리','가져오기는 현재 데이터를 타임스탬프 백업 키에 먼저 보존한 뒤 교체합니다.')+'<div class="dotdot-ext-card"><h3>표시·입력</h3><div class="dotdot-ext-field"><span>기본 빠른 입력 유형</span><select class="dotdot-ext-select" id="ext-default-type"><option value="task" '+(def==='task'?'selected':'')+'>할 일</option><option value="schedule" '+(def==='schedule'?'selected':'')+'>일정</option><option value="memo" '+(def==='memo'?'selected':'')+'>메모</option></select></div><div class="dotdot-ext-field"><span>과거 미완료 자동 이월</span><label><input type="checkbox" id="ext-auto-rollover" '+(auto?'checked':'')+'> 사용</label></div></div><div class="dotdot-ext-card"><h3>데이터 관리</h3><div class="dotdot-ext-row"><button class="dotdot-ext-btn" data-ext="export-full">백업 파일 만들기</button><button class="dotdot-ext-btn" data-ext="import-full">백업에서 복원</button><button class="dotdot-ext-btn danger" data-ext="reset-all">모든 정보 초기화</button></div><p class="dotdot-ext-muted"><b>백업 파일 만들기</b> — 할 일, 일정, 메모와 앱 설정을 파일로 저장합니다.</p><p class="dotdot-ext-muted"><b>백업에서 복원</b> — 현재 정보를 백업 파일의 내용으로 교체합니다.</p><p class="dotdot-ext-muted"><b>모든 정보 초기화</b> — 할 일·일정·메모, 완료 기록, 휴지통, 첨부 파일, 화면·입력 설정을 전부 삭제합니다. 되돌릴 수 없습니다.</p></div>';}
   function getProfile(){var p=readJSON(P+'localProfile',null);return p&&p.name?p:null;}
   function initials(name){var n=String(name||'').trim();return !n?'＋':(/[가-힣]/.test(n)?n.slice(-2):n.slice(0,2).toUpperCase());}
   // 요구사항: 브라우저 기본 title 툴팁 대신 앱 공용 커스텀 툴팁(app.js의
@@ -440,22 +523,6 @@
   var sideRenderers={routine:renderRoutine,search:renderSearch,stats:renderStats,settings:renderSettings,account:renderAccount};
   function renderSideView(){if(activeSideView&&sideRenderers[activeSideView])sideOverlay.innerHTML=sideRenderers[activeSideView]();}
   function focusBack(id,value){var el=document.getElementById(id);if(!el)return;el.value=value;el.focus();try{el.setSelectionRange(value.length,value.length);}catch(e){}}
-  function deleteAttachmentDatabase() {
-    if (!window.indexedDB || !B.constants.ATTACHMENT_DB_NAME) return Promise.resolve();
-    var closePromise = B.closeAttachmentDb ? B.closeAttachmentDb() : Promise.resolve();
-    return Promise.resolve(closePromise).then(function () {
-      return new Promise(function (resolve, reject) {
-        var settled = false;
-        var request;
-        try { request = indexedDB.deleteDatabase(B.constants.ATTACHMENT_DB_NAME); }
-        catch (err) { reject(err); return; }
-        request.onsuccess = function () { if (!settled) { settled = true; resolve(); } };
-        request.onerror = function () { if (!settled) { settled = true; reject(request.error || new Error('첨부 파일 저장소 삭제 실패')); } };
-        request.onblocked = function () { if (!settled) { settled = true; reject(new Error('첨부 파일 저장소가 다른 창에서 사용 중입니다. 다른 DotDotPlanner 창을 닫고 다시 시도하세요.')); } };
-      });
-    });
-  }
-
   function wireSideEvents(){
     sideOverlay.addEventListener('click',function(e){var el=e.target.closest('[data-ext]');if(!el)return;var action=el.dataset.ext;
       if(action==='routine-add'){
@@ -474,23 +541,33 @@
       if(action==='routine-toggle'||action==='routine-delete'){var rs=getRoutines(),id=el.dataset.id;if(action==='routine-delete')rs=rs.filter(function(r){return r.id!==id;});else rs.forEach(function(r){if(r.id===id)r.active=!r.active;});saveRoutines(rs);renderSideView();return;}
       if(action==='routine-materialize'){materializeDueRoutines(B.formatLocalDate(new Date()),true,false);return;}
       if(action==='search-open'){openInToday(el.dataset.itemId, el.dataset.date);return;}
+      if(action==='stats-tab'){statsState.tab=el.dataset.tab||'overview';renderSideView();return;}
+      if(action==='stats-period'){statsState.days=Number(el.dataset.days)===30?30:7;renderSideView();return;}
       if(action==='export-full'){downloadJson(fullBackupPayload(),'dotdotplanner-full-backup-'+B.formatLocalDate(new Date())+'.json');return;}
       if(action==='import-full'){var input=document.createElement('input');input.type='file';input.accept='application/json';input.onchange=function(){var file=input.files&&input.files[0];if(!file)return;var reader=new FileReader();reader.onload=function(){try{var data=JSON.parse(reader.result);if(!data||data.format!=='dotdotplanner-full-backup-v1'||!data.storage)throw new Error('지원하지 않는 형식');if(!confirm('현재 로컬 데이터를 백업한 뒤 가져온 데이터로 교체할까요?'))return;var backup=fullBackupPayload();localStorage.setItem(P+'import_backup_'+Date.now(),JSON.stringify(backup));storageKeys().filter(function(k){return k.indexOf(P)===0&&!k.startsWith(P+'import_backup_');}).forEach(function(k){localStorage.removeItem(k);});Object.keys(data.storage).forEach(function(k){if(k.indexOf(P)===0)localStorage.setItem(k,data.storage[k]);});location.reload();}catch(err){alert('가져오기에 실패했습니다: '+err.message);}};reader.readAsText(file);};input.click();return;}
       if(action==='reset-all'){
-        if(el.disabled)return;
+        // 7차/8차 감사: 기존에는 confirm()을 두 번 연달아 띄웠다 -- 문구만 바꾸라는
+        // 요구사항(새 dialog 금지)에 따라 새 모달을 만들지 않고 native confirm 하나로
+        // 합치되, 실제 삭제 범위(할 일/일정/메모/휴지통/첨부 파일/설정)와 되돌릴 수
+        // 없다는 점을 한 메시지에 전부 담는다. native confirm은 버튼 라벨("취소"/
+        // "모든 정보 초기화")도 기본 포커스도 바꿀 수 없다 -- 이 두 가지는 새 모달
+        // 없이는 만족시킬 수 없는 브라우저 제약이라 문구로만 명시한다.
         if(!confirm('모든 정보를 초기화할까요?\n\n할 일·일정·메모, 완료 기록, 휴지통, 첨부 파일, 화면·입력 설정을 전부 삭제합니다.\n이 작업은 되돌릴 수 없습니다.'))return;
-        el.disabled=true;
-        deleteAttachmentDatabase().then(function(){
-          storageKeys().filter(function(k){return k.indexOf(P)===0;}).forEach(function(k){localStorage.removeItem(k);});
-          location.reload();
-        }).catch(function(err){
-          el.disabled=false;
-          alert('모든 정보 초기화에 실패했습니다: '+(err&&err.message?err.message:String(err)));
-        });
+        storageKeys().filter(function(k){return k.indexOf(P)===0;}).forEach(function(k){localStorage.removeItem(k);});
+        // 요구사항(모든 정보 초기화 안전성): 이전에는 localStorage만 지우고 첨부 파일
+        // IndexedDB(dotdotplanner_files)는 그대로 남아 "모든 정보"라는 이름과 실제
+        // 삭제 범위가 어긋났다 -- 이제 같이 지운다.
+        if(window.indexedDB&&B.constants.ATTACHMENT_DB_NAME){try{indexedDB.deleteDatabase(B.constants.ATTACHMENT_DB_NAME);}catch(e){}}
+        location.reload();
         return;
       }
       if(action==='profile-save'){var name=(document.getElementById('ext-profile-name').value||'').trim();if(!name)return;writeJSON(P+'localProfile',{name:name,updatedAt:new Date().toISOString()},'preferences');paintProfile();renderSideView();return;}
       if(action==='profile-clear'){localStorage.removeItem(P+'localProfile');paintProfile();renderSideView();return;}
+    });
+    sideOverlay.addEventListener('keydown',function(e){
+      if(!isCompactMobile()) return;
+      var row=e.target.closest&&e.target.closest('.search-row[data-ext="search-open"]');
+      if(row&&(e.key==='Enter'||e.key===' ')){e.preventDefault();openInToday(row.dataset.itemId,row.dataset.date);}
     });
     sideOverlay.addEventListener('input',function(e){if(e.target.id==='ext-search-q'){searchState.q=e.target.value;var q=searchState.q;renderSideView();focusBack('ext-search-q',q);}});
     sideOverlay.addEventListener('change',function(e){var id=e.target.id;
@@ -507,25 +584,13 @@
       if(id==='ext-search-to'){searchState.to=e.target.value;renderSideView();}
       if(id==='ext-theme'){if(safeSetRaw(P+'theme',e.target.value,'preferences'))document.documentElement.dataset.theme=e.target.value;}
       if(id==='ext-week-days'){if(safeSetRaw(P+'weeklyVisibleDays',e.target.value,'preferences'))location.reload();}
-      if(id==='ext-week-start'){
-        if(B.setCalendarWeekStartsOn) B.setCalendarWeekStartsOn(Number(e.target.value));
-        else if(safeSetRaw(P+'calendarWeekStartsOn',e.target.value,'preferences')) location.reload();
-      }
-      if(id==='ext-lunar-enabled'){
-        if(B.setLunarEnabled) B.setLunarEnabled(!!e.target.checked);
-        else if(safeSetRaw(P+'lunarEnabled',String(!!e.target.checked),'preferences')) location.reload();
-      }
-      // 최종 감사: 화면별 기본 빠른 입력 유형 -- B.setScreenDefaultInputMode가 상태
-      // 갱신·저장·(그 화면이 열려 있으면) 즉시 반영을 전부 처리하므로 여기서는
-      // location.reload()를 부르지 않는다(요구사항: reload 없이 즉시 반영).
-      if(id==='ext-default-type-today'&&B.setScreenDefaultInputMode){B.setScreenDefaultInputMode('today',e.target.value);}
-      if(id==='ext-default-type-calendar'&&B.setScreenDefaultInputMode){B.setScreenDefaultInputMode('calendar',e.target.value);}
-      if(id==='ext-default-type-futurelog'&&B.setScreenDefaultInputMode){B.setScreenDefaultInputMode('futureLog',e.target.value);}
+      if(id==='ext-week-start'){if(safeSetRaw(P+'calendarWeekStartsOn',e.target.value,'preferences'))location.reload();}
+      if(id==='ext-default-type'){if(safeSetRaw(P+'defaultInputMode',e.target.value,'preferences'))location.reload();}
       if(id==='ext-auto-rollover'){if(safeSetRaw(P+'autoRolloverEnabled',String(e.target.checked),'preferences'))location.reload();}
       if(e.target.dataset.ext==='routine-auto'){var routines=getRoutines(),rid=e.target.dataset.id;routines.forEach(function(r){if(r.id===rid)r.autoCreate=e.target.checked;});saveRoutines(routines);}
     });
   }
-  function bootSideViews(){sideOverlay=document.createElement('div');sideOverlay.className='dotdot-ext-overlay';sideOverlay.id='dotdot-ext-overlay';document.body.appendChild(sideOverlay);wireSideEvents();['routine','search','stats','settings'].forEach(function(view){var el=document.querySelector('.side-item.'+view);if(!el)return;el.setAttribute('role','button');el.tabIndex=0;el.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();openSideView(view);},true);el.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '){e.preventDefault();openSideView(view);}});});['today','calendar','future-log','trash'].forEach(function(view){var el=document.querySelector('.side-item.'+view);if(!el)return;el.addEventListener('click',closeSideView,true);el.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '){closeSideView();}});});var profile=document.querySelector('.profile');paintProfile();if(profile){profile.setAttribute('role','button');profile.tabIndex=0;profile.addEventListener('click',function(){openSideView('account');});profile.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '){e.preventDefault();openSideView('account');}});}window.addEventListener('resize',function(){if(activeSideView)placeSideOverlay();});
+  function bootSideViews(){sideOverlay=document.createElement('div');sideOverlay.className='dotdot-ext-overlay';sideOverlay.id='dotdot-ext-overlay';document.body.appendChild(sideOverlay);wireSideEvents();['routine','search','stats','settings'].forEach(function(view){var el=document.querySelector('.side-item.'+view);if(!el)return;el.setAttribute('role','button');el.tabIndex=0;el.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();openSideView(view);},true);el.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '){e.preventDefault();openSideView(view);}});});['today','calendar','future-log','trash'].forEach(function(view){var el=document.querySelector('.side-item.'+view);if(el)el.addEventListener('click',closeSideView,true);});var profile=document.querySelector('.profile');paintProfile();if(profile){profile.setAttribute('role','button');profile.tabIndex=0;profile.addEventListener('click',function(){openSideView('account');});profile.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '){e.preventDefault();openSideView('account');}});}var lastCompactMobile=isCompactMobile();window.addEventListener('resize',function(){if(!activeSideView)return;placeSideOverlay();var nextCompact=isCompactMobile();if(nextCompact!==lastCompactMobile){lastCompactMobile=nextCompact;renderSideView();}});
     // 단축키는 sideOverlay 시스템 밖에서 독립적으로 뜨는 왼쪽 패널이라 여기서 따로 만든다.
     buildShortcutPanel();
     var shortcutBtn=document.querySelector('.side-item.shortcut');

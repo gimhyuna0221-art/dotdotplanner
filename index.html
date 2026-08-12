@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content" />
 <title>DotDotPlanner Coordinate Lock</title>
 <script>
   // 5: 저장된 테마를 body 렌더 전에(스타일 파싱 전) 적용해 밝은 화면이 잠깐 보였다가
@@ -41,6 +41,7 @@
     --lav-soft:#efeefe;
     --sun:#ff5652;
     --sat:#4d92ff;
+    --danger:#ff5652;
 
     --bg-page:#f3f3f5;
     --bg-card:#ffffff;
@@ -92,6 +93,23 @@
     --schedule-neutral-bg:#e3e5ea;
     --schedule-neutral-border:#aeb3bd;
     --schedule-neutral-text:#3d414a;
+
+    /* 디자인 시스템 정돈(2026-08): 기존 하드코딩 값을 일괄 치환하지 않고, 이번에
+       손대는 규칙과 앞으로의 신규 규칙이 재사용할 스페이싱/반경/컨트롤/그림자 스케일. */
+    --space-1:4px;
+    --space-2:8px;
+    --space-3:12px;
+    --space-4:16px;
+    --space-5:20px;
+    --space-6:24px;
+    --radius-sm:6px;
+    --radius-md:8px;
+    --radius-lg:10px;
+    --radius-xl:14px;
+    --radius-pill:999px;
+    --control-sm:26px;
+    --control-md:34px;
+    --shadow-menu:0 4px 16px var(--overlay-shadow);
   }
   :root[data-theme="dark"]{
     color-scheme: dark;
@@ -208,7 +226,9 @@
   .side-nav-bottom{display:flex;flex-direction:column;align-items:center;gap:6px;margin-top:auto;margin-bottom:60px}
   .side-item{position:relative;width:76px;height:68px;border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-size:14px;font-weight:700;color:var(--icon-strong);flex:none;cursor:pointer}
   .side-item svg{width:25px;height:25px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+  .side-item:hover{background:var(--bg-hover)}
   .side-item.active{background:var(--lav-soft);color:var(--lav);font-weight:700}
+  .side-item.active:hover{background:var(--lav-soft)}
   .side-item:focus{outline:none}
   .side-item:focus-visible{outline:2px solid var(--lav);outline-offset:2px}
   /* 8: 휴지통에 항목이 있을 때만 보이는 작은 개수 표시 — 아이콘 위 모서리에 겹쳐 배치해
@@ -245,6 +265,12 @@
      우선순위) [hidden] 속성만으로는 실제로 안 가려진다(클릭이 뒤로 새는 실제 버그였음)
      -- 더 구체적인 선택자로 명시적으로 덮어쓴다. */
   .top[hidden],.weekly[hidden]{display:none}
+  /* 2D Adaptive 감사(2026-08-08): .top/.weekly의 실제 높이는 이 CSS 규칙이 아니라
+     app.js의 applyWeeklyPanelPosition()이 매 로드·리사이즈마다 인라인 style로 덮어쓴다
+     (Weekly 경계 드래그 리사이즈 기능 때문 -- 03_SCREEN_SPEC.md §3.4). 인라인 style이
+     이 규칙보다 항상 우선하므로 세로 높이에 따른 기본 분배는 여기(CSS max-height
+     media query)가 아니라 app.js의 getWeeklyDefaultTop()에서 처리한다(WEEKLY_DEFAULT_TOP
+     정의부 주석 참고). */
   .top::-webkit-scrollbar{width:9px}
   .top::-webkit-scrollbar-track{background:var(--scrollbar-track,transparent)}
   .top::-webkit-scrollbar-thumb{background:var(--scrollbar-thumb);border-radius:99px}
@@ -345,6 +371,48 @@
      overflow-y:auto로 실제 클리핑하므로 Weekly와 화면상 겹칠 일 자체가 없어져(항상 .top의
      526px 뷰포트 안에서만 보임) 별도 z-index 경쟁이 필요 없다. */
   .schedule-panel{position:absolute;left:20px;right:20px;top:460px;height:107px}
+  /* Desktop/Tablet 2차 UX 재검토(2026-08-09): calendar-card 세로 반응형 구조 개편.
+     기존에는 이 카드 안의 모든 자식(cal-title/cal-nav/weekdays/dates/schedule-rule/
+     schedule-panel)이 카드 자신을 기준으로 한 절대좌표(top:25/68/91/447/460px)로만
+     배치돼 있어, 카드는 그 좌표를 전부 만족시키는 588px 고정 높이로만 존재할 수 있었다
+     -- 자식 하나의 높이라도 바꾸려면 그 아래 모든 형제의 top을 다시 계산해야 했고, 이걸
+     viewport마다 따로 하면 "viewport별 top 값 여러 개 하드코딩"이 돼 버린다(피해야 할
+     패턴, 요구사항 3). 640px 이상(Desktop/Tablet, 이번 작업 범위)에서는 이 절대좌표를
+     모두 풀고 실제 문서 흐름(normal flow, position:static)으로 바꾼다 -- 각 구간이 바로
+     앞 구간의 실제 렌더된 아래쪽에 자연스럽게 이어지므로, 어떤 자식의 높이가 줄어들면
+     그 아래 모든 형제가 좌표 재계산 없이 자동으로 따라 올라온다(칸4 카드 자신은
+     display:flex;flex-direction:column인 세로 스택, 높이는 콘텐츠 합이 그대로 결정).
+     640px 미만(스마트폰, 이번 작업 대상 아님)은 위 기본 규칙(절대좌표) 그대로 둬 전혀
+     건드리지 않는다. */
+  @media (min-width:640px){
+    .calendar-card{display:flex;flex-direction:column;height:auto}
+    .cal-header{display:flex;align-items:center;justify-content:space-between;padding:20px 18px 0 24px;flex:0 0 auto}
+    .cal-title{position:static}
+    .cal-nav{position:static}
+    .weekdays{position:static;padding:0 20px;margin-top:19px;flex:0 0 auto}
+    /* dates의 6행 격자 높이(기존 58px 고정)가 세로 반응형의 실제 지렛대다 -- 날짜 숫자
+       하나만 담는 칸이라 달력 안에서 정보 밀도가 가장 낮아, 줄여도 가독성 손실이 가장
+       작다. .top 자신의 실제 높이가 이미 getWeeklyDefaultTop()으로 뷰포트 높이에 비례해
+       움직이므로(app.js), 여기서도 같은 신호(뷰포트 높이)를 vh로 그대로 따라가면
+       "여러 top 하드코딩" 대신 연속된 공식 하나로 전체 구간을 커버한다 -- 값이 끊기는
+       지점(=하드코딩 경계) 자체가 없다. */
+    .dates{position:static;padding:0 20px;margin-top:7px;grid-template-rows:repeat(6,clamp(28px,5.2vh,58px));flex:0 0 auto}
+    .date{width:clamp(20px,3.3vh,36px);height:clamp(20px,3.3vh,36px)}
+    .schedule-rule{position:static;margin:8px 20px 0;flex:0 0 auto}
+    .schedule-panel{position:static;height:auto;padding:12px 20px 20px;flex:0 0 auto}
+  }
+  /* 세로 높이가 짧을 때(예: 1366×768, 1280×800) 날짜 격자는 이미 clamp 하한(20~28px)
+     근처까지 줄어든 상태라 더 줄이면 숫자가 읽기 어려워진다 -- 대신 글자 크기·입력창
+     높이는 그대로 두고 순수 여백(헤더/구간 사이 margin, schedule-panel 안팎 padding)만
+     추가로 줄여 남은 여유를 짜낸다(요구사항 4: editor 입력 자체는 그대로 유지). */
+  @media (min-width:640px) and (max-height:820px){
+    .cal-header{padding-top:14px}
+    .weekdays{margin-top:12px}
+    .dates{margin-top:4px}
+    .schedule-rule{margin-top:6px}
+    .schedule-panel{padding:8px 20px 12px}
+    .range-row{margin-top:4px}
+  }
   .all-day-row{height:24px;display:flex;align-items:center;justify-content:space-between;padding:0 4px 0 3px;font-size:12px;font-weight:700}
   .all-day-label{display:flex;align-items:center;gap:8px}
   .mini-clock{width:18px;height:18px;border:2px solid var(--icon-muted);border-radius:50%;position:relative;flex:0 0 auto}
@@ -488,7 +556,7 @@
   .date-row{margin-top:15px}.time-row{margin-top:8px}.time-row .range-box{text-align:center;justify-content:center;font-variant-numeric:tabular-nums}
 
   /* 날짜 휠 선택 팝업 — 기존 type-menu/move-menu와 같은 카드 배경/테두리/그림자 언어를 재사용한다. */
-  .date-wheel-popup{position:fixed;z-index:50;background:var(--bg-card);border:1px solid var(--line2);border-radius:10px;box-shadow:0 4px 16px var(--overlay-shadow);padding:8px;width:220px}
+  .date-wheel-popup{position:fixed;z-index:50;background:var(--bg-card);border:1px solid var(--line2);border-radius:var(--radius-lg);box-shadow:var(--shadow-menu);padding:8px;width:220px}
   .date-wheel-cols{display:flex;gap:4px;position:relative}
   .date-wheel-col{flex:1;height:160px;overflow-y:auto;scroll-snap-type:y mandatory;outline:none;-ms-overflow-style:none;scrollbar-width:none}
   .date-wheel-col::-webkit-scrollbar{display:none}
@@ -531,9 +599,14 @@
   .rollover-toggle,.rollover-count,.rollover-today-btn,.delete-btn{white-space:nowrap}
   .rollover-toggle{border:0;background:none;padding:0;cursor:pointer;font:inherit;display:flex;align-items:center;gap:6px;color:var(--muted)}
   /* 이월 헤더의 일괄 '오늘'/'삭제' -- 이월 항목이 0개면 비활성화한다(요구사항). */
-  .rollover-today-btn{border:0;background:none;padding:0;cursor:pointer;font:inherit;color:var(--lav);font-weight:700}
+  /* 디자인 정돈: 대괄호로 감싼 텍스트 링크 대신, 화면 곳곳의 다른 보조 버튼과 같은
+     hover/focus 배경 언어(6px 반경 칩)를 준다 -- 라벨 텍스트에서 대괄호는 제거하고
+     (기능·aria-label은 그대로), 대신 이 padding/radius로 클릭 가능 영역을 표시한다. */
+  .rollover-today-btn{border:0;background:none;padding:3px 7px;margin:-3px -7px;border-radius:var(--radius-sm);cursor:pointer;font:inherit;color:var(--lav);font-weight:700}
+  .rollover-today-btn:hover:not(:disabled),.rollover-today-btn:focus-visible{background:var(--lav-soft);outline:none}
   .rollover-today-btn:disabled{color:var(--faint);cursor:default}
-  .delete-btn{border:0;background:none;padding:0;cursor:pointer;font:inherit;color:var(--muted)}
+  .delete-btn{border:0;background:none;padding:3px 7px;margin:-3px -7px;border-radius:var(--radius-sm);cursor:pointer;font:inherit;color:var(--muted)}
+  .delete-btn:hover:not(:disabled),.delete-btn:focus-visible{background:var(--bg-danger-soft);color:var(--danger);outline:none}
   .delete-btn:disabled{color:var(--faint);cursor:default}
   /* 이월 목록과 오늘 일반 목록 사이의 단순 구분선 -- 접혔거나 이월이 0개면 숨긴다. */
   .rollover-divider{height:1px;background:var(--line);margin:12px 0}
@@ -543,7 +616,7 @@
   .rollover-item-actions{display:flex;align-items:center;gap:2px;flex:none}
   .rollover-item-action-btn{border:0;background:none;padding:4px 8px;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;color:var(--lav);white-space:nowrap}
   .rollover-item-action-btn:hover,.rollover-item-action-btn:focus-visible{background:var(--bg-hover);outline:none}
-  .rollover-item-action-btn.danger{color:var(--sun)}
+  .rollover-item-action-btn.danger{color:var(--danger)}
   .rollover-item-action-btn.danger:hover{background:var(--bg-danger-soft)}
   /* 이달의 할 일: 지난달 미완료 이월 안내 -- 위 Daily .rollover/.rollover-toggle/.tri/
      .rollover-count/.rollover-item-actions/.rollover-item-action-btn/.rollover-divider를
@@ -578,7 +651,13 @@
   .task>.event-body,.task>.row-title{flex:1 1 auto;min-width:0}
   /* 3: 부모(.task)에서 user-select:none이 상속되긴 하지만, Shift 범위 선택 중 파란 텍스트
      선택이 생기지 않아야 한다는 요구를 명시적으로 보장하기 위해 여기서도 직접 선언한다. */
-  .row-title{font-size:14px;font-weight:650;line-height:1.3;letter-spacing:normal;cursor:text;user-select:none}
+  .row-title{font-size:14px;font-weight:650;line-height:1.3;letter-spacing:normal;cursor:text;user-select:none;display:flex;align-items:baseline;min-width:0}
+  /* 320px 감사: Daily의 .row-title엔 뒤따르는 상세/todo 배지(card-detail-badge)가
+     같은 줄에 붙어야 해서(3589줄 주석) ellipsis를 title 전체가 아니라 텍스트 span
+     (.row-title-text)에만 건다 -- 배지는 잘리지 않고, 좁은 폭에서 제목 글자 수만
+     줄어든다. 이전에는 폭 제약이 전혀 없어(min-width:0도 없음) CJK 텍스트가 글자
+     단위로 세로 줄바꿈되는 심각한 붕괴가 있었다(320px 실측 확인). */
+  .row-title-text{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:28px;flex:0 1 auto}
   .task.done{color:var(--text-disabled)}.task.done .row-title{text-decoration:line-through}.task.muted{color:var(--faint)}
   .task.event .event-body{display:flex;flex-direction:column;line-height:1.25}
   .task.event small{font-size:10px;color:var(--text-tertiary);padding-left:6px}
@@ -634,7 +713,7 @@
   .trash-row-actions{display:flex;gap:6px}
   .trash-action-btn{border:0;background:none;padding:4px 10px;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;color:var(--lav);font-family:inherit}
   .trash-action-btn:hover{background:var(--lav-soft)}
-  .trash-action-btn.danger{color:var(--sun)}
+  .trash-action-btn.danger{color:var(--danger)}
   /* 라운드2 10: 휴지통 행의 드래그 핸들 -- .trash-row는 34px/1fr/auto 3칸 grid라 새 칸을
      끼워 넣으면 4번째 항목이 다음 줄로 밀려 레이아웃이 깨진다. 그래서 grid 칸수를 바꾸지
      않고, 아이콘 칸 위에 절대 위치로 살짝 겹쳐 그린다(다른 grip 핸들처럼 hover/focus 시만
@@ -666,7 +745,7 @@
   .trash-filter{display:flex;align-items:center;gap:6px}
   .trash-filter-btn{border:1px solid var(--line2);background:var(--bg-card);border-radius:999px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;color:var(--muted);font-family:inherit;display:flex;align-items:center;justify-content:center}
   .trash-filter-btn[aria-pressed="true"]{color:var(--lav);border-color:var(--lav);background:var(--lav-soft)}
-  .empty-trash-btn{border:1px solid var(--line2);background:var(--bg-card);border-radius:8px;padding:7px 12px;font-size:12px;font-weight:700;cursor:pointer;color:var(--sun);font-family:inherit}
+  .empty-trash-btn{border:1px solid var(--line2);background:var(--bg-card);border-radius:8px;padding:7px 12px;font-size:12px;font-weight:700;cursor:pointer;color:var(--danger);font-family:inherit}
   .empty-trash-btn:disabled{color:var(--faint);border-color:var(--line2);cursor:default}
   .empty-trash-btn:not(:disabled):hover{background:var(--bg-danger-soft)}
 
@@ -682,8 +761,8 @@
   .trash-bulk-btn{border:0;background:var(--bg-card);border-radius:6px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;color:var(--lav);font-family:inherit}
   .trash-bulk-btn:hover{background:var(--lav)}
   .trash-bulk-btn:hover{color:#fff}
-  .trash-bulk-btn.danger{color:var(--sun)}
-  .trash-bulk-btn.danger:hover{background:var(--sun);color:#fff}
+  .trash-bulk-btn.danger{color:var(--danger)}
+  .trash-bulk-btn.danger:hover{background:var(--danger);color:#fff}
 
   /* Weekly 패널 전체를 세로 flex 컨테이너로 바꿔 헤더는 고정, 본문(.weekly-body)만 스크롤되게
      한다. 위치·배경·모서리는 기존 값 그대로 유지한다. 4: top(JS가 state.weeklyPanel.top으로
@@ -693,6 +772,11 @@
   /* 반응형: width 고정값(1497px) 대신 right:0으로 앵커링해 셸 폭에 맞춰 유동적으로
      줄어들게 한다(JS의 top 픽셀 기반 위치·드래그 로직은 그대로 유지 — 폭만 바뀐다). */
   .weekly{position:absolute;left:128px;top:542px;bottom:0;right:0;background:var(--weekly);border-radius:18px 18px 0 0;box-shadow:0 -6px 20px var(--shadow-panel);z-index:2;display:flex;flex-direction:column;overflow:hidden}
+  /* 2D Adaptive 감사(2026-08-08): 이 542px는 최초 렌더 전 자리만 잡아 두는 값이고,
+     실제 top은 app.js의 initWeeklyPanel()/applyWeeklyPanelPosition()이 인라인 style로
+     즉시 덮어쓴다(위 .top 규칙과 같은 이유 -- Weekly 경계 드래그 리사이즈 기능,
+     03_SCREEN_SPEC.md §3.4). 세로 높이별 기본 분배는 CSS가 아니라 app.js의
+     getWeeklyDefaultTop()에서 처리한다. */
   /* 1: 토글(내리기/올리기)에서만 붙는 짧은 전환 애니메이션 — 경계 드래그 중에는 즉시 반응해야
      하므로 이 클래스를 붙이지 않는다(app.js의 setWeeklyPanelAnimating 참고). transform도 함께
      트랜지션해야 슬라이드가 애니메이션된다. */
@@ -705,7 +789,13 @@
   .weekly.is-lowered .week-row-divider{pointer-events:none;cursor:default}
   /* 2: Weekly 상단 경계의 드래그 핸들 — weekly-head가 margin-top:20px부터 시작하므로
      0~10px 구간은 원래도 빈 배경이라, 헤더 버튼과 겹치지 않고 딱 그 영역만 차지한다. */
-  .weekly-resize-handle{position:absolute;left:0;right:0;top:0;height:10px;cursor:ns-resize}
+  /* v16: 터치/펜에서도 Weekly 상단 경계 드래그가 브라우저의 세로 pan으로 빼앗기지 않게 한다.
+     pointerdown의 preventDefault만으로는 모바일 Chrome이 이동 중 pointercancel을 보낼 수 있으므로
+     실제 제스처 소유권은 CSS touch-action:none으로 명시해야 한다. */
+  .weekly-resize-handle{position:absolute;left:0;right:0;top:0;height:10px;cursor:ns-resize;touch-action:none;user-select:none;-webkit-user-select:none}
+  /* 손가락은 10px 경계를 안정적으로 잡기 어렵다. 헤더가 20px 아래에서 시작하므로 coarse pointer에서만
+     18px까지 히트 영역을 늘려도 Weekly 헤더 버튼과 겹치지 않는다. 마우스 레이아웃은 그대로 유지한다. */
+  @media (pointer:coarse){.weekly-resize-handle{height:18px}}
   .weekly-head{flex:0 0 auto;margin:20px 16px 0;height:48px;display:flex;align-items:center;gap:28px}
   .week-title{display:flex;align-items:center;gap:12px}
   .collapse{border:0;background:none;padding:0;cursor:pointer;color:var(--icon-muted);width:32px;height:32px;display:grid;place-items:center}
@@ -726,7 +816,8 @@
      밀어내고, 표시일수/이동 버튼과 헷갈리지 않게 더 작은 아이콘 버튼으로 둔다. */
   .week-range-menu-btn{margin-left:auto;border:0;background:none;padding:0;cursor:pointer;color:var(--icon-muted);width:28px;height:28px;border-radius:6px;display:grid;place-items:center;font-size:20px;font-weight:700;line-height:1}
   .week-range-menu-btn:hover,.week-range-menu-btn[aria-expanded="true"]{background:var(--bg-hover);color:var(--ink)}
-  .week-range-menu{position:fixed;z-index:50;background:var(--bg-card);border:1px solid var(--line2);border-radius:10px;box-shadow:0 4px 16px var(--overlay-shadow);padding:6px;min-width:168px}
+  .week-range-menu-btn:focus-visible{outline:2px solid var(--lav);outline-offset:1px}
+  .week-range-menu{position:fixed;z-index:50;background:var(--bg-card);border:1px solid var(--line2);border-radius:var(--radius-lg);box-shadow:var(--shadow-menu);padding:6px;min-width:168px}
   .week-range-menu-label{padding:6px 10px 4px;font-size:11px;font-weight:800;color:var(--muted)}
   .week-range-menu-item{padding:8px 10px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:650;color:var(--ink);white-space:nowrap}
   .week-range-menu-item:hover,.week-range-menu-item:focus{background:var(--bg-hover);outline:none}
@@ -753,7 +844,15 @@
      단일 행(비분할) 상태의 기본값은 반드시 auto여야 한다 -- 1199px 이하처럼 상위가
      height:auto(콘텐츠 기준)인 구간에서 basis:0로 두면 분배할 여유 공간이 없어 행이
      찌그러진다. */
-  .week-row-scroll{overflow-y:auto;overflow-x:hidden;overscroll-behavior-y:contain;scrollbar-gutter:stable;scrollbar-width:thin;flex:1 1 auto;min-height:0}
+  /* Desktop/Tablet 전면 재검토(2026-08-09): 아래 829줄 .week-grid의 min-width(카드 최소
+     132px 보존)와 짝을 이루는 규칙인데, 여기가 overflow-x:hidden이면 min-width가 실제
+     남은 폭보다 넓어졌을 때(예: 좁은 뷰포트에서 12~14일 선택) 그 초과분이 스크롤이 아니라
+     그냥 잘려서 화면 밖 카드는 아예 보이지도, 클릭·드래그도 안 되는 걸 실측으로 확인했다
+     (768px 뷰포트·14일에서 마지막 몇 개 열이 clientWidth 밖으로 나가 접근 불가). "readable
+     minimum width는 지키되 넘치면 컴포넌트 내부 가로 스크롤을 허용한다"는 요구사항대로
+     auto로 바꿔 초과분을 실제로 스크롤해서 도달할 수 있게 한다 -- 세로 스크롤(.week-row-scroll
+     자체의 overflow-y)·카드 내부 레이아웃·min-width 계산식은 전혀 건드리지 않는다. */
+  .week-row-scroll{overflow-y:auto;overflow-x:auto;overscroll-behavior-y:contain;scrollbar-gutter:stable;scrollbar-width:thin;flex:1 1 auto;min-height:0}
   .week-row-scroll::-webkit-scrollbar{width:9px;height:9px}
   .week-row-scroll::-webkit-scrollbar-track{background:var(--scrollbar-track,transparent)}
   .week-row-scroll::-webkit-scrollbar-thumb{background:var(--scrollbar-thumb);border-radius:99px}
@@ -809,6 +908,14 @@
 
   body.dnd-active{cursor:grabbing}
   body.dnd-active .drag,body.dnd-active .week-drag,body.dnd-active .monthly-log-drag{cursor:grabbing}
+  /* Touch/Pen DnD: 전용 drag handle에서 시작한 제스처만 브라우저 pan보다 앱 DnD가
+     우선한다. 카드 본문은 그대로 스크롤 가능하다. coarse pointer에서는 Weekly처럼
+     hover가 없는 환경에서도 손잡이가 보이고 손가락으로 잡기 충분한 hit area를 확보한다. */
+  .drag,.week-drag,.monthly-log-drag,.monthly-item-drag,.group-drag,.future-log-row-drag,.future-log-row-date[draggable="true"]{touch-action:none;-webkit-user-select:none;user-select:none}
+  @media (hover:none),(pointer:coarse){
+    .week-drag,.monthly-log-drag,.monthly-item-drag,.group-drag,.future-log-row-drag{opacity:.86}
+    .week-drag{min-width:28px;min-height:32px;margin:-6px 0 -6px -6px}
+  }
 
   /* 드래그 시 원본 카드는 실제로 자리를 비운다(공간이 즉시 접힘). */
   .drag-source-hidden{display:none !important}
@@ -870,7 +977,7 @@
   .week-inline-input{flex:1;min-width:0;border:0;outline:none;font:inherit;font-size:13px;color:var(--ink);background:transparent;user-select:text}
   .week-inline-input::placeholder{color:var(--text-placeholder)}
 
-  .type-menu{position:fixed;z-index:50;background:var(--bg-card);border:1px solid var(--line2);border-radius:10px;box-shadow:0 4px 16px var(--overlay-shadow);padding:6px;min-width:128px}
+  .type-menu{position:fixed;z-index:50;background:var(--bg-card);border:1px solid var(--line2);border-radius:var(--radius-lg);box-shadow:var(--shadow-menu);padding:6px;min-width:128px}
   .type-menu-item{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:6px;cursor:pointer;font-size:14px;font-weight:650;color:var(--ink)}
   .type-menu-item:hover,.type-menu-item:focus{background:var(--bg-hover);outline:none}
   .type-menu-item[aria-checked="true"]{color:var(--lav);background:var(--lav-soft)}
@@ -879,7 +986,7 @@
   .task.is-selected{box-shadow:inset 0 0 0 2px var(--lav)}
   .week-card li.is-selected{box-shadow:inset 0 0 0 2px var(--lav)}
 
-  .move-menu{position:fixed;z-index:50;background:var(--bg-card);border:1px solid var(--line2);border-radius:10px;box-shadow:0 4px 16px var(--overlay-shadow);padding:6px;min-width:200px}
+  .move-menu{position:fixed;z-index:50;background:var(--bg-card);border:1px solid var(--line2);border-radius:var(--radius-lg);box-shadow:var(--shadow-menu);padding:6px;min-width:200px}
   .move-menu-item{display:block;width:100%;text-align:left;border:0;background:none;padding:8px 10px;border-radius:6px;cursor:pointer;font-size:14px;font-weight:650;color:var(--ink)}
   .move-menu-item:hover,.move-menu-item:focus{background:var(--bg-hover);outline:none}
   .move-menu-divider{height:1px;background:var(--line2);margin:6px 4px}
@@ -1070,7 +1177,7 @@ pointer-events:auto;
      바꿨다(닫기 로직의 transitionend 리스너는 transform 전환이 계속 있으므로 그대로 동작). */
   .detail-drawer{position:fixed;left:50%;top:50%;width:min(720px,calc(100vw - 64px));max-height:calc(100dvh - 80px);background:var(--bg-card);border:1px solid var(--line2);border-radius:16px;box-shadow:0 20px 60px var(--shadow-drag);display:flex;flex-direction:column;overflow-y:auto;overflow-x:hidden;overscroll-behavior-y:contain;transform:translate(-50%,-50%) scale(.97);opacity:0;transition:transform .2s ease,opacity .2s ease;}
   .detail-overlay.open .detail-drawer{transform:translate(-50%,-50%) scale(1);opacity:1}
-  @media (max-width:640px){.detail-drawer{width:calc(100vw - 32px)}}
+  @media (max-width:640px), (max-width:900px) and (max-height:500px) and (pointer:coarse){.detail-drawer{width:calc(100vw - 32px)}}
   @media (prefers-reduced-motion:reduce){.detail-backdrop,.detail-drawer{transition:none}}
 
   .detail-header{position:sticky;top:0;z-index:2;background:var(--bg-card);display:flex;align-items:center;justify-content:space-between;gap:12px;padding:17px 20px;border-bottom:1px solid var(--line);flex:none}
@@ -1199,7 +1306,7 @@ body.desc-block-dnd-active .desc-block-add{
   .desc-todo-text-done{color:var(--text-disabled);text-decoration:line-through}
   .desc-todo-delete{visibility:hidden;border:0;background:none;padding:2px;width:20px;height:20px;border-radius:6px;display:grid;place-items:center;cursor:pointer;color:var(--icon-muted);font-size:14px;line-height:1;flex:none}
   .desc-block[data-block-type="todo"]:hover .desc-todo-delete,.desc-block[data-block-type="todo"]:focus-within .desc-todo-delete{visibility:visible}
-  .desc-todo-delete:hover,.desc-todo-delete:focus-visible{background:var(--bg-danger-soft);color:var(--sun);outline:none}
+  .desc-todo-delete:hover,.desc-todo-delete:focus-visible{background:var(--bg-danger-soft);color:var(--danger);outline:none}
   .desc-block-text{flex:1 1 auto;min-width:0;outline:none;font-size:14px;font-weight:500;line-height:1.6;color:var(--ink);white-space:pre-wrap;overflow-wrap:break-word;cursor:text;padding:1px 4px;margin:-1px -4px;border-radius:4px}
   .desc-block-text:focus{background:var(--bg-input)}
   .desc-block-text:empty:before{content:attr(data-placeholder);color:var(--text-placeholder);font-weight:500}
@@ -1221,8 +1328,8 @@ body.desc-block-dnd-active .desc-block-add{
   .desc-attachment-size{font-size:12px;color:var(--text-tertiary)}
   .desc-attachment-btn{border:0;background:none;padding:4px;border-radius:6px;cursor:pointer;color:var(--icon-muted);display:flex;align-items:center;justify-content:center;flex:none;font-size:13px}
   .desc-attachment-btn:hover{background:var(--bg-hover)}
-  .desc-attachment-btn.danger:hover{background:var(--bg-danger-soft);color:var(--sun)}
-  .desc-attachment-error{font-size:12px;color:var(--sun);margin:4px 0 0}
+  .desc-attachment-btn.danger:hover{background:var(--bg-danger-soft);color:var(--danger)}
+  .desc-attachment-error{font-size:12px;color:var(--danger);margin:4px 0 0}
 
   /* 상세 사진: 네이버 블로그형 블록 + 흡착 배치. 자유 좌표/12열 크기조절 대신
      단독 사진은 크기 단계·정렬, 사진 묶음은 한 행 최대 3장 균등 배치로 동작한다. */
@@ -1249,7 +1356,7 @@ body.desc-block-dnd-active .desc-block-add{
   .desc-media-block:hover .desc-media-actions,.desc-media-block:focus-within .desc-media-actions{opacity:1}
   .desc-media-action-btn{border:none;background:rgba(0,0,0,.55);color:#fff;width:26px;height:26px;border-radius:6px;cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center}
   .desc-media-action-btn:hover{background:rgba(0,0,0,.75)}
-  .desc-media-action-btn.danger:hover{background:var(--sun)}
+  .desc-media-action-btn.danger:hover{background:var(--danger)}
   .desc-media-caption{font-size:12px;color:var(--text-tertiary);padding:2px 4px;outline:none;min-height:16px}
   .desc-media-caption:empty::before{content:attr(data-placeholder);color:var(--text-placeholder)}
   .desc-media-caption:focus{color:var(--ink);background:var(--bg-hover);border-radius:4px}
@@ -1276,7 +1383,7 @@ body.desc-block-dnd-active .desc-block-add{
   .desc-media-gallery-item:hover .desc-media-gallery-item-actions,.desc-media-gallery-item:focus-within .desc-media-gallery-item-actions{opacity:1}
   .desc-media-gallery-item-btn{border:none;background:rgba(0,0,0,.55);color:#fff;width:24px;height:24px;border-radius:6px;cursor:pointer;font-size:11px;display:flex;align-items:center;justify-content:center}
   .desc-media-gallery-item-btn:hover{background:rgba(0,0,0,.75)}
-  .desc-media-gallery-item-btn.danger:hover{background:var(--sun)}
+  .desc-media-gallery-item-btn.danger:hover{background:var(--danger)}
   .desc-media-gallery-drop-placeholder{min-width:0;aspect-ratio:4/3;border:2px dashed rgba(var(--lav-rgb),.72);border-radius:10px;background:rgba(var(--lav-rgb),.08);box-sizing:border-box}
   .desc-media-gallery-drag-source-hidden{display:none!important}
   .desc-media-gallery.is-gallery-drop-active{outline:2px dashed rgba(var(--lav-rgb),.38);outline-offset:5px;border-radius:10px}
@@ -1385,7 +1492,7 @@ body.desc-block-dnd-active .desc-block-add{
   .desc-table-context-menu{display:flex;flex-direction:column;gap:2px;min-width:150px}
   .desc-table-context-menu-item{border:none;background:none;text-align:left;padding:6px 8px;border-radius:6px;font-size:12px;font-weight:650;color:var(--ink);cursor:pointer;font-family:inherit}
   .desc-table-context-menu-item:hover,.desc-table-context-menu-item:focus-visible{background:var(--bg-hover);outline:none}
-  .desc-table-context-menu-item.danger{color:var(--sun)}
+  .desc-table-context-menu-item.danger{color:var(--danger)}
   .desc-table-context-menu-sep{height:1px;background:var(--line);margin:3px 2px}
   .desc-table-context-menu-colorrow{display:flex;gap:4px;padding:2px 4px}
 
@@ -1409,7 +1516,7 @@ body.desc-block-dnd-active .desc-block-add{
   /* 5: 슬래시 명령 메뉴 — 기존 .type-menu와 같은 시각 언어(카드/그림자/hover)를 그대로 쓰되,
      DOM 포커스는 여전히 편집 중인 블록에 남아 있어야 하므로(커서 유지) 메뉴 자체는 포커스를
      받지 않는다 — 방향키 이동은 activeIndex를 바꾸고 aria-activedescendant로만 표시한다. */
-  .desc-slash-menu{position:fixed;z-index:50;background:var(--bg-card);border:1px solid var(--line2);border-radius:10px;box-shadow:0 4px 16px var(--overlay-shadow);padding:6px;min-width:200px;max-height:320px;overflow-y:auto}
+  .desc-slash-menu{position:fixed;z-index:50;background:var(--bg-card);border:1px solid var(--line2);border-radius:var(--radius-lg);box-shadow:var(--shadow-menu);padding:6px;min-width:200px;max-height:320px;overflow-y:auto}
   .desc-slash-item{display:flex;align-items:center;gap:10px;padding:6px 10px;border-radius:6px;cursor:pointer;font-size:14px;font-weight:650;color:var(--ink)}
   .desc-slash-item.is-active{background:var(--lav-soft);color:var(--lav)}
   .desc-slash-item-icon{flex:none;width:18px;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:12px;font-weight:800}
@@ -1513,7 +1620,7 @@ body.desc-block-dnd-active .desc-block-add{
   /* 6차 8: 휴지통 버튼을 완료/날짜이동과 충분히 떨어뜨려 오른쪽 끝에 고정한다 — DOM
      순서·footer 높이·모달 크기는 그대로 두고 margin-left:auto만으로 해결한다(줄바꿈 시
      자기 줄에서는 자연히 왼쪽부터 배치돼 안전하다). */
-  .detail-trash-btn{color:var(--sun);margin-left:auto}
+  .detail-trash-btn{color:var(--danger);margin-left:auto}
   /* 마스터 Drawer 하단 날짜 버튼(moveDateBtn)이 배치 0/1/N개를 모두 처리한다(별도 상시
      "날짜 배치" 섹션 없음). 배치가 0개 또는 2개 이상일 때만 이 목록/추가 UI가 뜨는
      팝오버(.move-menu) 안에 쓰인다 -- 버튼은 .detail-action-btn을 그대로 재사용한다. */
@@ -1586,7 +1693,8 @@ body.desc-block-dnd-active .desc-block-add{
    패턴(팝업 role="menu", 단일 menuitemcheckbox). margin-left:auto로 nav 행 오른쪽 끝에 붙는다. */
 .monthly-log-menu-btn{margin-left:auto;border:0;background:none;padding:0;cursor:pointer;color:var(--icon-muted);width:26px;height:26px;border-radius:6px;display:grid;place-items:center;font-size:18px;font-weight:700;line-height:1}
 .monthly-log-menu-btn:hover,.monthly-log-menu-btn[aria-expanded="true"]{background:var(--bg-hover);color:var(--ink)}
-.monthly-log-menu{position:fixed;z-index:50;background:var(--bg-card);border:1px solid var(--line2);border-radius:10px;box-shadow:0 4px 16px var(--overlay-shadow);padding:6px;min-width:168px}
+.monthly-log-menu-btn:focus-visible{outline:2px solid var(--lav);outline-offset:1px}
+.monthly-log-menu{position:fixed;z-index:50;background:var(--bg-card);border:1px solid var(--line2);border-radius:var(--radius-lg);box-shadow:var(--shadow-menu);padding:6px;min-width:168px}
 .monthly-log-menu-item{padding:8px 10px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:650;color:var(--ink);white-space:nowrap;display:flex;align-items:center;gap:8px}
 .monthly-log-menu-item:hover,.monthly-log-menu-item:focus{background:var(--bg-hover);outline:none}
 /* 메뉴 체크박스도 할 일 체크박스와 완전히 같은 형태 */
@@ -1657,6 +1765,7 @@ body.desc-block-dnd-active .desc-block-add{
 .future-log-period-label{font-size:14px;font-weight:800;color:var(--ink);min-width:0}
 .future-log-nav-btn{border:0;background:none;padding:0;cursor:pointer;color:var(--icon-muted);width:26px;height:26px;border-radius:6px;display:grid;place-items:center;font-size:18px;line-height:1}
 .future-log-nav-btn:hover{background:var(--bg-hover)}
+.future-log-nav-btn:focus-visible{outline:2px solid var(--lav);outline-offset:1px}
 .future-log-nav-btn:disabled{opacity:.35;cursor:default;pointer-events:none}
 /* "이번 달" -- 정렬 계산 없이 시작월을 오늘이 속한 월로 되돌린다(요구사항). */
 .future-log-today-btn{border:1px solid var(--line2);background:none;color:var(--muted);padding:4px 10px;border-radius:999px;font-size:12px;font-weight:700;cursor:pointer}
@@ -1674,15 +1783,94 @@ body.desc-block-dnd-active .desc-block-add{
 /* 개월 수 직접 선택 팝업은 기존 Monthly Log "..." 메뉴(.monthly-log-menu/-item) 셸을
    그대로 재사용한다(새 팝업 프레임워크를 만들지 않음) -- 현재 선택값만 강조 표시한다. */
 .future-log-month-count-menu-item[aria-checked="true"]{color:var(--lav);font-weight:800;background:var(--lav-soft)}
-.future-log-body{flex:1 1 auto;min-height:0;overflow-y:auto;overflow-x:auto;overscroll-behavior-y:contain;scrollbar-gutter:stable;scrollbar-width:thin;container-type:inline-size;container-name:future-log-body}
-/* Future Log 5단계: rolling 3개월 열 컨테이너. 열(.future-log-column)은 3개월 블록을
-   위→아래로 묶는 얇은 래퍼일 뿐이라 테두리·배경을 따로 주지 않고 헤더+간격으로만
-   구분한다. 열 배치는 뷰포트가 아니라 .future-log-body의 실제 폭(container query)을
-   기준으로 한다 -- 1200px 이상이면 한 행에 열 2개, 1199px 이하면 1개(요구사항). */
-.future-log-months{min-height:100%;box-sizing:border-box;padding:0 24px 20px;display:grid;grid-template-columns:repeat(1,minmax(0,1fr));gap:28px;align-items:start}
-@container future-log-body (min-width:1200px){.future-log-months{grid-template-columns:repeat(2,minmax(0,1fr))}}
-.future-log-column{display:flex;flex-direction:column;gap:16px;min-width:0}
-.future-log-column-header{flex:0 0 auto;padding:0 2px;font-size:13px;font-weight:800;color:var(--ink)}
+.future-log-body{flex:1 1 auto;min-height:0;overflow-y:auto;overflow-x:auto;overscroll-behavior-y:contain;scrollbar-gutter:stable;scrollbar-width:thin;container-type:inline-size;container-name:future-log-body;-webkit-overflow-scrolling:touch}
+/* v17: Future Log 자체도 내용이 화면보다 길어지면 내부 세로 스크롤이 분명하게 보이도록
+   Weekly와 같은 scrollbar 시각 언어를 쓴다. 터치 환경에서는 손가락 스크롤이 그대로 작동하고,
+   데스크톱에서는 오른쪽 thumb를 직접 드래그할 수 있다. */
+.future-log-body::-webkit-scrollbar{width:9px;height:9px}
+.future-log-body::-webkit-scrollbar-track{background:var(--scrollbar-track,transparent)}
+.future-log-body::-webkit-scrollbar-thumb{background:var(--scrollbar-thumb);border-radius:99px}
+/* Future Log 구조 재설계(2026-08-09, 2차 UX 재검토): 기존에는 최대 3개월을 .future-log-column
+   래퍼로 묶어 그 래퍼를 grid item으로 뒀다("Future Log 5단계" 최초 설계). 문제는 열이 2개
+   이상이 되는 순간 실제 화면을 훑는 시선(왼쪽→오른쪽, 그다음 아래 행)과 데이터 순서가
+   어긋난다는 점이다 -- 6개월을 2열로 두면 왼쪽 열은 위→아래로 8,9,10, 오른쪽 열은 11,12,1인데,
+   Z 패턴으로 훑으면 "8(왼쪽위) 다음 11(오른쪽위)"로 읽혀 8→11→9→12→10→1처럼 시간 흐름이
+   깨진다(실제 Chrome 렌더로 재현·확인, 사용자 지적과 일치). 래퍼 없이 월 카드 하나하나를
+   곧바로 grid item으로 두면 grid-auto-flow의 기본값(row)이 DOM 순서대로 "왼쪽→오른쪽, 그다음
+   다음 행"으로 채우므로, 열이 몇 개든 시각적 읽기 순서가 항상 DOM/시간 순서(8,9,10,11,12,1)와
+   일치한다 -- 별도 JS 열 계산(구 buildFutureLogColumnStartMonths/ceil(개월수/3)) 없이 CSS
+   grid 자체의 기본 동작만으로 정확성이 보장된다(더 견고함).
+   열 개수는 실제 남는 폭(.future-log-body container query)과 개월 수(data-month-count,
+   renderFutureLogBody가 매 렌더마다 심음)를 함께 본다 -- "넓다고 무조건 열을 늘리지 않는다"
+   원칙(요구사항 2): 카드 하나가 과도하게 넓어지는 대신(예전 3개월·1920px에서 카드 1장이
+   1455px 전체폭을 혼자 차지 -- 시선이 카드 안에서 왼쪽 미니캘린더/가운데 입력창/오른쪽
+   목록 사이를 크게 오가야 해서 오히려 스캔 비용이 컸다, 실측 재확인) 3장이 실제로 한 행에
+   나란히 들어와 각자 읽기 좋은 폭(~450~500px)을 갖게 한다. 3/6/12는 모두 3의 배수라 1·2·3·4
+   열 어디서 나눠도 마지막 행이 어중간하게 남지 않는다(예: 12개월 4열=3행, 3열=4행, 2열=6행
+   전부 정확히 나눠떨어짐). */
+/* 2026-08-09 빈 공간 회귀 수정: 이 grid는 min-height:100%라 6/12개월처럼 여러 행일 때
+   기본 align-content:normal(=stretch)이 남는 세로 높이를 auto row들에 분배해 카드 아래에
+   거대한 빈 트랙을 만들었다. align-content:start로 실제 카드 높이+gap만 사용하게 해서
+   다음 월 행이 바로 위로 올라오게 한다. 3개월 모드는 아래의 1fr row 규칙이 가용 높이를
+   의도적으로 회수하므로 이 설정과 충돌하지 않는다. */
+.future-log-months{min-height:100%;box-sizing:border-box;padding:0 24px 20px;display:grid;grid-template-columns:repeat(1,minmax(0,1fr));gap:28px;align-items:start;align-content:start}
+@container future-log-body (min-width:700px){
+  .future-log-months[data-month-count="6"],.future-log-months[data-month-count="12"]{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+/* 3개월은 항상 카드가 정확히 3장뿐이라, 한 행에 다 들어올 수 있는 폭(1050px)부터는
+   곧바로 3열로 올려 "카드 1장이 전체 폭을 독점"하는 상태를 건너뛴다. [data-month-count]
+   속성 선택자를 그대로 반복하는 건, 위 700px 규칙과 특이도(specificity)를 맞춰서(둘 다
+   클래스+속성 선택자 1개씩) 소스 순서(이 규칙이 더 뒤)로 이겨야 하기 때문이다 -- 특이도가
+   더 낮은 일반 .future-log-months{...}로 두면 700px 규칙(더 높은 특이도)이 폭과 무관하게
+   항상 이겨 6·12개월이 2열에서 멈추는 걸 실측으로 확인했다. */
+@container future-log-body (min-width:1050px){
+  .future-log-months[data-month-count="3"],
+  .future-log-months[data-month-count="6"],
+  .future-log-months[data-month-count="12"]{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+@container future-log-body (min-width:1250px){.future-log-months[data-month-count="12"]{grid-template-columns:repeat(4,minmax(0,1fr))}}
+/* 개월 수가 많을수록(6·12개월) 카드 하나의 세로 길이를 줄여, 열 수와 별개로 스크롤 없이
+   조망 가능한 "행" 수 자체를 늘린다. 3개월(기본값)은 기존 밀도를 그대로 유지한다 -- 열이
+   이미 한 행에 다 들어오므로 더 줄일 이유가 없다. vh 기반 clamp를 그대로 써서 세로 높이가
+   짧은 viewport(1200×768 등)에서도 동일한 공식으로 계속 반응한다. */
+/* 기간별 density: 3개월은 작업 공간을 넉넉히 쓰고, 6개월은 균형형, 12개월은
+   조망 우선 compact. 목록은 더 이상 고정 height로 빈 공간을 만들지 않고 실제 렌더된
+   항목(+N 포함) 높이만 차지한다. */
+@container future-log-body (min-width:1050px){
+  /* 3개월은 한 행만 쓰므로 body의 실제 가용 높이를 작업 공간으로 회수한다. 이전의
+     500~720px min-height 상한은 큰 viewport에서 카드 아래 바깥 여백을 더 크게 남기는
+     회귀를 만들었다. grid 한 행을 body 높이에 맞춰 stretch하되, 콘텐츠가 더 크면
+     min-content만큼 자연스럽게 늘어나 body 자체가 스크롤한다. */
+  .future-log-months[data-month-count="3"]{height:100%;min-height:100%;grid-auto-rows:minmax(min-content,1fr);align-items:stretch}
+  .future-log-months[data-month-count="3"] .future-log-card{height:100%;min-height:0}
+  .future-log-months[data-month-count="3"] .future-log-block-main{flex:1 1 auto;min-height:0}
+  .future-log-months[data-month-count="3"] .future-log-block-right{flex:1 1 auto;min-height:0}
+  .future-log-months[data-month-count="3"] .future-log-card-rows{flex:1 1 auto;min-height:120px}
+  .future-log-months[data-month-count="3"] .future-log-mini-cal-dates{grid-auto-rows:clamp(32px,4.6vh,50px)}
+  .future-log-months[data-month-count="3"] .future-log-mini-cal-date{font-size:clamp(11px,min(calc(13.5px * var(--fl-scale)),4.5cqw),18px)}
+}
+/* 2026-08-09 6개월 레이아웃 균등 분할: 3열×2행으로 보이는 넓은 화면에서는
+   내용이 적은 달만 카드가 짧아져 행 경계가 들쭉날쭉해지지 않게, Future Log 본문의
+   사용 가능한 세로 공간을 정확히 두 행이 균등하게 나눠 갖는다. 각 행의 3개 카드는
+   같은 높이로 stretch되고, 내용이 많아 최소 높이를 넘으면 body가 자연스럽게 스크롤한다. */
+@container future-log-body (min-width:1050px){
+  .future-log-months[data-month-count="6"]{height:100%;min-height:100%;grid-template-rows:repeat(2,minmax(340px,1fr));align-items:stretch;align-content:stretch}
+  .future-log-months[data-month-count="6"] .future-log-card{height:100%;min-height:0}
+}
+.future-log-months[data-month-count="6"] .future-log-card-rows{max-height:none}
+/* v17: 6개월/3열 보기에서 위 3개월과 아래 3개월 사이를 Weekly의 내부 분할선과 같은
+   방식으로 직접 조절한다. divider는 absolute라 grid item 수/시간순 DOM을 건드리지 않고,
+   touch-action:none으로 iPad/Galaxy Tab의 터치·펜에서도 브라우저 스크롤 제스처에
+   빼앗기지 않는다. 2열/1열 구간에서는 행 경계가 월 3개 단위와 일치하지 않으므로 숨긴다. */
+.future-log-months{position:relative}
+.future-log-row-divider{display:none;position:absolute;left:24px;right:24px;height:18px;transform:translateY(-9px);z-index:8;cursor:row-resize;touch-action:none;user-select:none;-webkit-user-select:none}
+.future-log-row-divider::before{content:'';position:absolute;left:0;right:0;top:8px;height:2px;background:var(--line2);border-radius:2px}
+.future-log-row-divider:hover::before,.future-log-row-divider:focus-visible::before{background:var(--lav)}
+.future-log-row-divider:focus-visible{outline:2px solid var(--lav);outline-offset:-2px;border-radius:4px}
+.future-log-months[data-month-count="6"].has-row-divider .future-log-row-divider{display:block}
+@media (pointer:coarse){.future-log-row-divider{height:24px;transform:translateY(-12px)}.future-log-row-divider::before{top:11px}}
+.future-log-months[data-month-count="12"] .future-log-card-rows{max-height:none}
+.future-log-months[data-month-count="12"] .future-log-mini-cal-dates{grid-auto-rows:clamp(20px,calc(26px * var(--fl-scale)),34px)}
 /* 4단계: 월 블록 내부(미니 캘린더 좌우/상하 전환)는 열/뷰포트 폭이 아니라 이 카드
    자신의 실제 렌더 폭을 기준으로 판단해야 한다(요구사항) -- 카드가 rolling 열 1개/2개
    중 어디에 있든, 실제로 받은 폭이 640px을 넘으면 좌우, 아니면 상하로 스스로 결정한다. */
@@ -1695,13 +1883,14 @@ body.desc-block-dnd-active .desc-block-add{
 /* 실제 항목 영역 -- 높이가 뷰포트에 반응(clamp)하므로 JS가 매번 실측해 slotCount를
    구한다(고정 숫자를 하드코딩하지 않음, 요구사항). overflow:hidden은 카드 내부 스크롤을
    만들지 않기 위함(요구사항) -- +N 계산이 맞으면 실제로 넘치지 않는다. */
-.future-log-card-rows{flex:0 0 auto;height:clamp(180px,26vh,260px);overflow:hidden;padding:8px 10px;display:flex;flex-direction:column;gap:4px;box-sizing:border-box}
+.future-log-card-rows{flex:0 0 auto;height:auto;min-height:0;overflow:visible;padding:8px 10px;display:flex;flex-direction:column;gap:4px;box-sizing:border-box}
 .future-log-card-empty{margin:0;padding:4px 2px;font-size:12px;color:var(--muted)}
 /* 요구사항 4(4차 감사): 배치가 4개 이상이면 고정 48px 날짜 칸 안에서 배지가 줄바꿈
    되므로(아래 .future-log-row-datecol) 행 자체도 그만큼 늘어나야 잘리지 않는다 --
    고정 height/overflow:hidden을 min-height + 내용에 따른 자동 높이로 바꾼다(증상을
    부모 overflow:hidden으로 덮지 않음, 요구사항). */
-.future-log-row{display:flex!important;align-items:center;gap:6px;min-height:22px;flex:0 0 auto;padding:2px 6px;border-radius:6px;font-size:12.5px;font-weight:650;color:var(--ink);cursor:pointer;box-sizing:border-box}
+.future-log-row{display:grid!important;grid-template-columns:9px 18px max-content 14px minmax(0,1fr);align-items:center;column-gap:6px;row-gap:2px;min-height:22px;flex:0 0 auto;padding:2px 6px;border-radius:6px;font-size:12.5px;font-weight:650;color:var(--ink);cursor:pointer;box-sizing:border-box;min-width:0}
+.future-log-overflow-row{grid-template-columns:18px max-content 14px minmax(0,1fr)}
 .future-log-row:hover,.future-log-row:focus-visible{background:var(--bg-hover);outline:none}
 .future-log-row.is-done{opacity:.82}
 .future-log-row.is-done .future-log-row-title{text-decoration:line-through}
@@ -1710,6 +1899,7 @@ body.desc-block-dnd-active .desc-block-add{
 /* 요구사항 1(4차 감사): 순서 재정렬 drag 중 "이 행 앞에 끼워진다"는 인디케이터 --
    기존 is-drop-target(outline)과 같은 lav 강조 언어를 위쪽 테두리 하나로만 재사용한다. */
 .future-log-row.future-log-row-drop-before{box-shadow:inset 0 2px 0 var(--lav)}
+.future-log-card-rows.future-log-row-drop-end{box-shadow:inset 0 -2px 0 var(--lav)}
 /* 요구사항 4(2차 감사): 배치가 있는 항목은 날짜 배지 자체가 drag 소스다(핸들 없음). */
 .future-log-row-date.is-dragging{opacity:.4}
 /* 요구사항 3(2차 감사): Future Log 행 선택 -- 기존 .monthly-item-row.is-selected와
@@ -1721,6 +1911,8 @@ body.desc-block-dnd-active .desc-block-add{
 .future-log-row-icon .ic-ring{width:11px;height:11px;border-width:1.6px}
 .future-log-row-title-cell{display:flex;align-items:center;min-width:0;flex:1 1 auto;gap:4px}
 .future-log-row-title{min-width:0;flex:1 1 auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.future-log-pointer-preview{pointer-events:none;opacity:.96}
+.future-log-pointer-preview>.future-log-row-date{background:var(--bg-card)}
 /* 요구사항 2(3차 감사): 날짜 칸은 폭을 고정해 모든 행(날짜 있음/없음)에서 뒤따르는
    유형 기호·제목이 같은 x좌표에서 시작하게 한다 -- 내용이 없어도 칸 자체는 항상
    만든다(buildFutureLogRowDateColEl). 배치가 여러 개인 행은 배지 여러 개가 이 고정
@@ -1730,14 +1922,14 @@ body.desc-block-dnd-active .desc-block-add{
    가리지 않고 실제로 다 보이게). 세로로 몇 줄이 되든 이 칸의 실제 필요 높이가
    부모 .future-log-row의 min-height를 넘으면 위 min-height 규칙 덕분에 행 자체가
    그만큼 커진다. */
-.future-log-row-datecol{flex:0 0 48px;width:48px;display:flex;flex-wrap:wrap;align-items:center;align-content:center;gap:3px;overflow:visible}
+.future-log-row-datecol{width:auto;min-width:max-content;max-width:min(116px,32cqw);display:flex;flex-wrap:wrap;align-items:center;align-content:center;gap:2px 4px;overflow:visible}
 /* 요구사항 4: 날짜 배지를 그 항목의 실제 시작 날짜로 Calendar 이동하는 버튼으로 쓴다
    -- <button> 기본 테두리/배경/폰트를 지워 기존 <span> 배지와 같은 모양을 유지한다. */
 .future-log-row-date{flex:none;border:0;background:none;padding:0;font:inherit;font-size:11.5px;font-weight:700;color:var(--muted);white-space:nowrap;cursor:pointer}
 /* placement가 여러 개라 배지가 한 칸에 여럿 들어갈 때만 살짝 축소한다(고정 폭 안에
    맞추기 위함, 단일 배지는 9.5px 유지) -- buildFutureLogRowDateColEl이
    2개 이상일 때만 이 클래스를 붙인다. */
-.future-log-row-date.is-compact{font-size:10px}
+.future-log-row-date.is-compact{font-size:10.5px}
 .future-log-row-date:hover,.future-log-row-date:focus-visible{color:var(--lav);text-decoration:underline;outline:none}
 .future-log-overflow-btn{background:none;border:1px dashed var(--line2);color:var(--lav);justify-content:center;font-weight:750;cursor:pointer}
 .future-log-overflow-btn:hover,.future-log-overflow-btn:focus-visible{background:var(--lav-soft);outline:none}
@@ -1842,6 +2034,46 @@ body.desc-block-dnd-active .desc-block-add{
      우선). */
   .future-log-mini-cal.has-lunar .future-log-mini-cal-dates{grid-auto-rows:clamp(24px,calc(34px * var(--fl-scale)),46px)}
 }
+/* 2D Adaptive 감사(2026-08-08) -- Desktop/Tablet 전용 스택 카드 밀도 완화. 위
+   @container future-log-card(max-width:640px) 규칙은 카드 자신의 실제 폭만 보고
+   viewport를 보지 않는다. 원래 모바일 터치 영역 확보용으로 미니 캘린더 셀을 크게
+   키운 규칙인데, 이 container query는 진짜 좁은 viewport뿐 아니라 Desktop 2열
+   레이아웃(대략 1200~1500px대 viewport, 카드 실폭 500~620px)에서도 똑같이 걸려
+   카드 하나가 불필요하게 길어진다(6개월 선택 시 열이 2개여도 각 열이 3장 모두
+   스택 모드라 세로 스크롤이 크게 남는 것을 실측으로 확인). Mobile(640px 미만
+   viewport, 이번 작업 대상 아님)의 기존 값은 절대 건드리지 않기 위해 이 override를
+   `@media(min-width:640px)`로 한 번 더 감싸 Desktop/Tablet viewport에서만 스택
+   모드 밀도(미니 캘린더 셀·카드 헤더 padding)를 낮춘다 -- 스택 자체를 없애지 않고
+   "6번" 압축 우선순위(gap/padding 먼저, 그다음 미니 캘린더 크기)를 그대로 따른다. */
+@media (min-width:640px){
+  @container future-log-card (max-width:640px){
+    .future-log-mini-cal-weekdays{font-size:clamp(9px,min(calc(9.5px * var(--fl-scale)),3cqw),13px)}
+    .future-log-mini-cal-dates{grid-auto-rows:clamp(18px,calc(24px * var(--fl-scale)),32px)}
+    .future-log-mini-cal-date{font-size:clamp(9px,min(calc(10.5px * var(--fl-scale)),3.6cqw),15px)}
+    .future-log-mini-cal.has-lunar .future-log-mini-cal-dates{grid-auto-rows:clamp(18px,calc(24px * var(--fl-scale)),32px)}
+    .future-log-card-header{padding:6px 10px 0}
+    /* 스택 모드는 미니 캘린더가 이미 카드 폭 전체를 위에서 쓰므로, 그 아래 목록은
+       기본(비스택) 카드보다 더 압축해도 된다 -- 목록 자체 높이(clamp)를 줄여
+       카드 하나의 총 높이를 낮춘다(6번 우선순위: gap/padding 다음이 아니라 목록
+       높이 -- 글자 크기·미니 캘린더 셀 크기보다 먼저 줄이는 게 안전하다). */
+    .future-log-card-rows{height:auto;max-height:none}
+  }
+  /* 카드 사이 gap·헤더 padding도 같은 이유로 Desktop/Tablet에서만 압축한다
+     (압축 우선순위 1순위: gap/padding). */
+  .future-log-months{gap:18px}
+  .future-log-header{padding:14px 32px 14px}
+}
+/* 세로 높이가 짧을 때(예: 1200×768, 1366×768) 카드 목록 영역과 헤더 여백을 추가로
+   줄인다 -- 폭과 무관하게 동작해야 하므로 min-width 640px와 별개의 max-height
+   media query로 둔다(요구사항 5). 글자 크기는 건드리지 않는다. */
+@media (min-width:640px) and (max-height:820px){
+  .future-log-header{padding:10px 32px 10px}
+  .future-log-months{gap:14px}
+  .future-log-card-rows{height:auto;max-height:none}
+}
+@media (min-width:640px) and (max-height:700px){
+  .future-log-card-rows{height:auto;max-height:none}
+}
 /* 요구사항 3(4차 감사): 320px 실측(카드 실폭 ~124px, 행 폭 ~102px) -- 이전 시도(핸들
    display:none + 날짜 칸만 24px로 축소)는 제목이 35px로 여전히 실사용 불가능하다는
    피드백에 따라 폐기한다. 대신 진짜 2줄 레이아웃으로 바꾼다: 날짜 칸(.future-log-row-datecol,
@@ -1851,13 +2083,21 @@ body.desc-block-dnd-active .desc-block-add{
    그대로, DOM 재배치가 아니라 순수 CSS만으로). 핸들은 숨기지 않고 폭만 유지한다
    (요구사항: 터치/마우스로 계속 접근 가능). 날짜가 없는 행은 날짜 칸에 자식이 없어
    :empty로 자연히 접혀 둘째 줄 자체가 생기지 않는다(새 JS 분기 없이 순수 CSS).
-   margin-left(57px)는 첫째 줄의 실제 폭 구성(핸들9+gap6+체크박스16+gap6+유형14+gap6)을
-   그대로 더한 값이다 -- 임의 숫자가 아니라 이미 이 파일에 있는 실제 폭들의 합. */
-@container future-log-card (max-width:360px){
-  .future-log-row{flex-wrap:wrap;gap:3px;padding:2px 4px}
-  .future-log-row-datecol{order:5;flex:0 0 100%;width:auto;box-sizing:border-box;margin-left:57px;overflow:visible}
-  .future-log-row-datecol:empty{display:none;margin:0}
-}
+   둘째 줄 날짜는 체크박스나 유형 기호 아래가 아니라 제목(.future-log-row-title-cell)의
+   시작 x좌표에 맞춘다. 그래서 날짜가 본문 제목의 보조 정보로 읽히고 체크/유형과 시각적으로
+   분리된다. */
+/* 2026-08-09 Future Log 항목 정보 위계 통일:
+   3/6/12개월 및 카드 폭과 무관하게 본문 행은 항상 [핸들][체크][유형][제목]을 첫 줄에,
+   날짜/날짜범위를 제목 시작점 바로 아래 둘째 줄에 둔다. 날짜는 제목의 보조 메타정보로
+   읽히며 긴 날짜범위가 제목 시작 위치를 밀지 않는다. 날짜가 없는 행은 둘째 줄 자체를
+   접어 한 줄 높이를 유지한다. 오버플로 팝오버 행은 기존 압축 표현을 유지한다. */
+.future-log-row:not(.future-log-overflow-row){grid-template-columns:9px 18px 14px minmax(0,1fr);padding:2px 4px}
+.future-log-row:not(.future-log-overflow-row)>.future-log-row-drag{grid-column:1;grid-row:1}
+.future-log-row:not(.future-log-overflow-row)>.checkbox{grid-column:2;grid-row:1}
+.future-log-row:not(.future-log-overflow-row)>.future-log-row-icon{grid-column:3;grid-row:1}
+.future-log-row:not(.future-log-overflow-row)>.future-log-row-title-cell{grid-column:4;grid-row:1}
+.future-log-row:not(.future-log-overflow-row)>.future-log-row-datecol{grid-column:4/-1;grid-row:2;min-width:0;max-width:100%;margin:0;overflow:visible}
+.future-log-row:not(.future-log-overflow-row)>.future-log-row-datecol:empty{display:none}
 /* 날짜 선택 표시줄 -- 선택된 날짜가 있을 때만 quick-add 위에 보인다(요구사항). 요구사항
    4: "달력에서 보기" 버튼이 추가돼 텍스트/보기/취소 세 요소가 되므로 justify-content
    대신 gap으로만 간격을 준다(가운데 요소가 늘어나 배지 위치가 흔들리지 않게). */
@@ -1897,11 +2137,11 @@ body.desc-block-dnd-active .desc-block-add{
 .monthly-log-row.is-sat .monthly-log-row-weekday{color:var(--sat)}
 .monthly-log-row-lanes{flex:1 1 auto;min-width:0;min-height:0;display:flex;flex-direction:column;position:relative}
 .monthly-log-row-items{min-width:0;display:flex;flex-direction:column;align-items:stretch;gap:2px}
-.monthly-log-item{display:inline-flex;align-items:center;gap:5px;max-width:240px;cursor:pointer;border-radius:6px;padding:2px 4px;margin:-2px -4px;font-size:12.5px;font-weight:650;color:var(--ink);position:relative}
+.monthly-log-item{display:inline-flex;align-items:center;gap:5px;max-width:min(240px,100%);overflow:hidden;cursor:pointer;border-radius:6px;padding:2px 4px;margin:-2px -4px;font-size:12.5px;font-weight:650;color:var(--ink);position:relative;box-sizing:border-box}
 .monthly-log-item.divider-item-row{flex:1 0 100%;max-width:none;cursor:default}
 .monthly-log-item:hover,.monthly-log-item:focus-visible{background:var(--bg-hover);outline:none}
 .monthly-log-item .ic-dot,.monthly-log-item .ic-ring,.monthly-log-item .ic-dash{flex:none}
-.monthly-log-item-title{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.monthly-log-item-title{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;flex:1 1 auto}
 .monthly-log-item.is-done{color:var(--text-disabled)}
 .monthly-log-item.is-done .monthly-log-item-title{text-decoration:line-through}
 /* Monthly Log 기능 복구: Daily/Weekly와 같은 체크박스·타입버튼·드래그 핸들을 압축 폭(240px)
@@ -2054,7 +2294,7 @@ body.monthly-split-dragging,body.monthly-split-dragging *{cursor:col-resize!impo
 .cal-title:hover,.monthly-log-month-label:hover,.cal-title[aria-expanded="true"],.monthly-log-month-label[aria-expanded="true"]{background:var(--bg-hover)}
 .year-month-wheel-popup{width:160px}
 .year-month-edit-input{font:inherit;font-weight:inherit;color:inherit;background:var(--bg-hover);border:1px solid var(--line2);border-radius:6px;padding:0 4px;width:9ch;outline:none}
-.year-month-edit-input.is-invalid{border-color:var(--sun);color:var(--sun)}
+.year-month-edit-input.is-invalid{border-color:var(--danger);color:var(--danger)}
 
 /* 음력 보조 텍스트(미니 달력 날짜 칸 / Monthly Log 날짜 행) -- 실제 날짜보다 작고 옅게. */
 .date-lunar{position:absolute;left:50%;top:25px;transform:translateX(-50%);display:block;font-size:9px;font-weight:600;color:var(--text-tertiary);line-height:1;margin:0;white-space:nowrap;pointer-events:none}
@@ -2277,7 +2517,7 @@ body.dnd-active .group-drag{cursor:grabbing}
 .project-menu-swatch{flex:none}
 .project-menu-name{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer}
 .project-menu-delete{flex:none;opacity:.55}
-.project-menu-delete:hover{opacity:1;background:var(--bg-danger-soft);color:var(--sun)}
+.project-menu-delete:hover{opacity:1;background:var(--bg-danger-soft);color:var(--danger)}
 .project-menu-create-input{margin:6px 10px 4px;width:calc(100% - 20px);box-sizing:border-box}
 /* 좁은 Weekly 열에서는 들여쓰기 때문에 카드 폭이 무너지는 것을 막고, 색 테두리만으로
    소속을 표시한다. */
@@ -2299,6 +2539,7 @@ body.dnd-active .group-drag{cursor:grabbing}
    .daily-header-actions 묶음째로 다음 줄로 내려간다. */
 .today-menu-btn{position:static;border:0;background:none;padding:0;cursor:pointer;color:var(--icon-muted);width:26px;height:26px;border-radius:6px;display:grid;place-items:center;font-size:18px;font-weight:700;line-height:1}
 .today-menu-btn:hover,.today-menu-btn[aria-expanded="true"]{background:var(--bg-hover);color:var(--ink)}
+.today-menu-btn:focus-visible{outline:2px solid var(--lav);outline-offset:1px}
 /* Today 우측 월간 할 일 토글(보라색) -- 툴팁은 이제 공용 #inline-tooltip
    (.is-kbd-tooltip, 위 .project-dot-tooltip 근처)로 통일됐다(요구사항: 앱 전체
    icon-only 버튼과 같은 툴팁 시스템 재사용, 이 버튼 전용 커스텀 툴팁 제거). */
@@ -2341,8 +2582,35 @@ body.dnd-active .group-drag{cursor:grabbing}
 .today-monthly-list{flex:1 1 auto;min-height:0;overflow-y:auto;padding:6px 24px 20px}
 .today-monthly-backdrop{position:fixed;inset:0;background:var(--overlay-shadow);z-index:29}
 .today-monthly-backdrop[hidden]{display:none}
+/* 실제 마우스 드래그로 재검증(2026-08-09)하다가 발견한 회귀: "패널 밖 클릭 시 닫기"용
+   backdrop이 항상 히트테스트 대상이라, 패널을 열어 둔 채 이달의 할 일 항목을 Daily/
+   Weekly로 드래그하면 매 pointermove/pointerup의 elementFromPoint가 실제 드롭 대상
+   (.task, [data-date] 등) 대신 이 backdrop을 가리켜 드롭이 전부 무효 처리됐다(실제
+   드래그 시뮬레이션으로 재현·확인 -- panelCoversWeekly=false만으로는 잡히지 않는
+   결함이었다). 드래그가 진행 중일 때(app.js가 body에 붙이는 dnd-active)만 backdrop을
+   히트테스트에서 빼(pointer-events:none) 실제 드롭 대상이 뒤에서 그대로 잡히게 한다 --
+   드래그가 아닌 일반 클릭-바깥-닫기 동작은 전혀 건드리지 않는다(dnd-active가 없을 때는
+   기존처럼 그대로 클릭을 받는다). */
+body.dnd-active .today-monthly-backdrop{pointer-events:none}
 
-@media (max-width: 1199px) {
+/* Tablet landscape 2차 UX 재검토(2026-08-09): 이 블록(세로로 쌓는 "스택 모드")은 원래
+   폭 하나만 보고 켜졌다 -- 그래서 1024×768·1180×820처럼 실제로는 desktop 2단 레이아웃을
+   충분히 담을 가로폭이 있는 landscape 태블릿도, 세로가 짧다는 이유만으로 portrait
+   태블릿(768×1024, 820×1180)과 똑같이 세로 스택으로 눌렸다(desktop 정보 구조 대신
+   Calendar/Future Log가 세로로 길게 쌓여 landscape에서 남는 가로 공간을 낭비, 실측 확인).
+   "orientation을 하드코딩하지 말고 width/height 기준으로"라는 요구사항에 따라, 폭이
+   아니라 종횡비(aspect-ratio = width/height)로 이 블록의 적용 여부를 가른다:
+   - (max-width:1199px) and (max-aspect-ratio:1/1) -- 폭이 좁고 "세로가 가로 이상"인
+     진짜 portrait/square 구간에서만 적용(기존 동작 그대로 유지).
+   - , (max-width:999px) -- 종횡비와 무관하게 폭 자체가 1000px 밑이면(스마트폰
+     landscape 포함) 항상 적용해 이번 범위 밖인 모바일 폭 동작은 절대 건드리지 않는다.
+   이 두 조건의 합집합에 안 걸리는 구간(1000~1199px & landscape, 즉 width>height)은 이
+   블록을 완전히 건너뛰고 desktop 셸(.artboard/.top/.weekly 등 이 블록 밖의 기본 규칙,
+   Calendar 좌우 분할·Future Log grid 등)을 그대로 이어받는다 -- desktop 정보 구조는
+   유지하면서, 아래 별도 규칙(.artboard{grid-template-columns:...}는 건드리지 않고
+   докing 임계값·mini-cal 폭 clamp 등 이미 폭 기반으로 반응하는 값들이 이 좁은 폭에서도
+   자동으로 밀도를 낮춘다)만으로 좁은 landscape 태블릿에 맞는 밀도를 얻는다. */
+@media (max-width: 1199px) and (max-aspect-ratio: 1/1), (max-width: 999px) {
   html{overflow-x:hidden}
   body{display:block;height:auto;overflow:visible}
   .artboard{
@@ -2371,7 +2639,17 @@ body.dnd-active .group-drag{cursor:grabbing}
     overflow:visible !important;
     padding:24px 24px 0 24px;
   }
-  .calendar-card{margin-top:0;width:100%;max-width:420px}
+  /* UX 재검토(2026-08-09, 2차): 이 규칙은 원래 max-width:420px 고정이었다. 데스크톱
+     (>=1200px)의 .calendar-card는 .top의 grid track(minmax(300px,405px))을 통해 최대
+     405px로 잡히는데, 여기(<1200px 스택 모드)만 420px로 더 크게 잡혀 "뷰포트가 좁아질수록
+     달력이 오히려 더 커지는" 역전 현상이 실측으로 확인됐다(1920px=405px인데 1180~768px
+     전 구간이 420px로 고정, 768px까지 줄여도 전혀 안 줄어듦 -- 데스크톱 상한(405px)과
+     연속되지 않는 별개 상수였던 게 원인). vw 기반 clamp로 바꿔 데스크톱 상한(405px)과
+     경계에서 정확히 이어지고(1200px 근방에서 45vw≈540px → 405px에 걸려 매끄럽게 연결),
+     뷰포트가 계속 좁아지면 그만큼 계속 줄어들게(바닥 280px까지) 한다. 사용자가 별도로
+     저장하는 확대율이 없는 위젯이라(Future Log의 --fl-scale과 다름) effectiveScale은
+     viewportAllowedScale 그 자체와 같다 -- 이 값만 낮추면 곧 "실제 렌더 크기 감소"다. */
+  .calendar-card{margin-top:0;width:100%;max-width:clamp(280px,45vw,405px)}
   /* min-height:500px는 데스크톱에서 고정 높이 .top 안에 맞춘 값이라, 세로로 쌓이는 이
      구간에서 그대로 두면 항목이 적을 때 Weekly 전까지 불필요하게 큰 빈 공간이 생긴다
      (스크롤만 길어질 뿐 콘텐츠는 없음) — 실제 내용 높이만큼만 차지하게 한다. */
@@ -2460,6 +2738,55 @@ body.dnd-active .group-drag{cursor:grabbing}
   .monthly-inbox-panel.is-open{transform:translateX(0)}
   .monthly-inbox-list{max-height:none}
   .monthly-inbox-toggle-btn,.monthly-inbox-close-btn{display:grid}
+}
+/* Responsive Design Pass 2 (640px 이하): 사이드바를 56~64px 아이콘 레일로
+   전환한다. Pass 1에서는 112px 사이드바를 그대로 둔 채 화면별로 미세조정만
+   했는데, 320px에서 본문 가용폭이 208px까지 깎이는 것 자체가 근본 원인이었다
+   (실측 확인). 레일 폭을 줄이면 이 미디어 쿼리 아래 모든 화면의 가용폭이
+   한 번에 넓어진다. 9개 네비게이션 타겟과 라벨 텍스트(span)는 전부 그대로
+   DOM에 남기고 시각 크기만 줄인다 -- 스크린리더 접근성 트리는 변하지 않는다.
+   현재 위치는 hover가 없는 터치 환경에서도 lav 배경 채움(.active)만으로
+   충분히 구분된다(기존 desktop과 같은 시각 언어). */
+@media (max-width: 640px) {
+  .artboard{grid-template-columns:60px minmax(0,1fr)}
+  .sidebar{width:60px}
+  .profile{width:26px;height:26px;font-size:10px;margin-top:16px}
+  .side-nav-top{gap:4px;margin-top:10px}
+  .side-nav-bottom{gap:3px;margin-bottom:44px}
+  .side-item{width:52px;height:48px;border-radius:8px;gap:2px;font-size:8px}
+  .side-item svg{width:20px;height:20px;stroke-width:2}
+  .trash-badge{top:2px;right:5px;min-width:13px;height:13px;font-size:8px;line-height:13px}
+  .theme{left:2px;bottom:14px;width:48px;height:24px}
+  .theme-btn{width:19px;height:19px;font-size:13px}
+}
+/* 320px 감사: 사이드바 112px를 뺀 나머지 폭이 208px 아래로 내려가면 .top의
+   좌우 24px 패딩(위 1199px 블록)만으로 Daily 카드 제목이 놓일 자리가 거의
+   남지 않아 .row-title-text가 0px로 눌린다(실측 확인). 폰트 축소 대신
+   padding·gap을 먼저 줄인다(2516줄 부근 기존 Monthly Log 320px 수정과 같은
+   원칙). */
+@media (max-width: 400px) {
+  .top{padding:16px 10px 0 10px}
+  .daily{margin-top:16px}
+  .task{gap:8px;padding:8px 8px}
+  .weekly{margin:16px 10px 16px 0}
+  /* 320px 감사: 시작/화살표/종료 3열 grid가 이 폭에서 라벨을 자르고 종료일 칸을
+     빈 것처럼 보이게 눌렀다(실측 확인) -- 세로 스택으로 바꾸고 화살표를 회전해
+     "위→아래" 방향으로 읽히게 한다. 기능(값/이벤트)은 그대로, 배치만 바뀐다. */
+  .range-row{grid-template-columns:1fr;gap:4px}
+  .range-arrow{transform:rotate(90deg);padding:2px 0}
+  /* range-row를 세로 스택으로 바꾸면 기존 고정 height:107px보다 실제 필요한 높이가
+     커진다(실측: 약 235px) -- .schedule-panel은 절대배치라도 내부가 일반 흐름이라
+     height:auto로 내용에 맞춰지고, .calendar-card는 그 늘어난 패널을 담을 만큼
+     고정 높이를 늘린다(카드 자신도 자식이 전부 절대배치라 auto를 쓸 수 없다). */
+  .schedule-panel{height:auto;padding-bottom:16px}
+  .calendar-card{height:720px}
+  /* 320px 감사: 다일 일정 segment(.monthly-log-schedule-segment)는 데스크톱에서
+     여러 날짜 칸에 걸쳐 이어 보이도록 의도적으로 overflow:visible이다(주 경계를
+     넘는 이음선 표현). 이 폭에서는 칸 자체가 ~23px까지 줄어들어, 그 의도된
+     overflow가 카드 오른쪽 경계 밖으로 실제로 잘려나가는 결과로 이어진다(실측
+     확인). 개별 칸이 아니라 주 행(.monthly-log-week-row) 전체 경계에서만 잘라,
+     같은 행 안의 이어붙임 표현은 그대로 두고 카드 밖으로 새는 것만 막는다. */
+  .monthly-log-week-row{overflow:hidden}
 }
 .monthly-inbox-toggle-btn{display:none;border:0;background:none;padding:0;cursor:pointer;color:var(--icon-muted);width:26px;height:26px;border-radius:6px;place-items:center;font-size:15px;line-height:1;margin-left:4px}
 .monthly-inbox-toggle-btn:hover{background:var(--bg-hover);color:var(--ink)}
@@ -2804,7 +3131,7 @@ body.dnd-active .group-drag{cursor:grabbing}
    폰트를 만들지 않고 기존 --sun/--lav-soft/--bg-card/--line2 토큰만 재사용한다. */
 #system-banner-root{position:fixed;top:0;left:0;right:0;z-index:500;display:flex;flex-direction:column;pointer-events:none}
 .system-banner{display:flex;align-items:center;gap:12px;padding:10px 16px;font-size:13px;font-weight:650;border-bottom:1px solid var(--line2);pointer-events:auto}
-.system-banner-danger{background:var(--sun);color:#fff}
+.system-banner-danger{background:var(--danger);color:#fff}
 .system-banner-info{background:var(--lav-soft);color:var(--ink)}
 .system-banner-text{flex:1 1 auto;line-height:1.4}
 .system-banner-btn{border:0;background:rgba(255,255,255,.3);color:inherit;padding:5px 10px;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;flex:none;font-family:inherit}
@@ -2847,6 +3174,10 @@ body.dnd-active .group-drag{cursor:grabbing}
    그룹색 선만 표시한다(Daily/Weekly .group-member-row와 같은 채널, 값만 2px로 더 얇다).
    프로젝트 점(제목 앞 4px)과는 서로 다른 채널이라 함께 유지된다. */
 .monthly-log-day-item.has-group{border-left-width:2px;border-left-color:var(--group-accent,var(--lav))}
+/* 프로젝트가 있으면 데스크톱 Monthly Log 칩도 프로젝트 accent를 확실히 유지한다.
+   JS가 --schedule-*를 지정하지만, has-project를 별도 표시해 이후 CSS 추가 규칙이
+   neutral 배경으로 덮어써도 프로젝트 색이 사라지지 않도록 한다. */
+.monthly-log-day-item.has-project,.monthly-log-week-segment.has-project{background:var(--schedule-bg)!important;border-color:var(--schedule-border)!important;color:var(--schedule-text)!important}
 .monthly-log-title-cell{display:flex;align-items:center;min-width:0;flex:1 1 auto}
 .monthly-log-day-overflow{flex:0 0 auto;height:14px;padding:0 4px;font-size:10px;font-weight:750;color:transparent;line-height:14px;overflow:hidden;user-select:none}
 .monthly-log-day-overflow.has-overflow{color:var(--lav);cursor:pointer}
@@ -2871,7 +3202,7 @@ body.dnd-active .group-drag{cursor:grabbing}
 .ic-list::before{top:-4px}
 .ic-list::after{top:4px}
 /* +N 읽기 전용 팝오버 -- 새 작성/드래그 없음, 항목 클릭은 기존 상세 Drawer를 연다. */
-.monthly-log-overflow-popover{position:fixed;z-index:60;background:var(--bg-card);border:1px solid var(--line2);border-radius:10px;box-shadow:0 4px 16px var(--overlay-shadow);padding:8px;min-width:220px;max-width:300px}
+.monthly-log-overflow-popover{position:fixed;z-index:60;background:var(--bg-card);border:1px solid var(--line2);border-radius:var(--radius-lg);box-shadow:var(--shadow-menu);padding:8px;min-width:220px;max-width:300px}
 .monthly-log-overflow-popover-title{padding:4px 8px 8px;font-size:12px;font-weight:750;color:var(--muted);border-bottom:1px solid var(--line);margin-bottom:4px}
 .monthly-log-overflow-popover-list{max-height:280px;overflow-y:auto}
 .monthly-log-overflow-row{display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:6px;cursor:pointer;font-size:13px;color:var(--ink)}
@@ -2916,6 +3247,416 @@ body.dnd-active .monthly-log-week-segment{pointer-events:none}
 .monthly-log-day-slot-spacer{flex:0 0 auto;height:18px;pointer-events:none}
 </style>
   <link rel="stylesheet" href="./dotdot-extensions.css" />
+
+<style id="future-log-12m-row-balance-fix">
+/* 2026-08-09 — 12개월 보기 행 균형 보정.
+   같은 grid row에서 항목이 많은 달 하나가 행 높이를 키웠을 때, 다른 달 카드가 짧게
+   끝나 바깥에 빈 공간이 남던 회귀를 막는다. 각 카드는 그 행의 높이를 함께 쓰고,
+   항목이 적은 카드는 남는 높이를 미니 달력에 돌려 날짜 셀 간격을 자연스럽게 키운다.
+   따라서 카드 높이를 억지로 고정하지 않으면서도 '늘어난 만큼 달력도 커지는' 동작을
+   만든다. 3/6개월 규칙은 건드리지 않는다. */
+.future-log-months[data-month-count="12"]{align-items:stretch}
+.future-log-months[data-month-count="12"] .future-log-card{height:100%;min-height:0}
+.future-log-months[data-month-count="12"] .future-log-block-main{flex:1 1 auto;min-height:0}
+.future-log-months[data-month-count="12"] .future-log-block-left{display:flex;flex-direction:column;min-height:0}
+.future-log-months[data-month-count="12"] .future-log-mini-cal{flex:1 1 auto;min-height:0;display:flex;flex-direction:column}
+.future-log-months[data-month-count="12"] .future-log-mini-cal-dates{flex:1 1 auto;min-height:0;grid-template-rows:repeat(6,minmax(20px,1fr))}
+.future-log-months[data-month-count="12"] .future-log-mini-cal.has-lunar .future-log-mini-cal-dates{grid-template-rows:repeat(6,minmax(24px,1fr))}
+</style>
+
+<style id="mobile-ux-preview-v18">
+/* Mobile UX Preview v18 — <= 640px only. Desktop/tablet rules are untouched. */
+@media (max-width:640px), (max-width:900px) and (max-height:500px) and (pointer:coarse){
+  :root{--mobile-nav-h:68px}
+  html,body{width:100%;max-width:100%;overflow-x:hidden}
+  body{display:block!important;height:auto!important;min-height:100dvh;overflow-y:auto!important;padding:0 0 calc(var(--mobile-nav-h) + env(safe-area-inset-bottom))!important;background:var(--bg-card)}
+  .artboard{position:relative!important;display:block!important;width:100%!important;max-width:none!important;height:auto!important;min-height:100dvh!important;max-height:none!important;overflow:visible!important;background:var(--bg-card)}
+
+  /* Bottom navigation: keep every existing destination available without duplicating JS. */
+  .sidebar{position:fixed!important;left:0!important;right:0!important;bottom:0!important;top:auto!important;width:100%!important;height:calc(var(--mobile-nav-h) + env(safe-area-inset-bottom))!important;z-index:220!important;display:flex!important;flex-direction:row!important;align-items:flex-start!important;overflow-x:auto!important;overflow-y:hidden!important;padding:4px 6px env(safe-area-inset-bottom)!important;box-sizing:border-box!important;background:color-mix(in srgb,var(--bg-card) 96%,transparent)!important;border-top:1px solid var(--line2)!important;box-shadow:0 -6px 24px var(--shadow-panel)!important;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);scrollbar-width:none}
+  .sidebar::-webkit-scrollbar{display:none}
+  .profile,.theme{display:none!important}
+  .side-nav-top,.side-nav-bottom{display:flex!important;flex-direction:row!important;align-items:center!important;gap:2px!important;margin:0!important;padding:0!important;flex:0 0 auto!important;height:60px!important}
+  .side-item{width:62px!important;height:56px!important;flex:0 0 62px!important;border-radius:12px!important;gap:2px!important;font-size:9.5px!important;line-height:1.1!important}
+  .side-item svg{width:21px!important;height:21px!important}
+  .side-item.active{background:var(--lav-soft)!important;color:var(--lav)!important}
+  .trash-badge{top:3px!important;right:7px!important}
+
+  /* TODAY: mobile is a task-first screen. The full calendar remains available in Calendar. */
+  .top{position:static!important;display:block!important;width:100%!important;height:auto!important;max-height:none!important;padding:10px 12px 14px!important;overflow:visible!important;box-sizing:border-box!important}
+  /* hidden must win over the mobile display override. Without this, Today's fixed composer
+     can escape above Calendar/Future Log and look like a second input field. */
+  .top[hidden],.weekly[hidden]{display:none!important}
+  .top>.calendar-card{display:none!important}
+  .daily{width:100%!important;min-width:0!important;min-height:calc(100dvh - var(--mobile-nav-h) - 20px)!important;margin:0!important;padding:0 0 10px!important}
+  .daily-header{position:sticky;top:0;z-index:30;background:var(--bg-card);padding:10px 2px 8px;margin:0 0 10px!important;border-bottom:1px solid var(--line)}
+  .daily-title{font-size:20px!important;letter-spacing:-.5px}
+  .daily-header-actions{gap:6px!important}
+  .quick{height:50px!important;border-radius:14px!important;padding:0 12px!important;gap:10px!important;margin-bottom:8px}
+  .quick-icons{gap:10px!important}
+  #daily-list .task,#rollover-list .task{min-height:48px!important;padding:9px 8px!important;gap:10px!important;border-radius:10px}
+  #daily-list .row-title-text,#rollover-list .row-title-text{font-size:14px;line-height:1.35}
+
+  /* WEEKLY: horizontal swipe cards instead of squeezing seven columns. */
+  .weekly{position:static!important;left:auto!important;right:auto!important;top:auto!important;bottom:auto!important;width:100%!important;height:auto!important;max-height:none!important;transform:none!important;margin:10px 0 4px!important;border-radius:18px 18px 0 0!important;box-shadow:none!important;overflow:hidden!important;background:var(--weekly)!important}
+  .weekly-resize-handle,.week-row-divider{display:none!important}
+  .weekly-head{height:auto!important;min-height:52px!important;margin:8px 10px 0!important;padding:4px 0!important;gap:12px!important;flex-wrap:wrap!important}
+  .weekly-title{font-size:22px!important;letter-spacing:-.6px!important}
+  .weekly-body,.weekly-body.week-row-split{height:auto!important;max-height:none!important;min-height:0!important;margin-top:8px!important;padding:0 10px 12px!important;overflow:visible!important}
+  .week-row-scroll,.week-row-scroll-top,.week-row-scroll-bottom{overflow-x:auto!important;overflow-y:hidden!important;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch;scrollbar-width:thin;padding-bottom:6px}
+  .week-grid{grid-template-columns:repeat(var(--week-cols,7),minmax(250px,78vw))!important;min-width:max-content!important;gap:8px!important}
+  .week-card{scroll-snap-align:start;min-height:300px!important;border-radius:12px!important}
+  .week-card .week-head{position:sticky;left:0}
+
+  /* CALENDAR: full-width month first, selected/monthly inbox below. */
+  .monthly-log-view{position:fixed!important;inset:0 0 calc(var(--mobile-nav-h) + env(safe-area-inset-bottom)) 0!important;width:auto!important;height:auto!important;margin:0!important;border:0!important;border-radius:0!important;display:flex!important;flex-direction:column!important;background:var(--bg-card)!important;z-index:90!important;overflow:hidden!important}
+  .monthly-log-view[hidden]{display:none!important}
+  .monthly-log-main{flex:1 1 auto!important;min-height:0!important;overflow:hidden!important}
+  .monthly-log-header{position:sticky;top:0;z-index:20;padding:12px 12px 8px!important;background:var(--bg-card);border-bottom:1px solid var(--line)}
+  .monthly-log-nav{gap:6px!important;flex-wrap:wrap!important}
+  .monthly-log-rows{padding:0 4px 10px!important}
+  .monthly-log-body{max-height:none!important;min-height:0!important;overflow-y:auto!important;-webkit-overflow-scrolling:touch}
+  .monthly-split-divider{display:none!important}
+  .monthly-inbox-panel{position:static!important;left:auto!important;right:auto!important;top:auto!important;bottom:auto!important;width:100%!important;height:auto!important;max-height:38dvh!important;flex:0 0 auto!important;transform:none!important;border-left:0!important;border-top:1px solid var(--line2)!important;box-shadow:0 -4px 18px var(--shadow-panel)!important;overflow:hidden!important}
+  .monthly-inbox-list{max-height:calc(38dvh - 104px)!important;overflow-y:auto!important}
+  .monthly-inbox-toggle-btn,.monthly-inbox-close-btn{display:none!important}
+
+  /* FUTURE LOG: one month per swipe. 3/6/12 controls become range controls, not a squeezed grid. */
+  .future-log-view{position:fixed!important;inset:0 0 calc(var(--mobile-nav-h) + env(safe-area-inset-bottom)) 0!important;width:auto!important;height:auto!important;margin:0!important;border:0!important;border-radius:0!important;display:flex!important;flex-direction:column!important;background:var(--bg-card)!important;z-index:90!important;overflow:hidden!important}
+  .future-log-view[hidden]{display:none!important}
+  .future-log-header{position:sticky;top:0;z-index:25;padding:10px 12px!important;gap:8px 10px!important;background:var(--bg-card);border-bottom:1px solid var(--line)}
+  .future-log-title{font-size:17px!important}
+  .future-log-period-nav{order:2;width:100%;justify-content:center;flex-wrap:nowrap!important}
+  .future-log-period-label{font-size:13.5px!important;text-align:center}
+  .future-log-today-btn{order:3}
+  .future-log-period-mode{order:1;margin-left:auto!important}
+  .future-log-body{flex:1 1 auto!important;min-height:0!important;max-height:none!important;overflow-y:auto!important;overflow-x:hidden!important;scrollbar-gutter:auto!important;-webkit-overflow-scrolling:touch}
+  .future-log-months,.future-log-months[data-month-count="3"],.future-log-months[data-month-count="6"],.future-log-months[data-month-count="12"]{display:flex!important;flex-direction:row!important;align-items:stretch!important;align-content:normal!important;grid-template-columns:none!important;grid-template-rows:none!important;grid-auto-rows:auto!important;width:100%!important;height:auto!important;min-height:100%!important;gap:12px!important;padding:12px 12px 18px!important;box-sizing:border-box!important;overflow-x:auto!important;overflow-y:visible!important;scroll-snap-type:x mandatory!important;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;scrollbar-width:thin}
+  .future-log-card,.future-log-months[data-month-count="3"] .future-log-card,.future-log-months[data-month-count="6"] .future-log-card,.future-log-months[data-month-count="12"] .future-log-card{flex:0 0 calc(100vw - 24px)!important;width:calc(100vw - 24px)!important;height:auto!important;min-height:calc(100dvh - 190px)!important;scroll-snap-align:start;scroll-snap-stop:always;border-radius:16px!important}
+  .future-log-row-divider{display:none!important}
+  .future-log-card-header{padding:12px 14px 2px!important;font-size:14px!important}
+  .future-log-block-main{flex-direction:column!important;min-height:0!important}
+  .future-log-block-left{width:100%!important;flex:0 0 auto!important;padding:0!important}
+  .future-log-block-right{border-left:0!important;border-top:1px solid var(--line)!important;flex:1 1 auto!important;min-height:0!important}
+  .future-log-mini-cal{padding:10px 14px 4px!important}
+  .future-log-mini-cal-weekdays{font-size:11px!important;margin-bottom:4px!important}
+  .future-log-mini-cal-dates,.future-log-months[data-month-count="12"] .future-log-mini-cal-dates{grid-auto-rows:38px!important;grid-template-rows:none!important}
+  .future-log-mini-cal-date{font-size:14px!important}
+  .future-log-mini-cal.has-lunar .future-log-mini-cal-dates,.future-log-months[data-month-count="12"] .future-log-mini-cal.has-lunar .future-log-mini-cal-dates{grid-auto-rows:42px!important;grid-template-rows:none!important}
+  .future-log-card-rows,.future-log-months[data-month-count="3"] .future-log-card-rows,.future-log-months[data-month-count="6"] .future-log-card-rows,.future-log-months[data-month-count="12"] .future-log-card-rows{flex:1 1 auto!important;min-height:120px!important;max-height:none!important;overflow:visible!important;padding:8px 10px 14px!important}
+  .future-log-row{min-height:44px!important;padding:6px 8px!important;font-size:13.5px!important;row-gap:2px!important}
+  .future-log-quick.monthly-quick{min-height:48px!important;padding:10px 12px!important}
+
+  /* Secondary screens and overlays: reserve the bottom nav and use the whole phone width. */
+  .detail-drawer{width:100vw!important;max-width:none!important;bottom:calc(var(--mobile-nav-h) + env(safe-area-inset-bottom))!important;border-radius:18px 18px 0 0!important}
+  .today-monthly-panel{left:0!important;right:0!important;top:auto!important;bottom:calc(var(--mobile-nav-h) + env(safe-area-inset-bottom))!important;width:100%!important;height:min(68dvh,620px)!important;border-radius:18px 18px 0 0!important;border-left:0!important;border-top:1px solid var(--line2)!important;box-shadow:0 -8px 28px var(--shadow-panel)!important}
+  .today-monthly-backdrop{bottom:calc(var(--mobile-nav-h) + env(safe-area-inset-bottom))!important}
+}
+</style>
+
+
+<style id="mobile-ux-pass2-v19">
+/* Mobile UX Pass 2 v19 — mobile-only information architecture. (base for benchmark pass) */
+.mobile-more,.mobile-more-sheet,.mobile-more-backdrop,.mobile-quick-send{display:none}
+@media (max-width:640px), (max-width:900px) and (max-height:500px) and (pointer:coarse){
+  :root{--mobile-nav-h:68px;--mobile-composer-h:58px}
+
+  /* Five primary destinations. Keyboard shortcuts remain desktop/tablet-only. */
+  .sidebar{overflow:hidden!important;padding-left:8px!important;padding-right:8px!important}
+  .side-nav-top{width:100%!important;flex:1 1 auto!important;justify-content:space-between!important;gap:4px!important}
+  .side-nav-bottom{display:none!important}
+  .side-item.shortcut,.side-item.search,.side-item.trash,.side-item.stats,.side-item.settings{display:none!important}
+  .side-item.today,.side-item.calendar,.side-item.future-log,.side-item.routine,.side-item.mobile-more{
+    display:flex!important;flex:1 1 20%!important;width:auto!important;min-width:0!important;max-width:76px!important;height:56px!important
+  }
+  .side-item.mobile-more{cursor:pointer}
+
+  /* More bottom sheet: search/trash/stats/settings live here on mobile. */
+  .mobile-more-backdrop{position:fixed;inset:0 0 calc(var(--mobile-nav-h) + env(safe-area-inset-bottom)) 0;background:var(--overlay-shadow);z-index:225}
+  .mobile-more-backdrop:not([hidden]){display:block}
+  .mobile-more-sheet{position:fixed;left:0;right:0;bottom:calc(var(--mobile-nav-h) + env(safe-area-inset-bottom));z-index:230;background:var(--bg-card);border:1px solid var(--line2);border-bottom:0;border-radius:22px 22px 0 0;box-shadow:0 -10px 32px var(--shadow-panel);padding:8px 14px calc(18px + env(safe-area-inset-bottom));max-height:58dvh}
+  .mobile-more-sheet:not([hidden]){display:block}
+  .mobile-sheet-grabber{width:38px;height:4px;border-radius:999px;background:var(--line2);margin:2px auto 10px}
+  .mobile-more-sheet-head{display:flex;align-items:center;justify-content:space-between;padding:2px 2px 12px;font-size:17px;color:var(--ink)}
+  .mobile-more-close{width:36px;height:36px;border:0;border-radius:10px;background:transparent;color:var(--icon-muted);font-size:24px;line-height:1;cursor:pointer}
+  .mobile-more-close:active{background:var(--bg-hover)}
+  .mobile-more-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+  .mobile-more-grid button{min-height:72px;border:1px solid var(--line2);border-radius:16px;background:var(--bg-subtle);color:var(--ink);display:flex;align-items:center;gap:12px;padding:12px 16px;text-align:left;font:inherit;cursor:pointer}
+  .mobile-more-grid button span{display:grid;place-items:center;width:34px;height:34px;border-radius:10px;background:var(--bg-card);font-size:20px;color:var(--icon-strong)}
+  .mobile-more-grid button b{font-size:14px}
+  .mobile-more-grid button:active{background:var(--lav-soft);border-color:var(--lav)}
+
+  /* Today: KakaoTalk-like composer pinned directly above bottom navigation. */
+  .daily-normal-view{padding-bottom:calc(var(--mobile-composer-h) + 32px)!important}
+  .daily .quick{position:fixed!important;left:10px!important;right:10px!important;bottom:calc(var(--mobile-nav-h) + env(safe-area-inset-bottom) + 8px)!important;width:auto!important;height:var(--mobile-composer-h)!important;margin:0!important;padding:7px 8px 7px 10px!important;z-index:210!important;border:1px solid var(--line2)!important;border-radius:18px!important;background:color-mix(in srgb,var(--bg-card) 97%,transparent)!important;box-shadow:0 8px 28px var(--shadow-panel)!important;backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);gap:8px!important}
+  .daily .quick .quick-icons{flex:0 0 auto;gap:7px!important}
+  .daily .quick .q-slot{width:28px!important;height:34px!important;display:grid!important;place-items:center!important}
+  .daily .quick #quick-input{min-width:0!important;flex:1 1 auto!important;font-size:15px!important;padding:0 2px!important}
+  .mobile-quick-send{display:grid!important;place-items:center;flex:0 0 40px;width:40px;height:40px;border:0;border-radius:13px;background:var(--lav);color:#fff;font-size:24px;font-weight:500;line-height:1;cursor:pointer}
+  .mobile-quick-send:active{transform:scale(.96)}
+
+  /* Calendar: remove the permanently stacked monthly inbox. Open it from the header instead. */
+  .monthly-log-main{flex:1 1 auto!important;min-height:0!important}
+  .monthly-inbox-toggle-btn{display:inline-flex!important;align-items:center!important;justify-content:center!important;gap:5px!important;width:auto!important;min-width:34px!important;height:34px!important;padding:0 9px!important;border:1px solid var(--line2)!important;border-radius:10px!important;background:var(--bg-subtle)!important;color:var(--icon-strong)!important;font-size:0!important;margin-left:2px!important}
+  .monthly-inbox-toggle-btn::before{content:"☑";font-size:15px;line-height:1}
+  .monthly-inbox-toggle-btn::after{content:"이달의 할 일";font-size:11px;font-weight:700;white-space:nowrap}
+  .monthly-inbox-toggle-btn[aria-expanded="true"]{background:var(--lav-soft)!important;color:var(--lav)!important;border-color:color-mix(in srgb,var(--lav) 45%,var(--line2))!important}
+  .monthly-inbox-panel{position:fixed!important;left:0!important;right:0!important;top:auto!important;bottom:calc(var(--mobile-nav-h) + env(safe-area-inset-bottom))!important;width:100%!important;height:min(64dvh,600px)!important;max-height:72dvh!important;z-index:190!important;display:flex!important;flex-direction:column!important;transform:translateY(calc(100% + 28px))!important;transition:transform .22s ease!important;border:1px solid var(--line2)!important;border-bottom:0!important;border-radius:22px 22px 0 0!important;box-shadow:0 -10px 32px var(--shadow-panel)!important;background:var(--bg-card)!important;pointer-events:none!important;overflow:hidden!important}
+  .monthly-inbox-panel.is-open{transform:translateY(0)!important;pointer-events:auto!important}
+  .monthly-inbox-header{position:relative!important;padding-top:24px!important}
+  .monthly-inbox-header::before{content:""!important;position:absolute!important;top:8px!important;left:50%!important;transform:translateX(-50%)!important;width:38px!important;height:4px!important;border-radius:999px!important;background:var(--line2)!important}
+  .monthly-inbox-close-btn{display:grid!important;place-items:center!important}
+  .monthly-inbox-list{flex:1 1 auto!important;max-height:none!important;overflow-y:auto!important;-webkit-overflow-scrolling:touch}
+
+  /* The calendar now owns the full vertical canvas until its sheet is explicitly opened. */
+  .monthly-log-body{padding-bottom:10px!important}
+}
+</style>
+
+
+<style id="mobile-ux-benchmark-v20">
+/* Mobile UX Pass 3 v20 — TickTick/Todoist interaction benchmarking, mobile only.
+   Principles: persistent capture, five-item primary nav, touch-size controls,
+   view-local settings as bottom sheets, and horizontal card browsing where density is high. */
+@media (max-width:640px), (max-width:900px) and (max-height:500px) and (pointer:coarse){
+  :root{
+    --mobile-nav-h:66px;
+    --mobile-composer-h:58px;
+    --mobile-touch:44px;
+    --mobile-gutter:12px;
+  }
+
+  /* Primary navigation: keep five destinations stable and thumb reachable. */
+  .sidebar{height:calc(var(--mobile-nav-h) + env(safe-area-inset-bottom))!important;padding:4px 8px env(safe-area-inset-bottom)!important}
+  .side-nav-top{height:58px!important;align-items:center!important}
+  .side-item.today,.side-item.calendar,.side-item.future-log,.side-item.routine,.side-item.mobile-more{
+    min-height:54px!important;height:54px!important;border-radius:14px!important;font-size:10px!important;font-weight:650!important;gap:3px!important
+  }
+  .side-item svg{width:22px!important;height:22px!important}
+
+  /* All view-local settings become one-handed bottom sheets instead of tiny anchored popovers. */
+  body > .monthly-log-menu,
+  body > .week-range-menu{
+    position:fixed!important;
+    left:8px!important;
+    right:8px!important;
+    top:auto!important;
+    bottom:calc(var(--mobile-nav-h) + env(safe-area-inset-bottom) + 8px)!important;
+    width:auto!important;
+    min-width:0!important;
+    max-width:none!important;
+    max-height:min(62dvh,520px)!important;
+    overflow-y:auto!important;
+    padding:22px 8px 8px!important;
+    border:1px solid var(--line2)!important;
+    border-radius:20px!important;
+    background:var(--bg-card)!important;
+    box-shadow:0 -12px 36px var(--shadow-panel)!important;
+    z-index:290!important;
+    transform:none!important;
+    scrollbar-width:thin!important;
+  }
+  body > .monthly-log-menu::before,
+  body > .week-range-menu::before{
+    content:"";
+    position:sticky;
+    display:block;
+    top:-14px;
+    width:40px;
+    height:4px;
+    margin:-2px auto 8px;
+    border-radius:999px;
+    background:var(--line2);
+    z-index:1;
+  }
+  body > .monthly-log-menu .monthly-log-menu-item,
+  body > .week-range-menu .week-range-menu-item,
+  body > .week-range-menu .monthly-log-menu-item{
+    min-height:48px!important;
+    padding:10px 12px!important;
+    border-radius:12px!important;
+    font-size:14px!important;
+    line-height:1.3!important;
+    display:flex!important;
+    align-items:center!important;
+    box-sizing:border-box!important;
+  }
+  body > .monthly-log-menu .monthly-log-menu-item-check,
+  body > .week-range-menu .monthly-log-menu-item-check{width:22px!important;height:22px!important;flex:0 0 22px!important}
+  body > .monthly-log-menu .future-log-menu-divider,
+  body > .monthly-log-menu .week-range-menu-divider,
+  body > .week-range-menu .week-range-menu-divider{margin:5px 8px!important}
+
+  /* Today: focus list + capture. Header actions remain fully usable on mobile. */
+  .daily-header{min-height:54px!important;padding:8px 0 8px!important;gap:8px!important}
+  .daily-title{font-size:20px!important;line-height:1.2!important;min-width:0!important}
+  .daily-header-actions{margin-left:auto!important;gap:6px!important}
+  .today-menu-btn,.monthly-panel-toggle{
+    width:var(--mobile-touch)!important;height:var(--mobile-touch)!important;min-width:var(--mobile-touch)!important;
+    border-radius:13px!important;display:grid!important;place-items:center!important
+  }
+  .today-menu-btn{font-size:22px!important;background:var(--bg-subtle)!important;border:1px solid var(--line2)!important}
+  .monthly-panel-toggle{background:var(--lav)!important;color:#fff!important;border:0!important}
+  .daily .quick{left:8px!important;right:8px!important;bottom:calc(var(--mobile-nav-h) + env(safe-area-inset-bottom) + 7px)!important;border-radius:18px!important}
+  .daily .quick .q-slot{min-width:34px!important;width:34px!important;height:40px!important;border-radius:11px!important}
+  .mobile-quick-send{width:42px!important;height:42px!important;flex-basis:42px!important;border-radius:14px!important}
+  #daily-list .task,#rollover-list .task{min-height:52px!important;padding:10px 8px!important}
+
+  /* Calendar: month remains the primary canvas; inbox/settings are explicit header actions. */
+  .monthly-log-header{padding:8px 10px!important;min-height:58px!important;display:flex!important;align-items:center!important}
+  .monthly-log-nav{width:100%!important;display:grid!important;grid-template-columns:minmax(0,1fr) 40px 40px 40px 44px auto!important;gap:4px!important;align-items:center!important}
+  .monthly-log-month-label{font-size:17px!important;font-weight:750!important;min-width:0!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
+  .monthly-log-nav-btn,.monthly-log-menu-btn{
+    width:40px!important;height:40px!important;min-width:40px!important;border-radius:12px!important;display:grid!important;place-items:center!important
+  }
+  .monthly-log-menu-btn{margin-left:0!important;background:var(--bg-subtle)!important;border:1px solid var(--line2)!important;font-size:20px!important}
+  .monthly-inbox-toggle-btn{height:40px!important;min-height:40px!important;border-radius:12px!important;padding:0 10px!important;margin-left:0!important}
+  .monthly-inbox-toggle-btn::after{font-size:10.5px!important}
+  .monthly-log-body{overscroll-behavior-y:contain!important}
+
+  /* Calendar inbox sheet mirrors mobile task organizers: clear title, easy close, scrollable content. */
+  .monthly-inbox-panel{height:min(70dvh,620px)!important;max-height:76dvh!important;border-radius:24px 24px 0 0!important}
+  .monthly-inbox-header{min-height:58px!important;padding:22px 12px 8px!important}
+  .monthly-inbox-title{font-size:17px!important}
+  .monthly-inbox-menu-btn,.monthly-inbox-close-btn{width:40px!important;height:40px!important;border-radius:12px!important}
+  .monthly-quick{min-height:52px!important;margin:0 10px 8px!important;border-radius:14px!important}
+  .monthly-quick-mode{min-width:34px!important;height:40px!important}
+
+  /* Future Log: range is a scope selector; browsing is one-month-at-a-time with a visible next-card peek. */
+  .future-log-header{padding:8px 10px 10px!important;display:grid!important;grid-template-columns:minmax(0,1fr) auto!important;grid-template-areas:"title controls" "period period"!important;gap:6px 8px!important;align-items:center!important}
+  .future-log-title{grid-area:title!important;font-size:18px!important;font-weight:760!important}
+  .future-log-period-mode{grid-area:controls!important;display:flex!important;align-items:center!important;gap:5px!important;margin-left:0!important}
+  .future-log-period-nav{grid-area:period!important;order:initial!important;width:100%!important;justify-content:center!important;gap:5px!important}
+  .future-log-nav-btn,.future-log-today-btn{min-height:40px!important;height:40px!important;border-radius:12px!important}
+  .future-log-nav-btn{width:40px!important;min-width:40px!important}
+  .future-log-today-btn{padding:0 12px!important}
+  .future-log-menu-btn{width:40px!important;height:40px!important;min-width:40px!important;border-radius:12px!important;background:var(--bg-subtle)!important;border:1px solid var(--line2)!important}
+  .future-log-month-step-btn{display:none!important}
+  .future-log-month-count-btn{height:40px!important;min-height:40px!important;border-radius:12px!important;padding:0 11px!important}
+  .future-log-months,.future-log-months[data-month-count="3"],.future-log-months[data-month-count="6"],.future-log-months[data-month-count="12"]{
+    gap:10px!important;padding:10px 10px 18px!important;scroll-padding-left:10px!important
+  }
+  .future-log-card,.future-log-months[data-month-count="3"] .future-log-card,.future-log-months[data-month-count="6"] .future-log-card,.future-log-months[data-month-count="12"] .future-log-card{
+    flex-basis:calc(100vw - 34px)!important;width:calc(100vw - 34px)!important;min-height:calc(100dvh - 184px)!important;border-radius:18px!important
+  }
+  .future-log-card-header{min-height:42px!important;padding:10px 12px 4px!important;font-size:15px!important}
+  .future-log-quick{min-height:50px!important}
+
+  /* Weekly: readable cards with a sliver of the next day as an affordance to swipe. */
+  .week-grid{grid-template-columns:repeat(var(--week-cols,7),minmax(260px,84vw))!important;gap:9px!important}
+  .week-card{min-height:300px!important;scroll-snap-align:start!important;border-radius:14px!important}
+  .week-card header{min-height:46px!important;padding:8px 10px!important}
+  .week-card .plus{width:38px!important;height:38px!important;border-radius:11px!important}
+
+  /* More sheet follows Todoist-like "Browse" hierarchy: frequent utilities first, preferences last. */
+  .mobile-more-sheet{border-radius:24px 24px 0 0!important;padding:8px 12px calc(16px + env(safe-area-inset-bottom))!important}
+  .mobile-more-grid{grid-template-columns:1fr!important;gap:7px!important}
+  .mobile-more-grid button{min-height:58px!important;border-radius:14px!important;padding:8px 12px!important}
+  .mobile-more-grid button span{width:38px!important;height:38px!important;border-radius:11px!important}
+
+  /* All mobile overlays respect the bottom navigation and safe area. */
+  .today-monthly-panel{height:min(70dvh,620px)!important;max-height:76dvh!important;border-radius:24px 24px 0 0!important}
+  .detail-drawer{max-height:78dvh!important;border-radius:24px 24px 0 0!important}
+}
+</style>
+
+<style id="mobile-ux-project-calendar-v21">
+/* 프로젝트명 칩은 이제 화면 크기와 무관한 공통 메타정보다. v21에서는 모바일에서만
+   display되어 PC/Tablet에서 프로젝트명이 사라지는 회귀가 있었다. 달력 셀처럼 공간이
+   극도로 작은 곳은 기존 프로젝트 색 칩/점으로 표현하고, 일반 목록은 이 칩을 공통 사용. */
+.mobile-project-badge{display:inline-flex;align-items:center;max-width:180px;height:18px;padding:0 6px;margin-left:6px;border-radius:5px;vertical-align:middle;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:10px;font-weight:750;line-height:18px;color:var(--project-accent,var(--lav));background:color-mix(in srgb,var(--project-accent,var(--lav)) 12%,var(--bg-card));border:1px solid color-mix(in srgb,var(--project-accent,var(--lav)) 20%,transparent);box-sizing:border-box;flex:0 1 auto}
+.mobile-monthly-project-dots,.mobile-calendar-project-legend,.mobile-calendar-agenda{display:none}
+@media (max-width:640px), (max-width:900px) and (max-height:500px) and (pointer:coarse){
+  .mobile-project-badge{display:inline-flex;align-items:center;max-width:42vw;height:20px;padding:0 7px;margin-left:6px;border-radius:6px;vertical-align:middle;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:10.5px;font-weight:750;line-height:20px;color:var(--project-accent,var(--lav));background:color-mix(in srgb,var(--project-accent,var(--lav)) 12%,var(--bg-card));border:1px solid color-mix(in srgb,var(--project-accent,var(--lav)) 20%,transparent);box-sizing:border-box;flex:0 1 auto}
+  .row-title,.week-title-cell,.monthly-item-title-cell,.future-log-row-title-cell{min-width:0}
+  .row-title{display:flex;align-items:center;flex-wrap:wrap;column-gap:2px;row-gap:3px}
+  .week-title-cell,.monthly-item-title-cell,.future-log-row-title-cell{display:flex;align-items:center;flex-wrap:wrap;row-gap:3px}
+
+  .monthly-log-main{display:flex!important;flex-direction:column!important;overflow-y:auto!important;overscroll-behavior-y:contain!important;-webkit-overflow-scrolling:touch}
+  .monthly-log-body{flex:0 0 auto!important;min-height:0!important;max-height:none!important;overflow:visible!important;padding-bottom:0!important}
+  .monthly-log-week-row{flex:none!important;min-height:72px!important;height:72px!important}
+  .monthly-log-row{padding:7px 4px 4px!important;gap:0!important;overflow:hidden!important}
+  .monthly-log-row-label{height:100%!important;display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:flex-start!important;gap:2px!important;cursor:pointer}
+  .monthly-log-day-num{font-size:14px!important;min-width:28px!important;height:28px!important;padding:0 4px!important}
+  .monthly-log-row-weekday{max-width:100%!important;font-size:9px!important;line-height:1.05!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
+  .monthly-log-row-lunar{font-size:8px!important}
+  .monthly-log-schedule-grid-host,.monthly-log-week-segments,.monthly-log-day-list-btn{display:none!important}
+  .mobile-monthly-project-dots{display:flex;align-items:center;justify-content:center;gap:3px;min-height:10px;margin-top:3px;max-width:100%}
+  .mobile-monthly-project-dot{width:6px;height:6px;border-radius:50%;background:var(--project-accent,var(--icon-muted));flex:0 0 6px}
+  .mobile-monthly-project-dot-more{font-size:8px;font-weight:800;color:var(--muted);line-height:10px}
+  .monthly-log-row.is-selected-date{background:var(--lav-soft)!important}.monthly-log-row.range-selected-single,.monthly-log-row.is-today.range-selected-single{background:var(--lav-soft)!important}
+
+  .mobile-calendar-project-legend:not([hidden]){display:flex;flex:0 0 auto;gap:10px;align-items:center;overflow-x:auto;scrollbar-width:none;padding:9px 12px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);background:var(--bg-card)}
+  .mobile-calendar-project-legend::-webkit-scrollbar{display:none}
+  .mobile-calendar-legend-chip{display:inline-flex;align-items:center;gap:5px;flex:0 0 auto;font-size:11px;font-weight:650;color:var(--muted);white-space:nowrap}
+  .mobile-calendar-legend-dot{width:9px;height:9px;border-radius:50%;background:var(--project-accent,var(--lav));flex:0 0 9px}
+
+  .mobile-calendar-agenda{display:flex;flex:0 0 auto;flex-direction:column;min-height:180px;padding:10px 12px calc(12px + env(safe-area-inset-bottom));background:var(--bg-card)}
+  .mobile-calendar-agenda-head{display:flex;align-items:center;justify-content:space-between;min-height:38px}
+  .mobile-calendar-agenda-head h3{margin:0;font-size:16px;font-weight:800;color:var(--ink)}
+  .mobile-calendar-agenda-list{display:flex;flex-direction:column;gap:4px;min-height:48px}
+  .mobile-calendar-agenda-item{display:grid;grid-template-columns:18px 10px minmax(0,1fr);gap:8px;align-items:start;min-height:48px;padding:8px 6px;border-radius:12px;cursor:pointer}
+  .mobile-calendar-agenda-item:active{background:var(--bg-hover)}
+  .mobile-calendar-agenda-item:focus-visible{outline:2px solid var(--lav);outline-offset:-2px}
+  .mobile-calendar-agenda-item>.checkbox{margin-top:1px;width:18px;height:18px}
+  .mobile-calendar-agenda-item.is-done .mobile-calendar-agenda-title{text-decoration:line-through;color:var(--text-disabled)}
+  .mobile-calendar-agenda-marker{width:9px;height:9px;margin-top:5px;border-radius:50%;background:var(--project-accent,var(--icon-muted))}
+  .mobile-calendar-agenda-body{display:flex;flex-direction:column;min-width:0;gap:3px}
+  .mobile-calendar-agenda-title-line{display:flex;align-items:center;flex-wrap:wrap;min-width:0;column-gap:2px;row-gap:3px}
+  .mobile-calendar-agenda-title{min-width:0;font-size:14px;font-weight:720;color:var(--ink);line-height:1.35}
+  .mobile-calendar-agenda-meta{font-size:11px;color:var(--muted)}
+  .mobile-calendar-agenda-empty{margin:10px 4px 14px;font-size:12px;color:var(--muted)}
+  .mobile-calendar-agenda-quick{position:sticky;bottom:0;display:flex;align-items:center;gap:7px;min-height:52px;margin-top:8px;padding:6px 7px;border:1px solid var(--line2);border-radius:16px;background:color-mix(in srgb,var(--bg-card) 97%,transparent);box-shadow:0 6px 20px var(--shadow-panel);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+  .mobile-calendar-agenda-modes{display:flex;align-items:center;gap:2px;flex:0 0 auto}
+  .mobile-calendar-agenda-modes button{width:30px;height:38px;border:0;border-radius:10px;background:transparent;color:var(--icon-muted);display:grid;place-items:center}
+  .mobile-calendar-agenda-modes button[aria-pressed="true"]{background:var(--lav-soft);color:var(--lav)}
+  #mobile-calendar-agenda-input{min-width:0;flex:1 1 auto;border:0;outline:0;background:transparent;color:var(--ink);font:inherit;font-size:14px}
+  #mobile-calendar-agenda-input::placeholder{color:var(--muted)}
+  .mobile-calendar-agenda-send{width:38px;height:38px;flex:0 0 38px;border:0;border-radius:12px;background:var(--lav);color:#fff;font-size:22px;line-height:1;display:grid;place-items:center}
+
+  .future-log-row .mobile-project-badge{max-width:36cqw;margin-left:4px}
+  #daily-list .mobile-project-badge,#rollover-list .mobile-project-badge{max-width:38vw}
+}
+</style>
+
+<style id="mobile-soft-keyboard-v25">
+/* Mobile soft-keyboard UX v25 — KakaoTalk-like capture behavior.
+   Mobile only: while a real text field is focused, hide the bottom nav and keep
+   the active composer/overlay above the OS keyboard. Desktop/tablet untouched. */
+@media (max-width:640px), (max-width:900px) and (max-height:500px) and (pointer:coarse){
+  body{--mobile-keyboard-offset:0px}
+  body.mobile-keyboard-focus{
+    --mobile-nav-h:0px;
+    padding-bottom:0!important;
+  }
+  body.mobile-keyboard-focus .sidebar{
+    opacity:0!important;visibility:hidden!important;pointer-events:none!important;
+    transform:translateY(110%)!important;
+  }
+  body.mobile-keyboard-focus .daily .quick{
+    bottom:calc(var(--mobile-keyboard-offset) + env(safe-area-inset-bottom) + 8px)!important;
+  }
+  body.mobile-keyboard-focus .monthly-log-view,
+  body.mobile-keyboard-focus .future-log-view{
+    bottom:var(--mobile-keyboard-offset)!important;
+  }
+  body.mobile-keyboard-focus .detail-drawer,
+  body.mobile-keyboard-focus .today-monthly-panel,
+  body.mobile-keyboard-focus .monthly-inbox-panel{
+    bottom:var(--mobile-keyboard-offset)!important;
+  }
+  body.mobile-keyboard-focus .dotdot-ext-overlay{
+    height:calc(100dvh - var(--mobile-keyboard-offset))!important;
+  }
+  body.mobile-keyboard-focus .mobile-calendar-agenda-quick{
+    bottom:0!important;z-index:45!important;
+  }
+  body.mobile-keyboard-focus .daily-normal-view{
+    padding-bottom:calc(var(--mobile-composer-h) + 30px)!important;
+  }
+}
+</style>
+
 </head>
 <body>
 <div class="artboard">
@@ -2926,6 +3667,7 @@ body.dnd-active .monthly-log-week-segment{pointer-events:none}
       <div class="side-item calendar" role="button" tabindex="0" aria-label="달력"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4M16 3v4M4 9h16"/><path d="M9 18v-7l3 4 3-4v7"/></svg><span>달력</span></div>
       <div class="side-item future-log" role="button" tabindex="0" aria-label="퓨처로그"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4M16 3v4M4 9h16"/><path d="M9 12.2l2.3 2.3-2.3 2.3M12.7 12.2l2.3 2.3-2.3 2.3"/></svg><span>퓨처로그</span></div>
       <div class="side-item routine"><svg viewBox="0 0 24 24"><path d="M4 12a8 8 0 0 1 13.66-5.66M20 4v5h-5"/><path d="M20 12a8 8 0 0 1-13.66 5.66M4 20v-5h5"/></svg><span>루틴</span></div>
+      <div class="side-item mobile-more" role="button" tabindex="0" aria-label="더보기" aria-expanded="false"><svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1.4" fill="currentColor" stroke="none"/></svg><span>더보기</span></div>
       <div class="side-item shortcut"><svg viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="11" rx="2"/><path d="M6 11h.01M10 11h.01M14 11h.01M18 11h.01M7 14.5h10"/></svg><span>단축키</span></div>
       <div class="side-item search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="M16 16l5 5"/></svg><span>검색</span></div>
       <div class="side-item trash" role="button" tabindex="0" aria-label="휴지통"><svg viewBox="0 0 24 24"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M10 11v6M14 11v6"/></svg><span>휴지통</span><span class="trash-badge" hidden>0</span></div>
@@ -2940,10 +3682,24 @@ body.dnd-active .monthly-log-week-segment{pointer-events:none}
     </div>
   </aside>
 
+  <div class="mobile-more-backdrop" id="mobile-more-backdrop" hidden></div>
+  <section class="mobile-more-sheet" id="mobile-more-sheet" hidden aria-hidden="true" aria-label="더보기 메뉴">
+    <div class="mobile-sheet-grabber" aria-hidden="true"></div>
+    <div class="mobile-more-sheet-head"><strong>더보기</strong><button type="button" class="mobile-more-close" aria-label="더보기 닫기">×</button></div>
+    <div class="mobile-more-grid">
+      <button type="button" data-mobile-target="search"><span aria-hidden="true">⌕</span><b>검색</b></button>
+      <button type="button" data-mobile-target="trash"><span aria-hidden="true">♲</span><b>휴지통</b></button>
+      <button type="button" data-mobile-target="stats"><span aria-hidden="true">▥</span><b>통계</b></button>
+      <button type="button" data-mobile-target="settings"><span aria-hidden="true">⚙</span><b>설정</b></button>
+    </div>
+  </section>
+
   <section class="top">
     <div class="calendar-card">
+      <div class="cal-header">
       <div class="cal-title">2026년 7월</div>
       <div class="cal-nav"><button type="button" class="cal-nav-prev" aria-label="이전 달">‹</button><button type="button" class="cal-nav-today" aria-label="오늘로 이동" data-tooltip-label="오늘로 이동"><span class="ic-ring"></span></button><button type="button" class="cal-nav-next" aria-label="다음 달">›</button><button type="button" class="cal-settings-btn" aria-label="달력 표시 설정" aria-haspopup="menu" aria-expanded="false" aria-controls="cal-settings-menu" data-tooltip-label="달력 표시 설정">⋯</button></div>
+      </div>
       <div class="weekdays"></div>
       <div class="dates">
         <span></span><span></span><span></span><span class="date">1</span><span class="date">2</span><span class="date">3</span><span class="date sat">4</span><span class="date sun">5</span>
@@ -3047,8 +3803,8 @@ body.dnd-active .monthly-log-week-segment{pointer-events:none}
         </div>
       </div>
       <div class="daily-normal-view">
-        <div class="quick"><span class="quick-icons" role="group" aria-label="입력 종류"><button type="button" class="q-slot" data-mode="task" aria-pressed="true" aria-label="할 일" data-tooltip-label="할 일"><span class="ic-dot"></span></button><button type="button" class="q-slot" data-mode="schedule" aria-pressed="false" aria-label="일정" data-tooltip-label="일정"><span class="ic-ring"></span></button><button type="button" class="q-slot" data-mode="memo" aria-pressed="false" aria-label="메모" data-tooltip-label="메모"><span class="ic-dash"></span></button></span><input type="text" id="quick-input" class="placeholder" placeholder="할 일을 입력하고 엔터를 누르세요." autocomplete="off" aria-label="할 일 빠른 입력" /></div>
-        <div class="rollover"><div class="rollover-actions"><button type="button" class="rollover-toggle" aria-expanded="false"><span class="tri"></span><span class="rollover-count">이월(0)</span></button><button type="button" class="rollover-today-btn" aria-label="이월 항목 전체 오늘로 이동">[오늘]</button><button type="button" class="delete-btn" aria-label="이월 항목 전체 삭제">[삭제]</button></div></div>
+        <div class="quick"><span class="quick-icons" role="group" aria-label="입력 종류"><button type="button" class="q-slot" data-mode="task" aria-pressed="true" aria-label="할 일" data-tooltip-label="할 일"><span class="ic-dot"></span></button><button type="button" class="q-slot" data-mode="schedule" aria-pressed="false" aria-label="일정" data-tooltip-label="일정"><span class="ic-ring"></span></button><button type="button" class="q-slot" data-mode="memo" aria-pressed="false" aria-label="메모" data-tooltip-label="메모"><span class="ic-dash"></span></button></span><input type="text" id="quick-input" class="placeholder" placeholder="할 일을 입력하고 엔터를 누르세요." autocomplete="off" aria-label="할 일 빠른 입력" /><button type="button" class="mobile-quick-send" id="mobile-quick-send" aria-label="빠른 입력 추가">＋</button></div>
+        <div class="rollover"><div class="rollover-actions"><button type="button" class="rollover-toggle" aria-expanded="false"><span class="tri"></span><span class="rollover-count">이월(0)</span></button><button type="button" class="rollover-today-btn" aria-label="이월 항목 전체 오늘로 이동">오늘</button><button type="button" class="delete-btn" aria-label="이월 항목 전체 삭제">삭제</button></div></div>
         <div class="task-list" id="rollover-list" hidden></div>
         <div class="rollover-divider" id="rollover-divider" hidden></div>
         <div class="task-list" id="daily-list"></div>
@@ -3125,6 +3881,22 @@ body.dnd-active .monthly-log-week-segment{pointer-events:none}
       <div class="monthly-log-body" id="monthly-log-body">
         <div class="monthly-log-rows" id="monthly-log-rows"></div>
       </div>
+      <div class="mobile-calendar-project-legend" id="mobile-calendar-project-legend" hidden aria-label="이 달 프로젝트 범례"></div>
+      <section class="mobile-calendar-agenda" id="mobile-calendar-agenda" aria-label="선택한 날짜 일정">
+        <div class="mobile-calendar-agenda-head">
+          <h3 id="mobile-calendar-agenda-title">선택한 날짜</h3>
+        </div>
+        <div class="mobile-calendar-agenda-list" id="mobile-calendar-agenda-list"></div>
+        <div class="mobile-calendar-agenda-quick" id="mobile-calendar-agenda-quick" data-mode="task">
+          <div class="mobile-calendar-agenda-modes" role="group" aria-label="입력 종류">
+            <button type="button" data-mobile-agenda-mode="task" aria-pressed="true" aria-label="할 일"><span class="ic-dot"></span></button>
+            <button type="button" data-mobile-agenda-mode="schedule" aria-pressed="false" aria-label="일정"><span class="ic-ring"></span></button>
+            <button type="button" data-mobile-agenda-mode="memo" aria-pressed="false" aria-label="메모"><span class="ic-dash"></span></button>
+          </div>
+          <input id="mobile-calendar-agenda-input" type="text" autocomplete="off" placeholder="이 날에 추가…" aria-label="선택한 날짜에 항목 추가" />
+          <button type="button" class="mobile-calendar-agenda-send" id="mobile-calendar-agenda-send" aria-label="추가">＋</button>
+        </div>
+      </section>
     </div>
     <div class="monthly-split-divider" id="monthly-split-divider" role="separator" aria-orientation="vertical" aria-label="Monthly Log와 이번 달 할 일 패널 폭 조절" tabindex="0"></div>
     <aside class="monthly-inbox-panel" id="monthly-inbox-panel">
@@ -3245,6 +4017,156 @@ body.dnd-active .monthly-log-week-segment{pointer-events:none}
   <div class="today-monthly-backdrop" id="today-monthly-backdrop" hidden></div>
 </div>
 <div id="a11y-announcer" class="sr-only" aria-live="polite"></div>
+
+<script id="mobile-ux-pass2-v19-js">
+document.addEventListener('DOMContentLoaded', function () {
+  var mq = window.matchMedia('(max-width:640px), (max-width:900px) and (max-height:500px) and (pointer:coarse)');
+  var more = document.querySelector('.side-item.mobile-more');
+  var sheet = document.getElementById('mobile-more-sheet');
+  var backdrop = document.getElementById('mobile-more-backdrop');
+  var close = sheet && sheet.querySelector('.mobile-more-close');
+
+  function setMoreOpen(open) {
+    if (!sheet || !backdrop || !more) return;
+    sheet.hidden = !open;
+    backdrop.hidden = !open;
+    sheet.setAttribute('aria-hidden', String(!open));
+    more.setAttribute('aria-expanded', String(open));
+  }
+  function toggleMore() { if (mq.matches) setMoreOpen(sheet.hidden); }
+  if (more) {
+    more.addEventListener('click', toggleMore);
+    more.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleMore(); }
+    });
+  }
+  if (close) close.addEventListener('click', function(){ setMoreOpen(false); });
+  if (backdrop) backdrop.addEventListener('click', function(){ setMoreOpen(false); });
+  if (sheet) sheet.addEventListener('click', function (e) {
+    var btn = e.target.closest('[data-mobile-target]');
+    if (!btn) return;
+    var target = document.querySelector('.side-item.' + btn.dataset.mobileTarget);
+    setMoreOpen(false);
+    if (target) target.click();
+  });
+  document.querySelectorAll('.side-item.today,.side-item.calendar,.side-item.future-log,.side-item.routine').forEach(function (el) {
+    el.addEventListener('click', function(){ setMoreOpen(false); });
+  });
+  document.addEventListener('keydown', function(e){ if (e.key === 'Escape' && sheet && !sheet.hidden) setMoreOpen(false); });
+
+  function syncMoreActive() {
+    if (!more) return;
+    var active = ['search','trash','stats','settings'].some(function(cls){
+      var el = document.querySelector('.side-item.' + cls);
+      return !!(el && el.classList.contains('active'));
+    });
+    more.classList.toggle('active', active);
+  }
+  var observed = document.querySelectorAll('.side-item.search,.side-item.trash,.side-item.stats,.side-item.settings,.side-item.today,.side-item.calendar,.side-item.future-log,.side-item.routine');
+  var mo = new MutationObserver(syncMoreActive);
+  observed.forEach(function(el){ mo.observe(el,{attributes:true,attributeFilter:['class']}); });
+  syncMoreActive();
+
+  var send = document.getElementById('mobile-quick-send');
+  var input = document.getElementById('quick-input');
+  if (send && input) {
+    send.addEventListener('click', function () {
+      if (!mq.matches || !input.value.trim()) { input.focus(); return; }
+      input.dispatchEvent(new KeyboardEvent('keydown', {key:'Enter', code:'Enter', bubbles:true, cancelable:true}));
+      input.focus();
+    });
+  }
+
+  function syncPlaceholder() {
+    if (!input) return;
+    input.placeholder = mq.matches ? '할 일을 입력하세요…' : '할 일을 입력하고 엔터를 누르세요.';
+    if (!mq.matches) setMoreOpen(false);
+  }
+  if (mq.addEventListener) mq.addEventListener('change', syncPlaceholder); else mq.addListener(syncPlaceholder);
+  syncPlaceholder();
+});
+</script>
+
+<script id="mobile-soft-keyboard-v25-js">
+/* Keeps mobile capture fields visible above Android/iOS software keyboards. */
+document.addEventListener('DOMContentLoaded', function () {
+  var mq = window.matchMedia('(max-width:640px), (max-width:900px) and (max-height:500px) and (pointer:coarse)');
+  var vv = window.visualViewport || null;
+  var blurTimer = 0;
+  var syncTimer = 0;
+
+  function isKeyboardEditable(el) {
+    if (!el || el.disabled || el.readOnly) return false;
+    if (el.matches && el.matches('textarea,[contenteditable="true"],[contenteditable="plaintext-only"]')) return true;
+    if (!(el.matches && el.matches('input'))) return false;
+    var type = String(el.type || 'text').toLowerCase();
+    return ['button','submit','reset','checkbox','radio','range','color','file','image','hidden'].indexOf(type) === -1;
+  }
+
+  function resetKeyboardState() {
+    document.body.classList.remove('mobile-keyboard-focus','mobile-keyboard-open');
+    document.body.style.setProperty('--mobile-keyboard-offset','0px');
+  }
+
+  function keyboardInsetPx() {
+    if (!vv) return 0;
+    /* If the browser already resizes the layout viewport, this resolves to ~0.
+       On browsers that keep a full layout viewport (notably some iOS cases),
+       VisualViewport exposes the obscured keyboard height. Ignore small browser
+       toolbar deltas so only a software keyboard produces an offset. */
+    var layoutH = Math.max(document.documentElement.clientHeight || 0, window.innerHeight || 0);
+    var visualBottom = (vv.height || 0) + (vv.offsetTop || 0);
+    var delta = Math.max(0, layoutH - visualBottom);
+    return delta > 80 ? Math.round(delta) : 0;
+  }
+
+  function syncKeyboardState() {
+    clearTimeout(syncTimer);
+    if (!mq.matches) { resetKeyboardState(); return; }
+    var active = document.activeElement;
+    var focused = isKeyboardEditable(active);
+    document.body.classList.toggle('mobile-keyboard-focus', focused);
+    var inset = focused ? keyboardInsetPx() : 0;
+    document.body.style.setProperty('--mobile-keyboard-offset', inset + 'px');
+    document.body.classList.toggle('mobile-keyboard-open', focused && (inset > 0 || (vv && vv.height < (window.innerHeight || vv.height) * .82)));
+  }
+
+  function keepActiveFieldVisible() {
+    if (!mq.matches) return;
+    var active = document.activeElement;
+    if (!isKeyboardEditable(active) || !active.scrollIntoView) return;
+    requestAnimationFrame(function () {
+      try { active.scrollIntoView({block:'nearest', inline:'nearest', behavior:'smooth'}); } catch (e) { active.scrollIntoView(false); }
+    });
+  }
+
+  document.addEventListener('focusin', function (e) {
+    if (!mq.matches || !isKeyboardEditable(e.target)) return;
+    clearTimeout(blurTimer);
+    document.body.classList.add('mobile-keyboard-focus');
+    syncKeyboardState();
+    setTimeout(syncKeyboardState, 80);
+    setTimeout(function(){ syncKeyboardState(); keepActiveFieldVisible(); }, 260);
+  });
+
+  document.addEventListener('focusout', function () {
+    clearTimeout(blurTimer);
+    blurTimer = setTimeout(function () {
+      if (!isKeyboardEditable(document.activeElement)) resetKeyboardState();
+      else syncKeyboardState();
+    }, 140);
+  });
+
+  if (vv) {
+    vv.addEventListener('resize', function () { syncKeyboardState(); keepActiveFieldVisible(); });
+    vv.addEventListener('scroll', syncKeyboardState);
+  }
+  window.addEventListener('resize', syncKeyboardState);
+  if (mq.addEventListener) mq.addEventListener('change', syncKeyboardState); else mq.addListener(syncKeyboardState);
+  syncKeyboardState();
+});
+</script>
+
 <script src="./app.js" defer></script>
 <script src="./dotdot-extensions.js" defer></script>
 </body>
